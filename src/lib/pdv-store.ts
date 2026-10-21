@@ -29,7 +29,7 @@ export type Order = {
   payments: Payment[];
   status: OrderStatus;
   createdAt: number;
-  paidAt?: number;
+  paidAt?: number | undefined;
 };
 export type CashMove = { id: string; kind: "sangria" | "suprimento"; amount: number; reason: string; at: number };
 export type Settings = {
@@ -44,7 +44,7 @@ export type Settings = {
 export type State = {
   products: Product[];
   orders: Order[];
-  draft: { type: OrderType; customer: string; items: CartItem[]; note: string; discount: number; fee: number; serviceFee: boolean; editingId?: string };
+  draft: { type: OrderType; customer: string; items: CartItem[]; note: string; discount: number; fee: number; serviceFee: boolean; editingId?: string | undefined };
   cash: { open: boolean; openedAt?: number; initial: number; moves: CashMove[] };
   settings: Settings;
   nextNumber: number;

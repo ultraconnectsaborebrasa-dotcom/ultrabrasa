@@ -76,7 +76,7 @@ export function SellView() {
             <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto… (Enter adiciona o primeiro)" className="field pl-9" />
             <span className="kbd absolute right-3 top-1/2 -translate-y-1/2">F2</span>
           </div>
-          <button className="btn btn-ghost" onClick={() => setEditing({ id: "", name: "", category: settings.categories[0], price: 0, cost: 0, stock: null, minStock: 5, favorite: false, active: true })}>
+          <button className="btn btn-ghost" onClick={() => setEditing({ id: "", name: "", category: settings.categories[0] ?? "", price: 0, cost: 0, stock: null, minStock: 5, favorite: false, active: true })}>
             <Plus size={16} /> Produto
           </button>
         </div>

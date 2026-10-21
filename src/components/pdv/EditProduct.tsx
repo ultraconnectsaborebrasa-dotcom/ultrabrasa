@@ -7,14 +7,14 @@ export function EditProduct({ product, onClose }: { product: Product | null; onC
   const cats = useStore((s) => s.settings.categories);
   const all = useStore((s) => s.products);
   const [f, setF] = useState<Product | null>(product);
-  useEffect(() => setF(product), [product]);
+  useEffect(() => { setF(product); }, [product]);
   if (!f) return null;
   const set = (patch: Partial<Product>) => setF({ ...f, ...patch });
   const num = (v: string) => parseFloat(v.replace(",", ".")) || 0;
   const margin = f.price ? ((f.price - f.cost) / f.price) * 100 : 0;
 
   const save = () => {
-    if (!f.name.trim()) return toast.error("Informe o nome.");
+    if (!f.name.trim()) { toast.error("Informe o nome."); return; }
     setState((s) => ({
       ...s,
       products: f.id ? s.products.map((p) => (p.id === f.id ? f : p)) : [...s.products, { ...f, id: uid() }],

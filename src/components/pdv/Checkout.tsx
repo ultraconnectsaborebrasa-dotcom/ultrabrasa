@@ -8,14 +8,14 @@ export function Checkout({ open, onClose, total, methods, onConfirm, title }: {
   onConfirm: (p: Payment[]) => void;
 }) {
   const [pays, setPays] = useState<(Payment & { id: string })[]>([]);
-  const [method, setMethod] = useState(methods[0]);
+  const [method, setMethod] = useState<string>(methods[0] ?? "Pix");
   const [amount, setAmount] = useState("");
   const paidSum = pays.reduce((a, p) => a + p.amount, 0);
   const remaining = Math.max(0, Math.round((total - paidSum) * 100) / 100);
   const change = Math.max(0, paidSum - total);
   const hasCash = pays.some((p) => p.method === "Dinheiro");
 
-  useEffect(() => { if (open) { setPays([]); setMethod(methods[0]); setAmount(""); } }, [open, methods]);
+  useEffect(() => { if (open) { setPays([]); setMethod(methods[0] ?? "Pix"); setAmount(""); } }, [open, methods]);
   useEffect(() => { setAmount(remaining ? remaining.toFixed(2) : ""); }, [remaining]);
 
   const quick = useMemo(() => {
@@ -85,7 +85,7 @@ export function Checkout({ open, onClose, total, methods, onConfirm, title }: {
             const out: Payment[] = pays.map(({ method, amount }) => ({ method, amount }));
             if (change > 0 && hasCash) {
               const i = out.findIndex((p) => p.method === "Dinheiro");
-              out[i] = { ...out[i], amount: Math.round((out[i].amount - change) * 100) / 100 };
+              const c = out[i]!; out[i] = { method: c.method, amount: Math.round((c.amount - change) * 100) / 100 };
             }
             onConfirm(out);
           }}>

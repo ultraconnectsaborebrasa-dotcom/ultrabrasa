@@ -113,7 +113,7 @@ export function ProductsView() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <Header title="Produtos" sub="Edite direto na tabela. Alterações salvam na hora." />
         <div className="flex gap-2"><input className="field w-56" placeholder="Filtrar…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <button className="btn btn-primary" onClick={() => setEdit({ id: "", name: "", category: cats[0], price: 0, cost: 0, stock: null, minStock: 5, favorite: false, active: true })}><Plus size={15} />Novo</button></div>
+          <button className="btn btn-primary" onClick={() => setEdit({ id: "", name: "", category: cats[0] ?? "", price: 0, cost: 0, stock: null, minStock: 5, favorite: false, active: true })}><Plus size={15} />Novo</button></div>
       </div>
       {pending.length > 0 && <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">⚠ {pending.length} produto(s) precisam de atenção: {pending.map((p) => p.name).join(", ")}</div>}
       <div className="overflow-x-auto rounded-2xl border bg-card">
