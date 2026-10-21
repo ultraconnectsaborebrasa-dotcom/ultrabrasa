@@ -13,7 +13,10 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
+      // The app is loaded via file://, so Chromium's cross-origin check must be
+      // off for ES module scripts to load from local files.
+      webSecurity: false,
     },
   });
 
