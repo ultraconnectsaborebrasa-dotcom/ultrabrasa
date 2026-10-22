@@ -1,4 +1,5 @@
 # PDV: histórico e administração
+- [ ] Revisão econômica: verificar site e rotas, corrigir bloqueio de compilação e workflow Windows, informar apenas links e pacotes verificáveis; conexão/status GitHub dependem da tela Git do projeto.
 - [x] Adicionar nome e WhatsApp opcionais, autorização promocional e cadastro compartilhado sem duplicação por telefone.
 - [x] Lista de clientes exclusiva do dono, busca, seleção, exportação e mensagem individual no WhatsApp; exportação verificada sem enviar mensagens.
 - [x] Histórico próprio do atendente com pessoas, datas e itens, sem valores de pedidos encerrados; projeção protegida no servidor.

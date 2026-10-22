@@ -38,9 +38,10 @@ export function ThermalPrinterPanel() {
         setSelected('');
         printerPreferences.selectedPrinter = '';
       }
-      if (!selected && names.length === 1) {
-        setSelected(names[0]);
-        printerPreferences.selectedPrinter = names[0];
+      const onlyPrinter = names.length === 1 ? names[0] : undefined;
+      if (!selected && onlyPrinter !== undefined) {
+        setSelected(onlyPrinter);
+        printerPreferences.selectedPrinter = onlyPrinter;
       }
       toast.success(names.length ? `${names.length} impressora(s) encontrada(s).` : 'Nenhuma impressora encontrada no Windows.');
     } catch (error) {
