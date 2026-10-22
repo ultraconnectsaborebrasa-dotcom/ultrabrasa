@@ -6,6 +6,7 @@ import { openCloud,saveCloud,watchCloud } from '@/lib/pdv-cloud';
 import { configurePersistence,hydrate,emptyDraft,replaceState,getState } from '@/lib/pdv-store';
 import { toast } from 'sonner';
 import { useNavigate } from '@tanstack/react-router';
+import { Brand } from './Brand';
 export function AccountGate({children}:{children:(admin:boolean,name:string,signOut:()=>Promise<void>)=>ReactNode}) {
  const [access,setAccess]=useState<{admin:boolean;name:string}|null>(null); const [error,setError]=useState('');const [busy,setBusy]=useState(true);const query=useQueryClient();const navigate=useNavigate();
  async function load(){setBusy(true);setError('');try{
@@ -20,7 +21,7 @@ export function AccountGate({children}:{children:(admin:boolean,name:string,sign
  useEffect(()=>{if(!access)return;return watchCloud();},[access]);
  async function signOut(){configurePersistence(null);setAccess(null);await query.cancelQueries();query.clear();replaceState({...getState(),draft:emptyDraft(),orders:[],products:[]});await supabase.auth.signOut();await navigate({to:'/auth',replace:true});}
  if(busy)return <div className="grid min-h-screen place-items-center text-muted-foreground">Carregando seu PDV…</div>;
- if(!access)return <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-6"><h1 className="font-display text-3xl font-bold">Ultraconnect</h1><p role="alert">{error}</p><Button onClick={()=>navigate({to:'/auth'})}>Entrar na conta</Button><Button variant="outline" onClick={()=>void load()}>Verificar acesso</Button><Button variant="ghost" onClick={()=>void signOut()}>Sair</Button></div>;
+ if(!access)return <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-6 py-8"><Brand large/><div className="text-center"><h1 className="font-display text-3xl font-bold">Ultraconnect</h1><p className="mt-1 text-sm text-muted-foreground">Sabor e Brasa</p></div><p role="alert" className="my-3 text-center text-sm text-muted-foreground">{error}</p><Button className="h-11" onClick={()=>navigate({to:'/auth'})}>Entrar na conta</Button><Button variant="outline" onClick={()=>void load()}>Verificar acesso</Button><Button variant="ghost" onClick={()=>void signOut()}>Sair</Button></main>;
  return <>{children(access.admin,access.name,signOut)}</>;
 }
 export function AdminTeam(){

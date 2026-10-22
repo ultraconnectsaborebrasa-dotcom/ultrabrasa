@@ -8,14 +8,16 @@ import { Button } from "@/components/ui/button";
 import { WindowMode } from "@/components/pdv/WindowMode";
 import { useSyncStatus } from "@/lib/pdv-cloud";
 import { SellView } from "@/components/pdv/SellView";
-import { CashView, KitchenView, OrdersView, ProductsView, SettingsView } from "@/components/pdv/Views";
+import { CashView, KitchenView, OrdersView, ProductsView } from "@/components/pdv/Views";
+import { SettingsView } from "@/components/pdv/SettingsView";
+import { Brand } from "@/components/pdv/Brand";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Ultra Brasa PDV — Ponto de venda" },
+      { title: "Ultraconnect Sabor e Brasa — PDV" },
       { name: "description", content: "PDV completo para espetaria e lanchonete: vendas, comandas, cozinha, estoque e caixa." },
-      { property: "og:title", content: "Ultra Brasa PDV" },
+      { property: "og:title", content: "Ultraconnect Sabor e Brasa — PDV" },
       { property: "og:description", content: "Vendas, comandas, cozinha, estoque e caixa em um só lugar." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -52,6 +54,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   }, [admin]);
 
   const store = useStore((s) => s.settings.storeName);
+  const animations = useStore((s) => s.settings.animationsEnabled !== false);
   const orders = useStore((s) => s.orders);
   const products = useStore((s) => s.products);
   const cashOpen = useStore((s) => s.cash.open);
@@ -62,11 +65,11 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const low = products.filter((p) => p.stock !== null && p.stock <= p.minStock).length;
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div data-animations={animations ? 'on' : 'off'} className="flex h-dvh flex-col overflow-hidden">
       <header className="flex shrink-0 flex-wrap items-center gap-3 border-b bg-card/60 px-3 py-3 backdrop-blur sm:px-5">
         <div className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-ember-gradient shadow-glow"><Flame size={18} className="text-primary-foreground" /></div>
-          <div className="leading-tight"><div className="font-display text-lg font-bold">{store}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">PDV · Sabor e brasa</div></div>
+          <Brand/>
+          <div className="min-w-0 leading-tight"><div className="max-w-60 break-words font-display text-lg font-bold">{store}</div><div className="text-[10px] uppercase text-muted-foreground">PDV · Sabor e brasa</div></div>
         </div>
         <nav aria-label="Áreas do PDV" className="order-3 flex w-full gap-1 overflow-x-auto rounded-lg bg-background p-1 xl:order-none xl:w-auto">
           {tabs.map((t) => {
@@ -86,14 +89,14 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
           <WindowMode/>
           <Button variant="ghost" size="icon" title="Sair da conta" aria-label="Sair da conta" onClick={()=>void signOut()}><LogOut/></Button>
           <div className="hidden gap-4 lg:flex"><Stat k="Vendas hoje" v={brl(revenue)} /><Stat k="Pedidos" v={String(today.length)} /></div>
-          <button onClick={() => setTab("caixa")} className={`rounded-full px-3 py-1 text-xs font-semibold ${cashOpen ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+          <Button variant="ghost" onClick={() => setTab("caixa")} className={`px-3 py-1 text-xs font-semibold ${cashOpen ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
             ● Caixa {cashOpen ? "aberto" : "fechado"}
-          </button>
+          </Button>
         </div>
       </header>
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
         {tab === "pdv" ? <SellView admin={admin}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
-          : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView /> : null}
+          : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
       </main>
       {saving && <div role="status" className="fixed inset-0 z-50 flex items-center justify-center gap-3 bg-background/70 text-foreground"><LoaderCircle className="animate-spin"/>Salvando…</div>}
     </div>

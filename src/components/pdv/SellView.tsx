@@ -73,7 +73,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-            <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto… (Enter adiciona o primeiro)" className="field pl-9" />
+            <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto…" className="field pl-9" />
             <span className="kbd absolute right-3 top-1/2 -translate-y-1/2">F2</span>
           </div>
           {admin && <button className="btn btn-ghost" onClick={() => setEditing({ id: "", name: "", category: settings.categories[0] ?? "", price: 0, cost: 0, stock: null, minStock: 5, favorite: false, active: true })}>
@@ -94,7 +94,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
             const out = p.stock === 0;
             const qty = draft.items.filter((i) => i.productId === p.id).reduce((a, i) => a + i.qty, 0);
             return (
-              <div key={p.id} className={`group relative flex flex-col rounded-xl border bg-card p-3 transition hover:border-primary ${out ? "opacity-40" : ""} ${qty ? "border-primary/70" : ""}`}>
+              <div key={p.id} className={`group relative flex flex-col rounded-lg border bg-card transition hover:border-primary ${settings.compactCatalog ? 'p-2' : 'p-4'} ${out ? "opacity-40" : ""} ${qty ? "border-primary/70" : ""}`}>
                 <button onClick={() => add(p)} disabled={out} className="flex flex-1 flex-col items-start text-left">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{p.category}</span>
                   <span className="mt-0.5 font-semibold leading-tight">{p.name}</span>
@@ -161,7 +161,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
             </div>
           ))}
 
-          {suggestions.length > 0 && (
+          {settings.upsellEnabled !== false && suggestions.length > 0 && (
             <div className="m-2 rounded-xl border border-dashed border-primary/50 p-3">
               <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary"><Sparkles size={13} /> Ofereça ao cliente</div>
               <div className="flex flex-wrap gap-1.5">
@@ -184,7 +184,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
               onChange={(e) => {
                 const v = parseFloat(e.target.value.replace(",", ".")) || 0;
                 if (v > maxDiscount) toast.warning(`Desconto máximo: ${settings.maxDiscountPct}% (${brl(maxDiscount)})`);
-                updateDraft({ discount: Math.min(v, maxDiscount) });
+                updateDraft({ discount: Math.max(0, Math.min(v, maxDiscount)) });
               }} />
             <label className="ml-auto flex items-center gap-1"><input type="checkbox" checked={draft.serviceFee} onChange={(e) => updateDraft({ serviceFee: e.target.checked })} />{settings.serviceFeePct}% serviço</label>
           </div>

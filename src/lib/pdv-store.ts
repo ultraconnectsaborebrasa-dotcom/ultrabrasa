@@ -44,6 +44,12 @@ export type Settings = {
   deliveryFee: number;
   dailyGoal: number;
   maxDiscountPct: number;
+  autoServiceOnTable?: boolean;
+  upsellEnabled?: boolean;
+  kitchenWarningMinutes?: number;
+  kitchenLateMinutes?: number;
+  animationsEnabled?: boolean;
+  compactCatalog?: boolean;
 };
 export type State = {
   products: Product[];
@@ -86,7 +92,7 @@ function seed(): State {
     draft: emptyDraft(),
     cash: { open: false, initial: 0, moves: [] },
     settings: {
-      storeName: "Ultra Brasa",
+      storeName: "Ultraconnect",
       categories: ["Espetinhos", "Hambúrgueres", "Salgados", "Lanches", "Marmitas", "Acompanhamentos", "Bebidas"],
       paymentMethods: ["Pix", "Dinheiro", "Crédito", "Débito", "Vale-refeição"],
       serviceFeePct: 10,
@@ -170,7 +176,7 @@ export function updateDraft(patch: Partial<State["draft"]>) {
     const d = { ...s.draft, ...patch };
     if (patch.type) {
       d.fee = patch.type === "Delivery" ? s.settings.deliveryFee : 0;
-      d.serviceFee = patch.type === "Mesa";
+      d.serviceFee = patch.type === "Mesa" && s.settings.autoServiceOnTable !== false;
     }
     return { ...s, draft: d };
   });

@@ -2,7 +2,8 @@
 - [x] Alternar tela cheia e modo janela no código desktop; F11/Escape e botão testados com Electron simulado, executável anterior não reempacotado.
 - [x] Melhorar uso no celular e animações de feedback; entrada móvel verificada, PDV autenticado aguarda primeira conta.
 - [x] Sincronizar pedidos entre celular, computador e cozinha automaticamente; eventos e preservação de rascunho testados.
-- [ ] Aplicar logo e características da marca: aguarda envio da logo.
+- [x] Aplicar logo enviada, preto neutro, vermelho e dourado; entrada e login conferidos no navegador sem erros.
+- [x] Ampliar configurações por área com salvar/descartar, preferências de vendas, alertas da cozinha, aparência, backup e acesso da equipe; 6 testes aprovados, salvamento na conta real aguarda cadastro.
 - [ ] Conectar pedidos iFood: aguarda cadastro no portal oficial, credenciais de teste, homologação e autorização da loja; sem conexão ativa.
 - [x] Histórico completo: datas, filtros, detalhes e quantidades por produto; 7 testes aprovados.
 - [x] Login individual e nomes dos atendentes; entrada, cadastro e recuperação verificados publicamente.
