@@ -3,7 +3,7 @@ import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/re
 import { normalizePhone, validateContact, promotionEligible, customersCsv, type Customer } from '@/lib/pdv-customers';
 import { OperatorDesk } from '@/components/pdv/OperatorDesk';
 const send=vi.fn().mockResolvedValue({number:8});
-vi.mock('@/lib/pdv-operator',async original=>({...await original<typeof import('@/lib/pdv-operator')>(),readOperator:vi.fn().mockResolvedValue({products:[{id:'p',name:'Espeto',category:'Espetos',stock:null,price:8}],orders:[],ownSales:1,ownOrders:2,history:[{id:'old',number:1,type:'Mesa',tableNumber:3,customer:'Ana',customerPhone:'5571999999999',status:'pago',createdAt:1,paidAt:2,note:'',items:[{name:'Espeto',qty:3,note:'Sem sal'}]}]}),submitOperator:(r:unknown)=>send(r)}));
+vi.mock('@/lib/pdv-operator',async original=>({...await original<typeof import('@/lib/pdv-operator')>(),readOperator:vi.fn().mockResolvedValue({products:[{id:'p',name:'Espeto',category:'Grelhados',stock:null,price:8}],orders:[],ownSales:1,ownOrders:2,history:[{id:'old',number:1,type:'Mesa',tableNumber:3,customer:'Ana',customerPhone:'5571999999999',status:'pago',createdAt:1,paidAt:2,note:'',items:[{name:'Espeto',qty:3,note:'Sem sal'}]}]}),submitOperator:(r:unknown)=>send(r)}));
 afterEach(()=>{cleanup();send.mockClear();});
 describe('Contatos opcionais e promoções',()=>{
  it('permite atendimento sem nome e sem telefone',()=>{expect(validateContact('','',false)).toBeNull();});
