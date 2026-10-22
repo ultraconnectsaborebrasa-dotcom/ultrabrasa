@@ -16,6 +16,7 @@ export function saveCloud(state:State) {
   const {data,error}=await supabase.rpc('save_pdv_state',{payload,expected_revision:revision});
   if(error)throw error;
   revision=data.revision;
+  replaceState({...data.data as unknown as State,draft:getState().draft});
  });
  tail=task.catch(()=>{}); return task;
 }
