@@ -29,6 +29,13 @@
       "when": 1792641924779,
       "tag": "0003_seller_private_orders_and_five_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792663943171,
+      "tag": "0004_protect_admin_accounts_on_team_removal",
+      "breakpoints": true
     }
   ]
 }

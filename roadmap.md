@@ -1,4 +1,8 @@
 # PDV: histórico e administração
+- [ ] Mostrar preços unitários, subtotais e totais no atendimento, usando os preços já retornados pelo servidor.
+- [ ] Excluir atendente com confirmação, revogar acesso sem apagar histórico e proteger administradores.
+- [ ] Preparar Android com logo e mesmo site/login/dados; entregar APK ou projeto pronto com instruções de compilação.
+- [ ] Testar as correções, confirmar preservação dos 45 produtos e dados e solicitar publicação em ultrabrasa.lovable.app.
 - [x] Restringir vendedores a atendimento sem valores e contagem própria, com proteção no banco; projeção e bloqueio de snapshot confirmados, teste do envio sem preços aprovado.
 - [x] Organizar exatamente cinco mesas, pedidos em preparação e especificações na cozinha; pedido real testado e cancelado para restaurar estoque.
 - [x] Adicionar opção de avisos de pedidos do celular e aprimorar feedback visual da marca; Mesa 4 enviada no celular e recebida automaticamente na cozinha do computador.
