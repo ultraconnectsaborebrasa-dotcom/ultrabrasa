@@ -41,8 +41,13 @@ jobs:
           }
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json válido')"
 
-      - name: Instalar dependências do projeto
-        run: npm install --no-audit --no-fund --include=dev
+      - name: Instalar dependências do projeto (incluindo opcionais)
+        run: npm install --no-audit --no-fund --include=dev --include=optional
+
+      - name: Verificar dependência nativa do Lightning CSS
+        shell: pwsh
+        run: |
+          node -e "require('lightningcss'); console.log('Lightning CSS carregado')"
 
       - name: Gerar versão web
         shell: pwsh
