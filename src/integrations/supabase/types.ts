@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      pdv_customer_visits: {
+        Row: {
+          created_at: string
+          customer_id: string
+          order_id: string
+          seller_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          order_id: string
+          seller_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          order_id?: string
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_customer_visits_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdv_customers: {
+        Row: {
+          consent_at: string | null
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          promotion_consent: boolean
+          updated_at: string
+        }
+        Insert: {
+          consent_at?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          promotion_consent?: boolean
+          updated_at?: string
+        }
+        Update: {
+          consent_at?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          promotion_consent?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pdv_state: {
         Row: {
           data: Json
@@ -106,6 +165,10 @@ export type Database = {
         Returns: undefined
       }
       submit_pdv_operator: { Args: { request: Json }; Returns: Json }
+      submit_pdv_operator_with_contact: {
+        Args: { request: Json }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "operator"
