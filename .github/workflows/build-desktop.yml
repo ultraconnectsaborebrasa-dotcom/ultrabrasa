@@ -34,8 +34,8 @@ jobs:
       - name: Instalar dependências do projeto
         run: npm install --no-audit --no-fund
 
-      - name: Instalar Electron e empacotador
-        run: npm install --no-save --no-audit --no-fund --package-lock=false electron @electron/packager@20.3.0
+      - name: Instalar Electron
+        run: npm install --no-audit --no-fund --save-dev electron
 
       - name: Gerar versão web
         run: npm run build
