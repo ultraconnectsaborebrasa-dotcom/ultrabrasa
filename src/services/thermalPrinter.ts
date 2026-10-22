@@ -37,7 +37,17 @@ function wrap(value: unknown): string[] {
  if (current) lines.push(current);
  return lines;
 }
-const money = (value: number) => Number.isFinite(value) ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+// Use apenas caracteres ASCII no valor monetário para evitar que a codificação
+// da impressora térmica altere o símbolo da moeda ou os separadores decimais.
+const money = (value: number) => {
+ if (!Number.isFinite(value)) return '';
+ const cents = Math.round((value + Math.sign(value) * Number.EPSILON) * 100);
+ const sign = cents < 0 ? '-' : '';
+ const absolute = Math.abs(cents);
+ const whole = Math.floor(absolute / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+ const fraction = String(absolute % 100).padStart(2, '0');
+ return sign + 'R$ ' + whole + ',' + fraction;
+};
 export function formatReceipt(order: Order, serviceFeePct: number): string {
  const date = new Date(order.createdAt);
  const sum = totals(order, serviceFeePct);
