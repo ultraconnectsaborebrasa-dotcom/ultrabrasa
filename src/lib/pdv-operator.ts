@@ -11,7 +11,7 @@ export async function readOperator(): Promise<OperatorData> {
   if (error) throw new Error(error.message);
   return data as unknown as OperatorData;
 }
-export async function submitOperator(request: { id: string; type: string; tableNumber?: number; customer: string; note: string; items: OperatorItem[]; source: string }) {
+export async function submitOperator(request: { id: string; type: string; tableNumber?: number | undefined; customer: string; note: string; items: OperatorItem[]; source: string }) {
   const { data, error } = await supabase.rpc('submit_pdv_operator', { request: request as unknown as Json });
   if (error) throw new Error(error.message);
   return data as unknown as { number: number };

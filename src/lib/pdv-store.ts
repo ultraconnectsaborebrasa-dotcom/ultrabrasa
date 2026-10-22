@@ -34,7 +34,7 @@ export type Order = {
   sellerId?: string;
   sellerName?: string;
   serviceAmount?: number;
-  tableNumber?: number;
+  tableNumber?: number | undefined;
   source?: 'mobile' | 'desktop';
 };
 export type CashMove = { id: string; kind: "sangria" | "suprimento"; amount: number; reason: string; at: number };
@@ -56,7 +56,7 @@ export type Settings = {
 export type State = {
   products: Product[];
   orders: Order[];
-  draft: { type: OrderType; customer: string; items: CartItem[]; note: string; discount: number; fee: number; serviceFee: boolean; tableNumber?: number; editingId?: string | undefined };
+  draft: { type: OrderType; customer: string; items: CartItem[]; note: string; discount: number; fee: number; serviceFee: boolean; tableNumber?: number | undefined; editingId?: string | undefined };
   cash: { open: boolean; openedAt?: number; initial: number; moves: CashMove[] };
   settings: Settings;
   nextNumber: number;
