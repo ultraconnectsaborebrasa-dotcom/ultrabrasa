@@ -36,6 +36,13 @@
       "when": 1792663943171,
       "tag": "0004_protect_admin_accounts_on_team_removal",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792667553140,
+      "tag": "0005_customer_contacts_and_private_operator_history",
+      "breakpoints": true
     }
   ]
 }

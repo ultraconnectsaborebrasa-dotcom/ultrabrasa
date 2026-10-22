@@ -19,7 +19,9 @@
 - Public home renders an inline account entry until a verified Cloud user has a database role; database RLS and RPC authorization enforce permissions independently of the UI.
 - Roles live only in protected user_roles; the primary admin claim checks the confirmed Auth email server-side, never user-editable metadata.
 - Shared PDV snapshots use serialized revision-checked writes to prevent silent overwrites; drafts remain terminal-local and the original local data is backed up before Cloud import.
-- Operators receive only the dedicated RPC projection, including product/item prices and server-calculated order totals; full snapshots, costs, payments, kitchen updates, cash and administration remain admin-only.
+- Operators receive prices and calculated totals only for active orders; their own attendance history is an explicit server allowlist without prices, totals or payments, so closed revenue cannot be recovered from the response.
+- Customer contacts and order-linked visits live outside the shared snapshot with admin-only reads; optional contact capture is transactional with operator submission and idempotent by order, with normalized phone deduplication and explicit promotion consent to prevent unauthorized marketing.
+- Promotions use consent-filtered CSV export and individual WhatsApp deep links, not automated sending; the customer directory never exposes connector credentials.
 - Team removal revokes only operator roles and never deletes profiles or order history; role mutation RPCs serialize changes and reject administrator targets to protect all admin accounts.
 - Android uses a HTTPS-only native WebView of the published site with no JavaScript bridge or separate data store; this keeps web releases, login and role-enforced shared data consistent across devices.
 - Operator submissions derive prices, stock and seller identity in a locked database function; client amounts are never accepted, and idempotency prevents duplicate sends.
