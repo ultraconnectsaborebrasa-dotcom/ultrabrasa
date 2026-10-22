@@ -6,19 +6,19 @@ import {
 } from "@/lib/pdv-store";
 import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
+import { SalesHistory } from "./SalesHistory";
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
 
 /* ---------------- COMANDAS ---------------- */
-export function OrdersView({ goSell }: { goSell: () => void }) {
+export function OrdersView({ goSell, admin = false }: { goSell: () => void; admin?: boolean }) {
   useTick();
   const orders = useStore((s) => s.orders);
   const settings = useStore((s) => s.settings);
   const cashOpen = useStore((s) => s.cash.open);
   const [paying, setPaying] = useState<Order | null>(null);
   const open = orders.filter((o) => ["aberta", "cozinha", "pronto"].includes(o.status));
-  const done = orders.filter((o) => isToday(o.createdAt) && ["pago", "cancelado"].includes(o.status));
 
   return (
     <div className="space-y-6">
@@ -40,7 +40,7 @@ export function OrdersView({ goSell }: { goSell: () => void }) {
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <button className="btn btn-ghost text-xs" onClick={() => { loadOrderToDraft(o); goSell(); }}><Pencil size={13} />Editar</button>
-                <button className="btn btn-ghost text-xs text-destructive" onClick={() => confirm(`Cancelar comanda #${o.number}? O estoque será devolvido.`) && setOrderStatus(o.id, "cancelado")}>Cancelar</button>
+                {admin && <button className="btn btn-ghost text-xs text-destructive" onClick={() => confirm(`Cancelar comanda #${o.number}? O estoque será devolvido.`) && setOrderStatus(o.id, "cancelado")}>Cancelar</button>}
                 <button className="btn btn-primary text-xs" onClick={() => cashOpen ? setPaying(o) : toast.error("Abra o caixa primeiro.")}>Cobrar</button>
               </div>
             </div>
@@ -48,20 +48,7 @@ export function OrdersView({ goSell }: { goSell: () => void }) {
         })}
       </div>
 
-      <Header title="Finalizados hoje" sub={`${done.length} pedidos`} />
-      <div className="overflow-hidden rounded-2xl border bg-card">
-        <table className="w-full text-sm">
-          <thead className="bg-elevated text-left text-xs text-muted-foreground"><tr><th className="p-3">#</th><th>Tipo</th><th>Hora</th><th>Pagamento</th><th className="p-3 text-right">Total</th></tr></thead>
-          <tbody>{done.map((o) => (
-            <tr key={o.id} className={`border-t ${o.status === "cancelado" ? "text-muted-foreground line-through" : ""}`}>
-              <td className="p-3 font-mono">{o.number}</td><td>{o.type}</td><td>{new Date(o.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</td>
-              <td className="text-xs">{o.payments.map((p) => p.method).join(" + ") || "—"}</td>
-              <td className="p-3 text-right font-mono">{brl(paid(o) || totals(o, settings.serviceFeePct).total)}</td>
-            </tr>))}
-            {!done.length && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Nada ainda hoje.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <SalesHistory />
 
       <Checkout open={!!paying} onClose={() => setPaying(null)} methods={settings.paymentMethods}
         total={paying ? totals(paying, settings.serviceFeePct).total : 0} title={`Cobrar comanda #${paying?.number ?? ""}`}
@@ -189,7 +176,7 @@ export function CashView() {
 
   return (
     <div className="space-y-5">
-      <Header title="Caixa do turno" sub={`Aberto às ${new Date(cash.openedAt!).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`} />
+      <Header title="Caixa do turno" sub={`Aberto em ${new Date(cash.openedAt ?? since).toLocaleString("pt-BR")}`} />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi k="Faturamento" v={brl(revenue)} />
         <Kpi k="Pedidos · ticket médio" v={`${paidOrders.length} · ${brl(ticket)}`} />

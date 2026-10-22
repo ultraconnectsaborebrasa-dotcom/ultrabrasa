@@ -85,7 +85,7 @@ export function Checkout({ open, onClose, total, methods, onConfirm, title }: {
             const out: Payment[] = pays.map(({ method, amount }) => ({ method, amount }));
             if (change > 0 && hasCash) {
               const i = out.findIndex((p) => p.method === "Dinheiro");
-              const c = out[i]!; out[i] = { method: c.method, amount: Math.round((c.amount - change) * 100) / 100 };
+              const c = out[i]; if (c) out[i] = { method: c.method, amount: Math.round((c.amount - change) * 100) / 100 };
             }
             onConfirm(out);
           }}>
