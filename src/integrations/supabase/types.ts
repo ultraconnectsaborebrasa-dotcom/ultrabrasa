@@ -81,6 +81,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      revoke_pdv_access: { Args: { target: string }; Returns: undefined }
       save_pdv_state: {
         Args: { expected_revision: number; payload: Json }
         Returns: {

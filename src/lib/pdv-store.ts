@@ -117,7 +117,7 @@ export function hydrate() {
   hydrated = true;
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) state = { ...seed(), ...JSON.parse(raw) };
+    if (raw) { if (!localStorage.getItem(`${KEY}-before-cloud`)) localStorage.setItem(`${KEY}-before-cloud`, raw); state = { ...seed(), ...JSON.parse(raw) }; }
   } catch {}
   listeners.forEach((l) => l());
 }
@@ -157,7 +157,7 @@ export const paid = (o: Order) => o.payments.reduce((a, p) => a + p.amount, 0);
 // ---- ações do rascunho
 export function addToDraft(prod: Product) {
   setState((s) => {
-    const items = [...s.draft.items];
+    const items = s.draft.items.map(i => ({...i}));
     const ex = items.find((i) => i.productId === prod.id && !i.note);
     if (ex) ex.qty += 1;
     else items.push({ uid: uid(), productId: prod.id, name: prod.name, price: prod.price, qty: 1, note: "" });
