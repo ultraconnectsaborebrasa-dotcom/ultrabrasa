@@ -108,6 +108,7 @@ const listeners = new Set<() => void>();
 let persistence: ((s: State) => Promise<void>) | null = null;
 let saving = false;
 export const isSaving = () => saving;
+export function subscribeState(listener:()=>void) { listeners.add(listener); return ()=>{listeners.delete(listener);}; }
 export function configurePersistence(save: typeof persistence) { persistence = save; }
 export function replaceState(next: State) { state = next; listeners.forEach(l => l()); }
 export function useSaving() { return useSyncExternalStore(l => { listeners.add(l); return () => listeners.delete(l); }, () => saving, () => false); }
