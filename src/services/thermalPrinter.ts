@@ -50,7 +50,7 @@ export function formatReceipt(order: Order, serviceFeePct: number): string {
   if (item.note) lines.push('OBS ITEM:', ...wrap(item.note));
   lines.push('-'.repeat(WIDTH));
  }
- lines.push('SUBTOTAL: ' + money(sum.subtotal));
+ lines.push('SUBTOTAL: ' + money(sum.sub));
  if (order.discount) lines.push('DESCONTO: ' + money(order.discount));
  if (order.fee) lines.push('TAXA: ' + money(order.fee));
  if (order.serviceFee && sum.service) lines.push('SERVICO: ' + money(sum.service));
