@@ -1,0 +1,71 @@
+name: Build Ultrabrasa Desktop (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "electron/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - ".github/workflows/build-desktop.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências do projeto
+        run: npm ci
+
+      - name: Instalar Electron e empacotador
+        run: npm install --no-save --package-lock=false electron @electron/packager@20.3.0
+
+      - name: Gerar versão web
+        run: npm run build
+
+      - name: Verificar arquivos necessários
+        shell: pwsh
+        run: |
+          if (!(Test-Path "dist/client/index.html")) {
+            throw "Build não gerou dist/client/index.html. Verifique a configuração do Vite."
+          }
+          if (!(Test-Path "electron/main.cjs")) {
+            throw "Arquivo electron/main.cjs não encontrado."
+          }
+
+      - name: Empacotar aplicativo Windows x64
+        run: npx @electron/packager . Ultrabrasa --platform=win32 --arch=x64 --out=release --overwrite --icon=electron/icon.ico --ignore="^/release" --ignore="^/\.git"
+
+      - name: Criar ZIP portátil
+        shell: pwsh
+        run: |
+          $app = "release/Ultrabrasa-win32-x64"
+          if (!(Test-Path "$app/Ultrabrasa.exe")) {
+            throw "Executável Ultrabrasa.exe não foi gerado."
+          }
+          Compress-Archive -Path "$app/*" -DestinationPath "Ultrabrasa-Desktop-Windows-x64.zip" -Force
+
+      - name: Disponibilizar arquivo para baixar
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ultrabrasa-Desktop-Windows-x64
+          path: Ultrabrasa-Desktop-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
