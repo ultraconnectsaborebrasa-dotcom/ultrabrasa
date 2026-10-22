@@ -32,10 +32,10 @@ jobs:
           cache: npm
 
       - name: Instalar dependências do projeto
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Instalar Electron e empacotador
-        run: npm install --no-save --package-lock=false electron @electron/packager@20.3.0
+        run: npm install --no-save --no-audit --no-fund --package-lock=false electron @electron/packager@20.3.0
 
       - name: Gerar versão web
         run: npm run build
