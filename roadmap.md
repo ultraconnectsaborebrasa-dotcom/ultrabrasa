@@ -1,10 +1,10 @@
 # PDV: histórico e administração
-- [ ] Restringir vendedores a atendimento sem valores e contagem própria, com proteção no banco.
-- [ ] Organizar exatamente cinco mesas, pedidos em preparação e especificações na cozinha.
-- [ ] Adicionar opção de avisos de pedidos do celular e aprimorar feedback visual da marca.
-- [ ] Atualizar e conferir o executável Windows com as novas funções.
+- [x] Restringir vendedores a atendimento sem valores e contagem própria, com proteção no banco; projeção e bloqueio de snapshot confirmados, teste do envio sem preços aprovado.
+- [x] Organizar exatamente cinco mesas, pedidos em preparação e especificações na cozinha; pedido real testado e cancelado para restaurar estoque.
+- [x] Adicionar opção de avisos de pedidos do celular e aprimorar feedback visual da marca; Mesa 4 enviada no celular e recebida automaticamente na cozinha do computador.
+- [x] Atualizar pacote Windows com as novas funções e logo local; executável PE Windows confirmado. Abertura nativa no Windows não disponível neste ambiente.
 - [x] Alternar tela cheia e modo janela no código desktop; F11/Escape e botão testados com Electron simulado, executável anterior não reempacotado.
-- [x] Melhorar uso no celular e animações de feedback; entrada móvel verificada, PDV autenticado aguarda primeira conta.
+- [x] Melhorar uso no celular e animações de feedback; PDV autenticado e envio à cozinha verificados em tela de 390 px, sem transbordamento horizontal.
 - [x] Sincronizar pedidos entre celular, computador e cozinha automaticamente; eventos e preservação de rascunho testados.
 - [x] Aplicar logo enviada, preto neutro, vermelho e dourado; entrada e login conferidos no navegador sem erros.
 - [x] Ampliar configurações por área com salvar/descartar, preferências de vendas, alertas da cozinha, aparência, backup e acesso da equipe; 6 testes aprovados, salvamento na conta real aguarda cadastro.
@@ -13,4 +13,5 @@
 - [x] Login individual e nomes dos atendentes; entrada, cadastro e recuperação verificados publicamente.
 - [x] Administração com acesso total e equipe com permissões protegidas na base de dados.
 - [x] Persistência compartilhada com revisão e cópia dos dados locais antes da importação.
-- [ ] Verificar venda salva, histórico e administração em conta real: aguarda criação e confirmação da conta do administrador; ainda não há usuários cadastrados.
+- [x] Verificar administração e pedido salvo em conta real; cozinha, mesa, especificações, status pronto e cancelamento confirmados. Histórico coberto por 7 testes.
+- [ ] Verificar a experiência completa com conta real de vendedor: aguarda criação de uma conta de vendedor pela equipe; atualmente só existe o administrador.
