@@ -1,4 +1,9 @@
 # PDV: histórico e administração
+- [ ] Alternar tela cheia e modo janela.
+- [ ] Melhorar uso no celular e animações de feedback.
+- [ ] Sincronizar pedidos entre celular, computador e cozinha automaticamente.
+- [ ] Aplicar logo e características da marca: aguarda envio da logo.
+- [ ] Conectar pedidos iFood: aguarda acesso aprovado à integração oficial.
 - [x] Histórico completo: datas, filtros, detalhes e quantidades por produto; 7 testes aprovados.
 - [x] Login individual e nomes dos atendentes; entrada, cadastro e recuperação verificados publicamente.
 - [x] Administração com acesso total e equipe com permissões protegidas na base de dados.
