@@ -67,7 +67,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
   const maxDiscount = (t.sub * settings.maxDiscountPct) / 100;
 
   return (
-    <div className="grid h-full gap-4 lg:grid-cols-[1fr_400px]">
+    <div className="grid gap-4 lg:h-full lg:grid-cols-[minmax(0,1fr)_400px]">
       {/* Catálogo */}
       <section className="flex min-h-0 flex-col gap-3">
         <div className="flex gap-2">
@@ -88,7 +88,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
             </button>
           ))}
         </div>
-        <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 xl:grid-cols-4">
+        <div className="grid max-h-[45dvh] min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 lg:max-h-none xl:grid-cols-4">
           {list.map((p) => {
             const low = p.stock !== null && p.stock <= p.minStock;
             const out = p.stock === 0;
@@ -142,14 +142,14 @@ export function SellView({ admin = false }: { admin?: boolean }) {
               <div><p className="font-semibold text-foreground">Pronto para o próximo pedido.</p><p>Toque nos produtos ao lado.</p></div>
             </div>
           ) : draft.items.map((i) => (
-            <div key={i.uid} className="rounded-lg px-2 py-2 hover:bg-elevated">
+            <div key={i.uid} className="pdv-item-enter rounded-lg px-2 py-2 hover:bg-elevated">
               <div className="flex items-center gap-2">
                 <div className="flex items-center rounded-md border">
                   <button className="p-1.5" onClick={() => setItem(i.uid, { qty: i.qty - 1 })}><Minus size={12} /></button>
                   <span className="w-6 text-center font-mono text-sm">{i.qty}</span>
                   <button className="p-1.5" onClick={() => { const p = products.find((x) => x.id === i.productId); if (p) add(p); }}><Plus size={12} /></button>
                 </div>
-                <span className="flex-1 truncate text-sm font-medium">{i.name}</span>
+                <span className="min-w-0 flex-1 text-sm font-medium">{i.name}</span>
                 <span className="font-mono text-sm">{brl(i.price * i.qty)}</span>
                 <button onClick={() => setNoteFor(noteFor === i.uid ? null : i.uid)} className={i.note ? "text-accent" : "text-muted-foreground"}><MessageSquare size={14} /></button>
                 <button onClick={() => setItem(i.uid, { qty: 0 })} className="text-muted-foreground hover:text-destructive"><Trash2 size={14} /></button>
@@ -175,7 +175,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
 
         <div className="space-y-2 border-t p-4">
           <textarea className="field h-14 resize-none text-xs" placeholder="Observações gerais" value={draft.note} onChange={(e) => updateDraft({ note: e.target.value })} />
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-muted-foreground">Desconto</span>
             {[0, 5, 10].filter((d) => d <= settings.maxDiscountPct).map((d) => (
               <button key={d} className="rounded bg-secondary px-2 py-1" onClick={() => updateDraft({ discount: Math.round(t.sub * d) / 100 })}>{d}%</button>

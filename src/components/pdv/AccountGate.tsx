@@ -2,7 +2,7 @@ import { useEffect,useState,type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { openCloud,saveCloud } from '@/lib/pdv-cloud';
+import { openCloud,saveCloud,watchCloud } from '@/lib/pdv-cloud';
 import { configurePersistence,hydrate,emptyDraft,replaceState,getState } from '@/lib/pdv-store';
 import { toast } from 'sonner';
 import { useNavigate } from '@tanstack/react-router';
@@ -17,6 +17,7 @@ export function AccountGate({children}:{children:(admin:boolean,name:string,sign
  hydrate();await openCloud();configurePersistence(saveCloud);setAccess({admin:roles.data.some(r=>r.role==='admin'),name:profile.data?.display_name??'Atendente'});
  }catch(e){setError(e instanceof Error?e.message:'Não foi possível carregar os dados.');}finally{setBusy(false);}}
  useEffect(()=>{void load();return()=>configurePersistence(null);},[]);
+ useEffect(()=>{if(!access)return;return watchCloud();},[access]);
  async function signOut(){configurePersistence(null);setAccess(null);await query.cancelQueries();query.clear();replaceState({...getState(),draft:emptyDraft(),orders:[],products:[]});await supabase.auth.signOut();await navigate({to:'/auth',replace:true});}
  if(busy)return <div className="grid min-h-screen place-items-center text-muted-foreground">Carregando seu PDV…</div>;
  if(!access)return <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-6"><h1 className="font-display text-3xl font-bold">Ultraconnect</h1><p role="alert">{error}</p><Button onClick={()=>navigate({to:'/auth'})}>Entrar na conta</Button><Button variant="outline" onClick={()=>void load()}>Verificar acesso</Button><Button variant="ghost" onClick={()=>void signOut()}>Sair</Button></div>;

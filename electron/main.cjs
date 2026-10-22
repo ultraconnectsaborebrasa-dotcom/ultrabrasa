@@ -1,7 +1,7 @@
 // Electron main process — opens Ultraconnect fullscreen as a desktop app.
 // Serves the built app from a local-only internal server so it behaves
 // exactly like the web version (SPA routing works, no file:// quirks).
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, shell, ipcMain } = require("electron");
 const path = require("path");
 const http = require("http");
 const fs = require("fs");
@@ -64,10 +64,20 @@ function createWindow(url) {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   });
 
   win.setMenuBarVisibility(false);
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F11') {
+      event.preventDefault();
+      win.setFullScreen(!win.isFullScreen());
+    }
+    if (input.type === 'keyDown' && input.key === 'Escape' && win.isFullScreen()) {
+      event.preventDefault(); win.setFullScreen(false);
+    }
+  });
 
   // Open any external link (e.g. WhatsApp share) in the user's browser.
   win.webContents.setWindowOpenHandler(({ url: target }) => {
@@ -81,6 +91,12 @@ function createWindow(url) {
 }
 
 app.whenReady().then(async () => {
+  ipcMain.handle('ultraconnect:toggle-fullscreen', event => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return false;
+    win.setFullScreen(!win.isFullScreen()); return win.isFullScreen();
+  });
+  ipcMain.handle('ultraconnect:is-fullscreen', event => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false);
   const url = await startServer();
   createWindow(url);
   app.on("activate", () => {

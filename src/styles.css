@@ -102,7 +102,7 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; }
   input, select, textarea { color-scheme: dark; }
 }
 
@@ -141,4 +141,14 @@
 @utility kbd {
   font-family: var(--font-mono); font-size: 0.68rem; padding: 0.05rem 0.35rem; border-radius: 0.3rem;
   border: 1px solid color-mix(in oklab, currentColor 35%, transparent); opacity: 0.8;
+}
+
+@keyframes pdv-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pdv-item { from { opacity: 0.5; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+.pdv-view-enter { animation: pdv-enter 220ms ease-out; }
+.pdv-item-enter { animation: pdv-item 180ms ease-out; }
+button { transition: background-color 150ms, border-color 150ms, transform 150ms; }
+button:active:not(:disabled) { transform: translateY(1px); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
