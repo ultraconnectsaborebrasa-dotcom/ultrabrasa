@@ -1,8 +1,8 @@
 # PDV: histórico e administração
-- [ ] Adicionar nome e WhatsApp opcionais, autorização promocional e cadastro compartilhado sem duplicação por telefone.
-- [ ] Lista de clientes exclusiva do dono, busca, seleção, exportação e mensagem individual no WhatsApp.
-- [ ] Histórico próprio do atendente com pessoas, datas e itens, sem valores de pedidos encerrados; proteger também a resposta do servidor.
-- [ ] Testar cadastro, permissões e histórico com dados preservados.
+- [x] Adicionar nome e WhatsApp opcionais, autorização promocional e cadastro compartilhado sem duplicação por telefone.
+- [x] Lista de clientes exclusiva do dono, busca, seleção, exportação e mensagem individual no WhatsApp; exportação verificada sem enviar mensagens.
+- [x] Histórico próprio do atendente com pessoas, datas e itens, sem valores de pedidos encerrados; projeção protegida no servidor.
+- [x] Testar cadastro e histórico com conta real e lista do dono; 35 testes aprovados, atendimento fictício removido e checksum original preservado com 45 produtos/3 pedidos.
 - [x] Mostrar preços unitários, subtotais e totais no atendimento; carrinho verificado na conta real, pedido com ajustes coberto por teste automatizado.
 - [x] Excluir atendente com confirmação, revogar acesso sem apagar histórico e proteger administradores; cancelamento e confirmação testados, chamadas sem permissão rejeitadas.
 - [x] Preparar projeto Android com logo, mesmo site/login/dados, Gradle wrapper e instruções exatas; sem Java/SDK neste ambiente, APK e teste nativo pendentes no Android Studio.
