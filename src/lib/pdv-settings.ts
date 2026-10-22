@@ -2,7 +2,7 @@ import type { Settings } from './pdv-store';
 
 export function validateSettings(s: Settings): string | null {
   if (!s.storeName.trim()) return 'Informe o nome da loja.';
-  if (!s.categories.length || !s.paymentMethods.length) return 'Mantenha ao menos uma categoria e uma forma de pagamento.';
+  if (!s.categories.length || !s.paymentMethods.length || [...s.categories, ...s.paymentMethods].some(v => !v.trim())) return 'Mantenha ao menos uma categoria e uma forma de pagamento, sem nomes vazios.';
   if ([s.serviceFeePct, s.maxDiscountPct].some(v => !Number.isFinite(v) || v < 0 || v > 100)) return 'As porcentagens devem ficar entre 0 e 100.';
   if ([s.deliveryFee, s.dailyGoal].some(v => !Number.isFinite(v) || v < 0)) return 'Valores em reais não podem ser negativos.';
   const warning = s.kitchenWarningMinutes ?? 10;
