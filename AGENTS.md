@@ -18,7 +18,9 @@
 - Public home renders an inline account entry until a verified Cloud user has a database role; database RLS and RPC authorization enforce permissions independently of the UI.
 - Roles live only in protected user_roles; the primary admin claim checks the confirmed Auth email server-side, never user-editable metadata.
 - Shared PDV snapshots use serialized revision-checked writes to prevent silent overwrites; drafts remain terminal-local and the original local data is backed up before Cloud import.
-- Operators may sell, edit active shared orders, work the kitchen and manage cash; only admins change the catalog/settings, cancel orders, or grant access.
+- Operators only receive a financial-field-free RPC projection and submit validated orders; full snapshots, payments, kitchen updates, cash and administration are admin-only to keep seller devices free of financial data.
+- Operator submissions derive prices, stock and seller identity in a locked database function; client amounts are never accepted, and idempotency prevents duplicate sends.
+- Table selection is structured and validated against the fixed table list; kitchen and floor views share table labels to keep destinations unambiguous.
 - Sales history uses payment timestamps, local inclusive calendar dates, product-ID aggregation, and stored service amounts for new orders to preserve historical details.
 - Shared state Realtime subscriptions mount only for authorized accounts and clean up on exit; monotonic revisions and deferred updates preserve local drafts and in-flight writes.
 - Desktop fullscreen uses an isolated preload exposing only window-mode actions, with F11 and Escape handled in the main process; browsers use the native fullscreen API.

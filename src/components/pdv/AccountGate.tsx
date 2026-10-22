@@ -7,6 +7,7 @@ import { configurePersistence,hydrate,emptyDraft,replaceState,getState } from '@
 import { toast } from 'sonner';
 import { useNavigate } from '@tanstack/react-router';
 import { Brand } from './Brand';
+import { OperatorDesk } from './OperatorDesk';
 export function AccountGate({children}:{children:(admin:boolean,name:string,signOut:()=>Promise<void>)=>ReactNode}) {
  const [access,setAccess]=useState<{admin:boolean;name:string}|null>(null); const [error,setError]=useState('');const [busy,setBusy]=useState(true);const query=useQueryClient();const navigate=useNavigate();
  async function load(){setBusy(true);setError('');try{
@@ -15,14 +16,16 @@ export function AccountGate({children}:{children:(admin:boolean,name:string,sign
  const roles=await supabase.from('user_roles').select('role').eq('user_id',data.user.id);if(roles.error)throw roles.error;
  if(!roles.data.length){setError('Seu acesso aguarda liberação pelo administrador.');return;}
  const profile=await supabase.from('profiles').select('display_name').eq('id',data.user.id).maybeSingle();
- hydrate();await openCloud();configurePersistence(saveCloud);setAccess({admin:roles.data.some(r=>r.role==='admin'),name:profile.data?.display_name??'Atendente'});
+ const admin=roles.data.some(r=>r.role==='admin');
+ if(admin){hydrate();await openCloud();configurePersistence(saveCloud);}else{configurePersistence(null);replaceState({...getState(),draft:emptyDraft(),products:[],orders:[],cash:{open:false,initial:0,moves:[]},settings:{storeName:'Ultraconnect',categories:[],paymentMethods:[],serviceFeePct:0,deliveryFee:0,dailyGoal:0,maxDiscountPct:0}});}
+ setAccess({admin,name:profile.data?.display_name??'Atendente'});
  }catch(e){setError(e instanceof Error?e.message:'Não foi possível carregar os dados.');}finally{setBusy(false);}}
  useEffect(()=>{void load();return()=>configurePersistence(null);},[]);
- useEffect(()=>{if(!access)return;return watchCloud();},[access]);
+ useEffect(()=>{if(!access?.admin)return;return watchCloud();},[access]);
  async function signOut(){configurePersistence(null);setAccess(null);await query.cancelQueries();query.clear();replaceState({...getState(),draft:emptyDraft(),orders:[],products:[]});await supabase.auth.signOut();await navigate({to:'/auth',replace:true});}
  if(busy)return <div className="grid min-h-screen place-items-center text-muted-foreground">Carregando seu PDV…</div>;
  if(!access)return <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-6 py-8"><Brand large/><div className="text-center"><h1 className="font-display text-3xl font-bold">Ultraconnect</h1><p className="mt-1 text-sm text-muted-foreground">Sabor e Brasa</p></div><p role="alert" className="my-3 text-center text-sm text-muted-foreground">{error}</p><Button className="h-11" onClick={()=>navigate({to:'/auth'})}>Entrar na conta</Button><Button variant="outline" onClick={()=>void load()}>Verificar acesso</Button><Button variant="ghost" onClick={()=>void signOut()}>Sair</Button></main>;
- return <>{children(access.admin,access.name,signOut)}</>;
+ return access.admin?<>{children(true,access.name,signOut)}</>:<OperatorDesk name={access.name} signOut={signOut}/>;
 }
 export function AdminTeam(){
  const [people,setPeople]=useState<{id:string;display_name:string;role:string}[]>([]);const [error,setError]=useState('');const [busy,setBusy]=useState(false);
