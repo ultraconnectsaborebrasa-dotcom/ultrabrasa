@@ -75,6 +75,7 @@
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
+    "electron": "^44.9.3",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.26.5",
     "@testing-library/jest-dom": "^6.6.0",
