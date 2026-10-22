@@ -1,9 +1,9 @@
 # PDV: histórico e administração
-- [ ] Mostrar preços unitários, subtotais e totais no atendimento, usando os preços já retornados pelo servidor.
-- [ ] Excluir atendente com confirmação, revogar acesso sem apagar histórico e proteger administradores.
-- [ ] Preparar Android com logo e mesmo site/login/dados; entregar APK ou projeto pronto com instruções de compilação.
+- [x] Mostrar preços unitários, subtotais e totais no atendimento; carrinho verificado na conta real, pedido com ajustes coberto por teste automatizado.
+- [x] Excluir atendente com confirmação, revogar acesso sem apagar histórico e proteger administradores; cancelamento e confirmação testados, chamadas sem permissão rejeitadas.
+- [x] Preparar projeto Android com logo, mesmo site/login/dados, Gradle wrapper e instruções exatas; sem Java/SDK neste ambiente, APK e teste nativo pendentes no Android Studio.
 - [ ] Testar as correções, confirmar preservação dos 45 produtos e dados e solicitar publicação em ultrabrasa.lovable.app.
-- [x] Restringir vendedores a atendimento sem valores e contagem própria, com proteção no banco; projeção e bloqueio de snapshot confirmados, teste do envio sem preços aprovado.
+- [x] Restringir atendentes à projeção com preços e contagem própria, sem caixa/custos/admin; valores enviados pelo cliente não são aceitos, snapshot completo permanece bloqueado.
 - [x] Organizar exatamente cinco mesas, pedidos em preparação e especificações na cozinha; pedido real testado e cancelado para restaurar estoque.
 - [x] Adicionar opção de avisos de pedidos do celular e aprimorar feedback visual da marca; Mesa 4 enviada no celular e recebida automaticamente na cozinha do computador.
 - [x] Atualizar pacote Windows com as novas funções e logo local; executável PE Windows confirmado. Abertura nativa no Windows não disponível neste ambiente.
@@ -18,4 +18,4 @@
 - [x] Administração com acesso total e equipe com permissões protegidas na base de dados.
 - [x] Persistência compartilhada com revisão e cópia dos dados locais antes da importação.
 - [x] Verificar administração e pedido salvo em conta real; cozinha, mesa, especificações, status pronto e cancelamento confirmados. Histórico coberto por 7 testes.
-- [ ] Verificar a experiência completa com conta real de vendedor: aguarda criação de uma conta de vendedor pela equipe; atualmente só existe o administrador.
+- [x] Verificar conta real de atendente: 45 produtos, preço/subtotal/total do carrinho, ausência de dados completos e rejeição de alterações de acesso; nenhum pedido foi criado ou alterado nesta correção.
