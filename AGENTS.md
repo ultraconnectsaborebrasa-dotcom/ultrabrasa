@@ -20,3 +20,5 @@
 - Shared PDV snapshots use serialized revision-checked writes to prevent silent overwrites; drafts remain terminal-local and the original local data is backed up before Cloud import.
 - Operators may sell, edit active shared orders, work the kitchen and manage cash; only admins change the catalog/settings, cancel orders, or grant access.
 - Sales history uses payment timestamps, local inclusive calendar dates, product-ID aggregation, and stored service amounts for new orders to preserve historical details.
+- Shared state Realtime subscriptions mount only for authorized accounts and clean up on exit; monotonic revisions and deferred updates preserve local drafts and in-flight writes.
+- Desktop fullscreen uses an isolated preload exposing only window-mode actions, with F11 and Escape handled in the main process; browsers use the native fullscreen API.
