@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Pencil, Plus, Star, X } from "lucide-react";
+import { Clock, Pencil, Plus, Star } from "lucide-react";
 import {
-  brl, isToday, loadOrderToDraft, paid, resetAll, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
+  brl, isToday, loadOrderToDraft, paid, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
 } from "@/lib/pdv-store";
 import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
 import { SalesHistory } from "./SalesHistory";
+import { kitchenTone } from "@/lib/pdv-settings";
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -60,15 +61,16 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
 /* ---------------- COZINHA (KDS) ---------------- */
 export function KitchenView() {
   useTick();
+  const settings = useStore(s => s.settings);
   const orders = useStore((s) => s.orders).filter((o) => o.status === "cozinha" || o.status === "pronto");
   return (
     <div className="space-y-4">
-      <Header title="Cozinha" sub="Pedidos em preparo, do mais antigo para o mais novo. Amarelo > 10 min, vermelho > 20 min." />
+      <Header title="Cozinha" sub={`${orders.length} pedidos · ${new Date().toLocaleDateString("pt-BR")}`} />
       {!orders.length && <Empty text="Cozinha livre 🔥" />}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[...orders].reverse().map((o) => {
           const m = mins(o.createdAt);
-          const tone = o.status === "pronto" ? "border-success" : m > 20 ? "border-destructive" : m > 10 ? "border-warning" : "border-border";
+          const tone = o.status === "pronto" ? "border-success" : kitchenTone(m, settings);
           return (
             <div key={o.id} className={`rounded-2xl border-2 bg-card p-4 ${tone}`}>
               <div className="flex justify-between"><span className="font-display text-3xl font-bold">#{o.number}</span><span className="font-mono text-lg">{m}′</span></div>
@@ -212,44 +214,6 @@ export function CashView() {
         </div>
       </div>
     </div>
-  );
-}
-
-/* ---------------- AJUSTES ---------------- */
-export function SettingsView() {
-  const s = useStore((x) => x.settings);
-  const set = (patch: Partial<typeof s>) => setState((st) => ({ ...st, settings: { ...st.settings, ...patch } }));
-  const n = (v: string) => parseFloat(v.replace(",", ".")) || 0;
-  return (
-    <div className="max-w-3xl space-y-5">
-      <Header title="Ajustes" sub="Tudo aqui é editável e salva automaticamente." />
-      <Box t="Loja">
-        <F t="Nome da loja"><input className="field" value={s.storeName} onChange={(e) => set({ storeName: e.target.value })} /></F>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <F t="Taxa de serviço %"><input className="field font-mono" defaultValue={s.serviceFeePct} onChange={(e) => set({ serviceFeePct: n(e.target.value) })} /></F>
-          <F t="Taxa de entrega R$"><input className="field font-mono" defaultValue={s.deliveryFee} onChange={(e) => set({ deliveryFee: n(e.target.value) })} /></F>
-          <F t="Meta diária R$"><input className="field font-mono" defaultValue={s.dailyGoal} onChange={(e) => set({ dailyGoal: n(e.target.value) })} /></F>
-          <F t="Desconto máx. %"><input className="field font-mono" defaultValue={s.maxDiscountPct} onChange={(e) => set({ maxDiscountPct: n(e.target.value) })} /></F>
-        </div>
-      </Box>
-      <ListEditor t="Categorias" items={s.categories} on={(categories) => set({ categories })} />
-      <ListEditor t="Formas de pagamento" items={s.paymentMethods} on={(paymentMethods) => set({ paymentMethods })} />
-      <Box t="Zona de perigo"><button className="btn btn-ghost text-destructive" onClick={() => confirm("Apagar todos os dados e restaurar o cardápio original?") && resetAll()}>Restaurar dados de fábrica</button></Box>
-    </div>
-  );
-}
-function ListEditor({ t, items, on }: { t: string; items: string[]; on: (v: string[]) => void }) {
-  const [v, setV] = useState("");
-  return (
-    <Box t={t}>
-      <div className="flex flex-wrap gap-2">{items.map((i, idx) => (
-        <span key={i} className="flex items-center gap-1 rounded-full bg-secondary py-1 pl-3 pr-1 text-sm">
-          <input className="w-auto bg-transparent outline-none" size={Math.max(4, i.length)} defaultValue={i} onBlur={(e) => { const c = [...items]; c[idx] = e.target.value.trim() || i; on(c); }} />
-          <button onClick={() => on(items.filter((x) => x !== i))} className="rounded-full p-1 hover:bg-elevated"><X size={12} /></button>
-        </span>))}</div>
-      <div className="flex gap-2"><input className="field" placeholder="Adicionar…" value={v} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => e.key === "Enter" && v.trim() && (on([...items, v.trim()]), setV(""))} />
-        <button className="btn btn-ghost" onClick={() => { if (v.trim()) { on([...items, v.trim()]); setV(""); } }}>Adicionar</button></div>
-    </Box>
   );
 }
 
