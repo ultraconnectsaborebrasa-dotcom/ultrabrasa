@@ -1,16 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Flame, ShoppingCart, ClipboardList, ChefHat, Package, Wallet, Settings, History, ShieldCheck, LogOut, Wifi, WifiOff, LoaderCircle } from "lucide-react";
+import { Armchair, Bell, BellOff, ShoppingCart, ClipboardList, ChefHat, Package, Wallet, Settings, History, ShieldCheck, LogOut, Wifi, WifiOff, LoaderCircle } from "lucide-react";
 import { brl, isToday, useStore, useSaving } from "@/lib/pdv-store";
 import { AccountGate, AdminTeam } from "@/components/pdv/AccountGate";
 import { SalesHistory } from "@/components/pdv/SalesHistory";
 import { Button } from "@/components/ui/button";
 import { WindowMode } from "@/components/pdv/WindowMode";
-import { useSyncStatus } from "@/lib/pdv-cloud";
+import { useSyncStatus, useOrderAlerts, toggleOrderAlerts } from "@/lib/pdv-cloud";
 import { SellView } from "@/components/pdv/SellView";
 import { CashView, KitchenView, OrdersView, ProductsView } from "@/components/pdv/Views";
 import { SettingsView } from "@/components/pdv/SettingsView";
 import { Brand } from "@/components/pdv/Brand";
+import { TablesView } from "@/components/pdv/TablesView";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/")({
 const TABS = [
   { id: "pdv", label: "Vender", icon: ShoppingCart, key: "1" },
   { id: "comandas", label: "Comandas", icon: ClipboardList, key: "2" },
+  { id: "mesas", label: "Mesas", icon: Armchair, key: "9" },
   { id: "cozinha", label: "Cozinha", icon: ChefHat, key: "3" },
   { id: "produtos", label: "Produtos", icon: Package, key: "4" },
   { id: "caixa", label: "Caixa", icon: Wallet, key: "5" },
@@ -45,6 +47,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const [tab, setTab] = useState<Tab>("pdv");
   const saving = useSaving();
   const sync = useSyncStatus();
+  const alerts = useOrderAlerts();
   const tabs = TABS.filter(t=>admin || !['produtos','ajustes','admin'].includes(t.id));
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -66,7 +69,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
 
   return (
     <div data-animations={animations ? 'on' : 'off'} className="flex h-dvh flex-col overflow-hidden">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b bg-card/60 px-3 py-3 backdrop-blur sm:px-5">
+      <header className="brand-header flex shrink-0 flex-wrap items-center gap-3 border-b px-3 py-3 sm:px-5">
         <div className="flex items-center gap-2">
           <Brand/>
           <div className="min-w-0 leading-tight"><div className="max-w-60 break-words font-display text-lg font-bold">{store}</div><div className="text-[10px] uppercase text-muted-foreground">PDV · Sabor e brasa</div></div>
@@ -87,6 +90,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
           <span className="hidden text-xs text-muted-foreground sm:inline">{name} · {admin ? 'Administrador' : 'Atendente'}</span>
           <span title={sync==='live'?'Atualização automática conectada':sync==='offline'?'Sem conexão: confira sua internet':'Conectando dispositivos'} className={sync==='live'?'text-success':sync==='offline'?'text-destructive':'text-warning'}>{sync==='live'?<Wifi size={16}/>:sync==='offline'?<WifiOff size={16}/>:<LoaderCircle size={16} className="animate-spin"/>}</span>
           <WindowMode/>
+          <Button variant="ghost" size="icon" title={alerts?'Desativar avisos de pedidos do celular':'Ativar avisos de pedidos do celular'} aria-label="Avisos de pedidos do celular" aria-pressed={alerts} onClick={toggleOrderAlerts}>{alerts?<Bell/>:<BellOff/>}</Button>
           <Button variant="ghost" size="icon" title="Sair da conta" aria-label="Sair da conta" onClick={()=>void signOut()}><LogOut/></Button>
           <div className="hidden gap-4 lg:flex"><Stat k="Vendas hoje" v={brl(revenue)} /><Stat k="Pedidos" v={String(today.length)} /></div>
           <Button variant="ghost" onClick={() => setTab("caixa")} className={`px-3 py-1 text-xs font-semibold ${cashOpen ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
@@ -95,7 +99,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
         </div>
       </header>
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
-        {tab === "pdv" ? <SellView admin={admin}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
+        {tab === "pdv" ? <SellView admin={admin}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
           : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
       </main>
       {saving && <div role="status" className="fixed inset-0 z-50 flex items-center justify-center gap-3 bg-background/70 text-foreground"><LoaderCircle className="animate-spin"/>Salvando…</div>}

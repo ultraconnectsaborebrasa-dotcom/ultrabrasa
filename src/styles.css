@@ -150,6 +150,10 @@
 button { transition: background-color 150ms, border-color 150ms, transform 150ms; }
 button:active:not(:disabled) { transform: translateY(1px); }
 .brand-logo { border-radius: 50%; }
+.brand-header { background: var(--card); border-bottom-color: color-mix(in oklab, var(--ember) 45%, var(--border)); box-shadow: 0 3px 18px -12px var(--ember); }
+.table-tile, .product-choice { transition: border-color 180ms, transform 180ms, box-shadow 180ms; }
+.table-tile:hover, .product-choice:hover { transform: translateY(-2px); box-shadow: var(--shadow-glow); }
+.kitchen-ticket { border-top-width: 5px; }
 [data-animations="off"] *, [data-animations="off"] *::before, [data-animations="off"] *::after { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

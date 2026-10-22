@@ -34,6 +34,8 @@ export type Order = {
   sellerId?: string;
   sellerName?: string;
   serviceAmount?: number;
+  tableNumber?: number | undefined;
+  source?: 'mobile' | 'desktop';
 };
 export type CashMove = { id: string; kind: "sangria" | "suprimento"; amount: number; reason: string; at: number };
 export type Settings = {
@@ -54,7 +56,7 @@ export type Settings = {
 export type State = {
   products: Product[];
   orders: Order[];
-  draft: { type: OrderType; customer: string; items: CartItem[]; note: string; discount: number; fee: number; serviceFee: boolean; editingId?: string | undefined };
+  draft: { type: OrderType; customer: string; items: CartItem[]; note: string; discount: number; fee: number; serviceFee: boolean; tableNumber?: number | undefined; editingId?: string | undefined };
   cash: { open: boolean; openedAt?: number; initial: number; moves: CashMove[] };
   settings: Settings;
   nextNumber: number;
@@ -201,6 +203,7 @@ export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []
   let created: Order | null = null;
   setState((s) => {
     if (!s.draft.items.length) return s;
+    if (s.draft.type === 'Mesa' && ![1,2,3,4,5].includes(s.draft.tableNumber ?? 0)) { toast.error('Escolha uma das cinco mesas.'); return s; }
     const { editingId, ...d } = s.draft;
     if (editingId) {
       const prev = s.orders.find((o) => o.id === editingId);
@@ -212,14 +215,14 @@ export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []
         return { ...s, products, orders: s.orders.map((o) => (o.id === editingId ? upd : o)), draft: emptyDraft() };
       }
     }
-    const order: Order = { id: uid(), number: s.nextNumber, ...d, serviceAmount: totals(d, s.settings.serviceFeePct).service, payments, status, createdAt: Date.now(), paidAt: status === "pago" ? Date.now() : undefined };
+    const order: Order = { id: uid(), number: s.nextNumber, ...d, source: typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches ? 'mobile' : 'desktop', serviceAmount: totals(d, s.settings.serviceFeePct).service, payments, status, createdAt: Date.now(), paidAt: status === "pago" ? Date.now() : undefined };
     created = order;
     return { ...s, products: applyStock(s, d.items, -1), orders: [order, ...s.orders], draft: emptyDraft(), nextNumber: s.nextNumber + 1 };
   });
   return created;
 }
 export function loadOrderToDraft(o: Order) {
-  setState((s) => ({ ...s, draft: { type: o.type, customer: o.customer, items: o.items.map((i) => ({ ...i })), note: o.note, discount: o.discount, fee: o.fee, serviceFee: o.serviceFee, editingId: o.id } }));
+  setState((s) => ({ ...s, draft: { type: o.type, tableNumber: o.tableNumber, customer: o.customer, items: o.items.map((i) => ({ ...i })), note: o.note, discount: o.discount, fee: o.fee, serviceFee: o.serviceFee, editingId: o.id } }));
 }
 export function setOrderStatus(id: string, status: OrderStatus, payments?: Payment[]) {
   setState((s) => {

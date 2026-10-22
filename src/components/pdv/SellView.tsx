@@ -6,6 +6,8 @@ import {
 } from "@/lib/pdv-store";
 import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
+import { TableSelector } from './TableSelector';
+import { validTable, tableLabel } from '@/lib/pdv-tables';
 
 const TYPES: OrderType[] = ["Balcão", "Mesa", "Retirada", "Delivery"];
 
@@ -48,6 +50,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
   };
   const charge = () => {
     if (!draft.items.length) return;
+    if(draft.type==='Mesa'&&!validTable(draft.tableNumber)){toast.error('Escolha uma das cinco mesas.');return;}
     if (!cashOpen) { toast.error("Abra o caixa antes de cobrar (aba Caixa)."); return; }
     setPay(true);
   };
@@ -123,7 +126,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
       <aside className="flex min-h-0 flex-col rounded-2xl border bg-card">
         <div className="border-b p-4">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-xl font-bold">{draft.editingId ? "Editando comanda" : "Novo pedido"}</h2>
+            <h2 className="text-xl font-bold">{draft.editingId ? "Editando comanda" : draft.type==='Mesa'&&validTable(draft.tableNumber)?tableLabel(draft):"Novo pedido"}</h2>
             <span className="text-xs text-muted-foreground">{draft.items.reduce((a, i) => a + i.qty, 0)} itens</span>
           </div>
           <div className="mt-3 grid grid-cols-4 gap-1 rounded-lg bg-background p-1">
@@ -132,7 +135,8 @@ export function SellView({ admin = false }: { admin?: boolean }) {
                 className={`rounded-md py-1.5 text-xs font-semibold ${draft.type === tp ? "bg-elevated text-foreground" : "text-muted-foreground"}`}>{tp}</button>
             ))}
           </div>
-          <input className="field mt-2" placeholder={draft.type === "Mesa" ? "Nº da mesa" : draft.type === "Delivery" ? "Nome, telefone e endereço" : "Nome do cliente"}
+          {draft.type==='Mesa'&&<TableSelector value={draft.tableNumber} onChange={tableNumber=>updateDraft({tableNumber})}/>}
+          <input className="field mt-2" placeholder={draft.type === "Delivery" ? "Nome, telefone e endereço" : "Nome do cliente (opcional)"}
             value={draft.customer} onChange={(e) => updateDraft({ customer: e.target.value })} />
         </div>
 

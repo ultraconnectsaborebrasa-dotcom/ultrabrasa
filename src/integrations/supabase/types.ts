@@ -81,6 +81,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      read_pdv_operator: { Args: never; Returns: Json }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
       save_pdv_state: {
         Args: { expected_revision: number; payload: Json }
@@ -104,6 +105,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      submit_pdv_operator: { Args: { request: Json }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "operator"

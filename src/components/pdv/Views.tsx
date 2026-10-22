@@ -8,6 +8,8 @@ import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
 import { SalesHistory } from "./SalesHistory";
 import { kitchenTone } from "@/lib/pdv-settings";
+import { tableLabel } from '@/lib/pdv-tables';
+import { Button } from '@/components/ui/button';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -31,7 +33,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
           return (
             <div key={o.id} className="rounded-2xl border bg-card p-4">
               <div className="flex items-start justify-between">
-                <div><div className="font-display text-2xl font-bold">#{o.number}</div><div className="text-xs text-muted-foreground">{o.type}{o.customer && ` · ${o.customer}`}</div></div>
+                <div><div className="font-display text-2xl font-bold">#{o.number}</div><div className="text-sm font-semibold text-primary">{tableLabel(o)}</div>{o.customer&&<div className="text-xs text-muted-foreground">{o.customer}</div>}</div>
                 <StatusPill s={o.status} />
               </div>
               <ul className="my-3 space-y-0.5 text-sm">{o.items.map((i) => <li key={i.uid} className="flex justify-between"><span>{i.qty}× {i.name}</span><span className="font-mono text-muted-foreground">{brl(i.qty * i.price)}</span></li>)}</ul>
@@ -65,21 +67,23 @@ export function KitchenView() {
   const orders = useStore((s) => s.orders).filter((o) => o.status === "cozinha" || o.status === "pronto");
   return (
     <div className="space-y-4">
-      <Header title="Cozinha" sub={`${orders.length} pedidos · ${new Date().toLocaleDateString("pt-BR")}`} />
+      <Header title="Cozinha · Preparação" sub={`${orders.filter(o=>o.status==='cozinha').length} preparando · ${orders.filter(o=>o.status==='pronto').length} prontos · ${new Date().toLocaleDateString("pt-BR")}`} />
       {!orders.length && <Empty text="Cozinha livre 🔥" />}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[...orders].reverse().map((o) => {
           const m = mins(o.createdAt);
           const tone = o.status === "pronto" ? "border-success" : kitchenTone(m, settings);
           return (
-            <div key={o.id} className={`rounded-2xl border-2 bg-card p-4 ${tone}`}>
+            <div key={o.id} className={`kitchen-ticket pdv-item-enter rounded-lg border-2 bg-card p-4 ${tone}`}>
               <div className="flex justify-between"><span className="font-display text-3xl font-bold">#{o.number}</span><span className="font-mono text-lg">{m}′</span></div>
-              <div className="text-xs text-muted-foreground">{o.type}{o.customer && ` · ${o.customer}`}</div>
+              <div className="mt-2 text-2xl font-bold text-primary">{tableLabel(o)}</div>
+              <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>{o.customer}</span><span>{o.status==='cozinha'?'Em preparação':'Pronto para servir'}</span></div>
+              {o.sellerName&&<div className="mt-2 text-xs text-muted-foreground">Atendente · {o.sellerName}</div>}
               <ul className="my-3 space-y-1.5">{o.items.map((i) => <li key={i.uid}><b className="text-primary">{i.qty}×</b> {i.name}{i.note && <div className="ml-6 text-xs text-accent">↳ {i.note}</div>}</li>)}</ul>
               {o.note && <p className="mb-3 rounded bg-elevated p-2 text-xs">{o.note}</p>}
               {o.status === "cozinha"
-                ? <button className="btn btn-primary w-full" onClick={() => setOrderStatus(o.id, "pronto")}>Marcar pronto</button>
-                : <button className="btn btn-ghost w-full text-success" onClick={() => setOrderStatus(o.id, "aberta")}>Entregue ✓</button>}
+                ? <Button className="w-full" onClick={() => setOrderStatus(o.id, "pronto")}>Marcar pronto</Button>
+                : <Button variant="outline" className="w-full text-success" onClick={() => setOrderStatus(o.id, "aberta")}>Servido à mesa ✓</Button>}
             </div>
           );
         })}

@@ -17,6 +17,7 @@ const MIME = {
   ".ico": "image/x-icon",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml",
   ".woff": "font/woff",
   ".woff2": "font/woff2",
@@ -45,7 +46,7 @@ function startServer() {
         res.end("Not found");
       }
     });
-    server.listen(0, "127.0.0.1", () => {
+    server.listen(43187, "127.0.0.1", () => {
       const { port } = server.address();
       resolve(`http://127.0.0.1:${port}/`);
     });
@@ -61,6 +62,7 @@ function createWindow(url) {
     autoHideMenuBar: true,
     backgroundColor: "#0c0a09",
     title: "Ultraconnect Sabor e Brasa",
+    icon: path.join(__dirname, 'icon.ico'),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -90,6 +92,9 @@ function createWindow(url) {
   win.loadURL(url);
 }
 
+const locked = app.requestSingleInstanceLock();
+if (!locked) app.quit();
+app.on('second-instance', () => { const win = BrowserWindow.getAllWindows()[0]; if(win){if(win.isMinimized())win.restore();win.focus();} });
 app.whenReady().then(async () => {
   ipcMain.handle('ultraconnect:toggle-fullscreen', event => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -102,7 +107,7 @@ app.whenReady().then(async () => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(url);
   });
-});
+}).catch(() => { const { dialog } = require('electron'); dialog.showErrorBox('Ultraconnect', 'Não foi possível abrir o PDV. A porta local 43187 pode estar em uso. Feche a outra instância e tente novamente.'); app.quit(); });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
