@@ -83,7 +83,7 @@ export function ThermalPrinterPanel() {
       <p className="text-xs text-muted-foreground">Se a impressora não aparecer, confira se ela está ligada, pareada e instalada em Windows → Printers & scanners.</p>
     </div>
     <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
-      <div className="space-y-1"><div className="text-sm font-medium">Impressão automática</div><p className="text-xs text-muted-foreground">Guardar esta preferência neste computador. A impressão automática de novos pedidos será ativada pela integração do sistema quando estiver concluída.</p></div>
+      <div className="space-y-1"><div className="text-sm font-medium">Impressão automática</div><p className="text-xs text-muted-foreground">Imprimir automaticamente cada pedido enviado à cozinha neste computador. O QZ Tray e a impressora precisam estar configurados.</p></div>
       <input aria-label="Impressão automática" type="checkbox" checked={autoPrint} onChange={e => { setAutoPrint(e.target.checked); printerPreferences.autoPrintEnabled = e.target.checked; }} className="mt-1 h-4 w-4 accent-primary"/>
     </div>
     <Button variant="outline" onClick={test} disabled={!!busy || !selected}>{busy === 'test' ? <LoaderCircle className="animate-spin"/> : <Printer/>} Imprimir teste</Button>

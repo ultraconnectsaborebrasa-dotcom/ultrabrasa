@@ -16,7 +16,7 @@ const log = (...args: unknown[]) => { if (import.meta.env.DEV) console.info('[Pr
 export const printerPreferences = {
  get selectedPrinter() { return get('selectedPrinter') || ''; },
  set selectedPrinter(value: string) { put('selectedPrinter', value); },
- get autoPrintEnabled() { return get('autoPrintEnabled') === 'true'; },
+ get autoPrintEnabled() { return get('autoPrintEnabled') !== 'false'; },
  set autoPrintEnabled(value: boolean) { put('autoPrintEnabled', String(value)); },
 };
 const printed = () => { try { return new Set<string>(JSON.parse(get('printedOrderIds') || '[]')); } catch { return new Set<string>(); } };
@@ -86,7 +86,7 @@ export async function listPrinters() {
  const names = await (await api()).printers.find();
  return [...names].sort((a, b) => Number(/mo-?5812|atomo|átomo/i.test(b)) - Number(/mo-?5812|atomo|átomo/i.test(a)));
 }
-type Job = { order: Order; pct: number; manual: boolean; resolve: () => void; reject: (error: unknown) => void };
+type Job = { order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
 const queue: Job[] = [];
 let working = false;
 async function drain() {
@@ -96,9 +96,9 @@ async function drain() {
   while (queue.length) {
    const job = queue.shift()!;
    try {
-    if (!job.manual && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
+    if (!job.manual && !job.force && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
     if (!printerPreferences.selectedPrinter) throw new Error('Selecione uma impressora nas configurações.');
-    if (!isPrinterConnected()) throw new Error('QZ Tray não está conectado.');
+    await connectPrinter();
     log('Printing:', job.order.number);
     const qz = await api();
     const config = qz.configs.create(printerPreferences.selectedPrinter);
@@ -116,11 +116,11 @@ async function drain() {
   }
  } finally { working = false; }
 }
-export function printOrder(order: Order, serviceFeePct: number, options: { manual?: boolean } = {}) {
+export function printOrder(order: Order, serviceFeePct: number, options: { manual?: boolean; force?: boolean } = {}) {
  return new Promise<void>((resolve, reject) => {
-  if (!options.manual && (wasAutomaticallyPrinted(order.id) || queue.some(j => !j.manual && j.order.id === order.id))) { resolve(); return; }
+  if (!options.manual && (queue.some(j => !j.manual && j.order.id === order.id) || (!options.force && wasAutomaticallyPrinted(order.id)))) { resolve(); return; }
   log('Queue order:', order.number);
-  queue.push({ order, pct: serviceFeePct, manual: Boolean(options.manual), resolve, reject });
+  queue.push({ order, pct: serviceFeePct, manual: Boolean(options.manual), force: Boolean(options.force), resolve, reject });
   void drain();
  });
 }
