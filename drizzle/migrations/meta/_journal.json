@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792639842116,
+      "tag": "0000_pdv_accounts_shared_history",
+      "breakpoints": true
+    }
+  ]
 }

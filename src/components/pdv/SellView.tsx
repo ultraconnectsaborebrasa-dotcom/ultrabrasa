@@ -9,7 +9,7 @@ import { EditProduct } from "./EditProduct";
 
 const TYPES: OrderType[] = ["Balcão", "Mesa", "Retirada", "Delivery"];
 
-export function SellView() {
+export function SellView({ admin = false }: { admin?: boolean }) {
   const products = useStore((s) => s.products);
   const settings = useStore((s) => s.settings);
   const draft = useStore((s) => s.draft);
@@ -76,9 +76,9 @@ export function SellView() {
             <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto… (Enter adiciona o primeiro)" className="field pl-9" />
             <span className="kbd absolute right-3 top-1/2 -translate-y-1/2">F2</span>
           </div>
-          <button className="btn btn-ghost" onClick={() => setEditing({ id: "", name: "", category: settings.categories[0] ?? "", price: 0, cost: 0, stock: null, minStock: 5, favorite: false, active: true })}>
+          {admin && <button className="btn btn-ghost" onClick={() => setEditing({ id: "", name: "", category: settings.categories[0] ?? "", price: 0, cost: 0, stock: null, minStock: 5, favorite: false, active: true })}>
             <Plus size={16} /> Produto
-          </button>
+          </button>}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {["Todos", "Favoritos", ...settings.categories].map((c) => (
@@ -104,12 +104,12 @@ export function SellView() {
                   <span className={out ? "text-destructive" : low ? "text-warning" : "text-muted-foreground"}>
                     {p.stock === null ? "Sem controle" : out ? "Esgotado" : `${p.stock} em estoque`}
                   </span>
-                  <span className="flex gap-2 opacity-60 group-hover:opacity-100">
+                  {admin && <span className="flex gap-2 opacity-60 group-hover:opacity-100">
                     <button onClick={() => setState((s) => ({ ...s, products: s.products.map((x) => x.id === p.id ? { ...x, favorite: !x.favorite } : x) }))}>
                       <Star size={13} className={p.favorite ? "fill-accent text-accent" : ""} />
                     </button>
                     <button onClick={() => setEditing(p)} className="underline-offset-2 hover:underline">Editar</button>
-                  </span>
+                  </span>}
                 </div>
                 {qty > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-ember-gradient px-1 text-xs font-bold text-primary-foreground">{qty}</span>}
               </div>

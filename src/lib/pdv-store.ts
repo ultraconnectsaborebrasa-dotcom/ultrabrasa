@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { toast } from "sonner";
 
 export type Product = {
   id: string;
@@ -30,6 +31,9 @@ export type Order = {
   status: OrderStatus;
   createdAt: number;
   paidAt?: number | undefined;
+  sellerId?: string;
+  sellerName?: string;
+  serviceAmount?: number;
 };
 export type CashMove = { id: string; kind: "sangria" | "suprimento"; amount: number; reason: string; at: number };
 export type Settings = {
@@ -54,7 +58,7 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 export const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const p = (name: string, category: string, price: number, stock: number | null = null, cost = 0, minStock = 5): Product => ({
-  id: uid(), name, category, price, cost: cost || Math.round(price * 0.4 * 100) / 100, stock, minStock, favorite: false, active: true,
+  id: `product-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name, category, price, cost: cost || Math.round(price * 0.4 * 100) / 100, stock, minStock, favorite: false, active: true,
 });
 
 function seed(): State {
@@ -70,8 +74,8 @@ function seed(): State {
     p("Coca-Cola 1 L", "Bebidas", 12, 6), p("Coca-Cola 350 ml", "Bebidas", 6, 24), p("Pepsi 1 L", "Bebidas", 12, 3),
     p("Guaraná 350 ml", "Bebidas", 6, 9), p("H2O limão 500 ml", "Bebidas", 7, 4),
   ];
-  const byName = (n: string) => products.find((x) => x.name === n)!.id;
-  ["Espeto de carne", "Espeto misto", "Coca-Cola 350 ml", "Hambúrguer", "Feijão tropeiro"].forEach((n) => (products.find((x) => x.name === n)!.favorite = true));
+  const byName = (n: string) => products.find((x) => x.name === n)?.id ?? '';
+  ["Espeto de carne", "Espeto misto", "Coca-Cola 350 ml", "Hambúrguer", "Feijão tropeiro"].forEach((n) => { const product = products.find((x) => x.name === n); if (product) product.favorite = true; });
   // Upsell: espetos → acompanhamentos + bebida; hambúrguer → bebida
   products.filter((x) => x.category === "Espetinhos").forEach((x) => (x.upsell = [byName("Farofa de manteiga"), byName("Vinagrete"), byName("Coca-Cola 350 ml")]));
   products.filter((x) => x.category === "Hambúrgueres").forEach((x) => (x.upsell = [byName("Coca-Cola 350 ml"), byName("Suco de maracujá"), byName("Aipim na manteiga")]));
@@ -101,6 +105,12 @@ const KEY = "ultrabrasa-pdv-v2";
 let state: State = seed();
 let hydrated = false;
 const listeners = new Set<() => void>();
+let persistence: ((s: State) => Promise<void>) | null = null;
+let saving = false;
+export const isSaving = () => saving;
+export function configurePersistence(save: typeof persistence) { persistence = save; }
+export function replaceState(next: State) { state = next; listeners.forEach(l => l()); }
+export function useSaving() { return useSyncExternalStore(l => { listeners.add(l); return () => listeners.delete(l); }, () => saving, () => false); }
 
 export function hydrate() {
   if (hydrated || typeof window === "undefined") return;
@@ -112,8 +122,16 @@ export function hydrate() {
   listeners.forEach((l) => l());
 }
 export function setState(fn: (s: State) => State) {
+  if (saving) { toast.warning('Aguarde o salvamento anterior.'); return; }
+  const previous = state;
   state = fn(state);
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  const sharedChanged = JSON.stringify({ ...previous, draft: undefined }) !== JSON.stringify({ ...state, draft: undefined });
+  if (persistence && sharedChanged) {
+    saving = true;
+    void persistence(state).then(() => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} })
+      .catch((e: unknown) => { state = previous; toast.error(e instanceof Error ? e.message : 'Não foi salvo. Recarregue e tente novamente.'); })
+      .finally(() => { saving = false; listeners.forEach(l => l()); });
+  } else if (!persistence) { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
   listeners.forEach((l) => l());
 }
 export function resetAll() { setState(() => seed()); }
@@ -182,12 +200,12 @@ export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []
       if (prev) {
         let products = applyStock(s, prev.items, 1);
         products = applyStock({ ...s, products }, d.items, -1);
-        const upd: Order = { ...prev, ...d, status, payments: status === "pago" ? payments : prev.payments, paidAt: status === "pago" ? Date.now() : undefined };
+        const upd: Order = { ...prev, ...d, serviceAmount: totals(d, s.settings.serviceFeePct).service, status, payments: status === "pago" ? payments : prev.payments, paidAt: status === "pago" ? Date.now() : undefined };
         created = upd;
         return { ...s, products, orders: s.orders.map((o) => (o.id === editingId ? upd : o)), draft: emptyDraft() };
       }
     }
-    const order: Order = { id: uid(), number: s.nextNumber, ...d, payments, status, createdAt: Date.now(), paidAt: status === "pago" ? Date.now() : undefined };
+    const order: Order = { id: uid(), number: s.nextNumber, ...d, serviceAmount: totals(d, s.settings.serviceFeePct).service, payments, status, createdAt: Date.now(), paidAt: status === "pago" ? Date.now() : undefined };
     created = order;
     return { ...s, products: applyStock(s, d.items, -1), orders: [order, ...s.orders], draft: emptyDraft(), nextNumber: s.nextNumber + 1 };
   });
