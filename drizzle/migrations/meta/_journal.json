@@ -15,6 +15,13 @@
       "when": 1792640243198,
       "tag": "0001_pdv_seller_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792640884215,
+      "tag": "0002_pdv_live_devices",
+      "breakpoints": true
     }
   ]
 }
