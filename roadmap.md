@@ -1,4 +1,8 @@
 # PDV: histórico e administração
+- [ ] Restringir vendedores a atendimento sem valores e contagem própria, com proteção no banco.
+- [ ] Organizar exatamente cinco mesas, pedidos em preparação e especificações na cozinha.
+- [ ] Adicionar opção de avisos de pedidos do celular e aprimorar feedback visual da marca.
+- [ ] Atualizar e conferir o executável Windows com as novas funções.
 - [x] Alternar tela cheia e modo janela no código desktop; F11/Escape e botão testados com Electron simulado, executável anterior não reempacotado.
 - [x] Melhorar uso no celular e animações de feedback; entrada móvel verificada, PDV autenticado aguarda primeira conta.
 - [x] Sincronizar pedidos entre celular, computador e cozinha automaticamente; eventos e preservação de rascunho testados.
