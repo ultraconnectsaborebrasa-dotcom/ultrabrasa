@@ -1,5 +1,6 @@
 # PDV: histórico e administração
-- [ ] Revisão econômica: verificar site e rotas, corrigir bloqueio de compilação e workflow Windows, informar apenas links e pacotes verificáveis; conexão/status GitHub dependem da tela Git do projeto.
+- [x] Revisão econômica: site público e preview com HTTP 200 nas três rotas, sem erros no navegador; teste de rotas aprovado e compilação automática OK após corrigir seleção de impressora. Workflow Windows usa configuração Electron, binário Lightning CSS da mesma versão e pacote sem servidor/segredos; YAML validado e logo acessível. ZIP v2 anterior confirmado com executável PE x64, HTML cliente e logo no ASAR.
+- [ ] Executar e confirmar novo pacote Windows no GitHub Actions: URL e estado do repositório não disponíveis às ferramentas; conferir conexão existente em Configurações → Git e executar Build Ultrabrasa Desktop (Windows). Nenhum novo ZIP gerado nesta revisão.
 - [x] Adicionar nome e WhatsApp opcionais, autorização promocional e cadastro compartilhado sem duplicação por telefone.
 - [x] Lista de clientes exclusiva do dono, busca, seleção, exportação e mensagem individual no WhatsApp; exportação verificada sem enviar mensagens.
 - [x] Histórico próprio do atendente com pessoas, datas e itens, sem valores de pedidos encerrados; projeção protegida no servidor.
