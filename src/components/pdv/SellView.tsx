@@ -75,8 +75,6 @@ export function SellView({ admin = false }: { admin?: boolean }) {
     return () => window.removeEventListener("keydown", h);
   });
 
-  const maxDiscount = (t.sub * settings.maxDiscountPct) / 100;
-
   return (
     <div className="grid gap-4 lg:h-full lg:grid-cols-[minmax(0,1fr)_400px]">
       {/* Catálogo */}
@@ -192,11 +190,13 @@ export function SellView({ admin = false }: { admin?: boolean }) {
             {[0, 5, 10].filter((d) => d <= settings.maxDiscountPct).map((d) => (
               <button key={d} className="rounded bg-secondary px-2 py-1" onClick={() => updateDraft({ discount: Math.round(t.sub * d) / 100 })}>{d}%</button>
             ))}
-            <input className="field w-24 py-1 text-xs" inputMode="decimal" value={draft.discount || ""} placeholder="R$"
+            <input className="field w-28 py-1 text-xs" inputMode="decimal" value={draft.discount || ""} placeholder="R$ valor livre"
+              aria-label="Desconto em reais"
               onChange={(e) => {
-                const v = parseFloat(e.target.value.replace(",", ".")) || 0;
-                if (v > maxDiscount) toast.warning(`Desconto máximo: ${settings.maxDiscountPct}% (${brl(maxDiscount)})`);
-                updateDraft({ discount: Math.max(0, Math.min(v, maxDiscount)) });
+                const raw = e.target.value.trim();
+                const v = raw === "" ? 0 : Math.max(0, Number.parseFloat(raw.replace(",", ".")) || 0);
+                if (v > t.sub) toast.warning(`O desconto não pode ser maior que o subtotal (${brl(t.sub)}).`);
+                updateDraft({ discount: Math.min(v, t.sub) });
               }} />
             <label className="ml-auto flex items-center gap-1"><input type="checkbox" checked={draft.serviceFee} onChange={(e) => updateDraft({ serviceFee: e.target.checked })} />{settings.serviceFeePct}% serviço</label>
           </div>
