@@ -14,6 +14,7 @@
 - The Windows executable is built with `vite.electron.config.ts` (static client build with `base: "./"` and prerender of `/`), then the generated `dist/client/index.html` paths are rewritten from `/assets/` to `./assets/`. Never ship the nitro server output (`dist/server`) in the package — Electron serves `dist/client` through an internal http server in `electron/main.cjs` so SPA routing works without `file://` quirks.
 - Package with `@electron/packager --platform=win32 --arch=x64 --electron-version=<installed>`, never electron-builder (7zip errors in the sandbox). Keep the output outside the project directory (`electron-release` exceeds the repo per-file commit limit) — build to /tmp or move it out before finishing.
 - Desktop uses a single-instance loopback origin on a stable port for account persistence; packaged asset-pointer URLs must be materialized under dist/client so branding is served locally.
+- Windows CI installs the Lightning CSS native package at the resolved wrapper version and validates a transform before building; this prevents missing or mismatched optional Windows binaries without changing project dependencies.
 
 ## PDV access and persistence
 - Public home renders an inline account entry until a verified Cloud user has a database role; database RLS and RPC authorization enforce permissions independently of the UI.

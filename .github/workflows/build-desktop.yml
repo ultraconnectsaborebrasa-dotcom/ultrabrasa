@@ -12,6 +12,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "vite.config.ts"
+      - "vite.electron.config.ts"
       - "tsconfig.json"
       - ".github/workflows/build-desktop.yml"
 
@@ -35,7 +36,7 @@ jobs:
       - name: Verificar arquivos de configuração
         shell: pwsh
         run: |
-          $required = @("package.json", "vite.config.ts", "electron/main.cjs", "electron/preload.cjs", "electron/icon.ico")
+          $required = @("package.json", "vite.electron.config.ts", "electron/main.cjs", "electron/preload.cjs", "electron/icon.ico")
           foreach ($file in $required) {
             if (!(Test-Path $file)) { throw "Arquivo obrigatório ausente: $file" }
           }
@@ -47,15 +48,36 @@ jobs:
       - name: Instalar dependência nativa do Lightning CSS para Windows
         shell: pwsh
         run: |
-          npm install --no-save --no-package-lock --no-audit --no-fund lightningcss-win32-x64-msvc
+          $lightningVersion = node -p "JSON.parse(require('fs').readFileSync(require('path').join(require('path').dirname(require.resolve('lightningcss')), '..', 'package.json'), 'utf8')).version"
+          if ($LASTEXITCODE -ne 0) { throw "Não foi possível identificar a versão instalada do Lightning CSS." }
+          npm install --no-save --no-package-lock --no-audit --no-fund --include=optional "lightningcss-win32-x64-msvc@$lightningVersion"
           if ($LASTEXITCODE -ne 0) { throw "Não foi possível instalar o módulo nativo do Lightning CSS para Windows." }
-          node -e "require('lightningcss'); console.log('Lightning CSS carregado')"
+          node -e "require('lightningcss').transform({filename:'check.css',code:Buffer.from('body { display: flex; }')}); console.log('Lightning CSS carregado e transformação validada')"
+          if ($LASTEXITCODE -ne 0) { throw "O módulo nativo do Lightning CSS não carregou; build interrompido." }
 
       - name: Gerar versão web
         shell: pwsh
         run: |
-          npm run build -- --configLoader runner
+          npm run build -- --config vite.electron.config.ts --configLoader runner
           if ($LASTEXITCODE -ne 0) { throw "Build web falhou. Consulte as mensagens de erro acima." }
+
+      - name: Incluir logo local no aplicativo
+        shell: pwsh
+        run: |
+          @'
+          const fs = require('fs');
+          const path = require('path');
+          const asset = JSON.parse(fs.readFileSync('src/assets/ultraconnect-logo.jpeg.asset.json', 'utf8'));
+          async function prepare() {
+            const response = await fetch(new URL(asset.url, 'https://ultrabrasa.lovable.app'));
+            if (!response.ok || !(response.headers.get('content-type') || '').startsWith('image/')) throw new Error('Não foi possível baixar a logo original.');
+            const destination = path.join('dist/client', asset.url);
+            fs.mkdirSync(path.dirname(destination), { recursive: true });
+            fs.writeFileSync(destination, Buffer.from(await response.arrayBuffer()));
+          }
+          prepare().catch(error => { console.error(error.message); process.exitCode = 1; });
+          '@ | node
+          if ($LASTEXITCODE -ne 0) { throw "Não foi possível incluir a logo local." }
 
       - name: Verificar arquivos gerados
         shell: pwsh
@@ -72,13 +94,14 @@ jobs:
       - name: Empacotar aplicativo Windows x64
         shell: pwsh
         run: |
-          npx @electron/packager . Ultrabrasa --platform=win32 --arch=x64 --out=release --overwrite --icon=electron/icon.ico --ignore="^/release" --ignore="^/\.git"
+          $electronVersion = node -p "require('electron/package.json').version"
+          npx @electron/packager . Ultrabrasa --platform=win32 --arch=x64 --electron-version=$electronVersion --out="$env:RUNNER_TEMP/ultrabrasa-release" --overwrite --icon=electron/icon.ico --ignore="^/(node_modules|src|public|dist/server|\.git|\.github|android-app)(/|$)" --ignore="^/\.env"
           if ($LASTEXITCODE -ne 0) { throw "Empacotamento do Electron falhou." }
 
       - name: Verificar aplicativo empacotado
         shell: pwsh
         run: |
-          $app = "release/Ultrabrasa-win32-x64"
+          $app = "$env:RUNNER_TEMP/ultrabrasa-release/Ultrabrasa-win32-x64"
           if (!(Test-Path "$app/Ultrabrasa.exe")) { throw "Executável Ultrabrasa.exe não foi gerado." }
           if (!(Test-Path "$app/resources/app/electron/main.cjs")) { throw "Código principal do Electron não foi incluído no pacote." }
           if (!(Test-Path "$app/resources/app/dist/client/index.html")) { throw "Arquivos web não foram incluídos no pacote." }
@@ -86,7 +109,7 @@ jobs:
       - name: Criar ZIP portátil
         shell: pwsh
         run: |
-          $app = "release/Ultrabrasa-win32-x64"
+          $app = "$env:RUNNER_TEMP/ultrabrasa-release/Ultrabrasa-win32-x64"
           Compress-Archive -Path "$app/*" -DestinationPath "Ultrabrasa-Desktop-Windows-x64.zip" -Force
           if (!(Test-Path "Ultrabrasa-Desktop-Windows-x64.zip")) { throw "ZIP portátil não foi criado." }
 
