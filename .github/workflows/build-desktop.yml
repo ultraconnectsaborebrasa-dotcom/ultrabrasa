@@ -44,9 +44,6 @@ jobs:
       - name: Instalar dependências do projeto
         run: npm install --no-audit --no-fund --include=dev
 
-      - name: Instalar Electron
-        run: npm install --no-audit --no-fund --include=dev --save-dev electron
-
       - name: Gerar versão web
         shell: pwsh
         run: |
