@@ -12,6 +12,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "vite.config.ts"
+      - "tsconfig.json"
       - ".github/workflows/build-desktop.yml"
 
 permissions:
@@ -20,7 +21,7 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -31,36 +32,59 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Verificar arquivos de configuração
+        shell: pwsh
+        run: |
+          $required = @("package.json", "vite.config.ts", "electron/main.cjs", "electron/preload.cjs", "electron/icon.ico")
+          foreach ($file in $required) {
+            if (!(Test-Path $file)) { throw "Arquivo obrigatório ausente: $file" }
+          }
+          node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json válido')"
+
       - name: Instalar dependências do projeto
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --include=dev
 
       - name: Instalar Electron
-        run: npm install --no-audit --no-fund --save-dev electron
+        run: npm install --no-audit --no-fund --include=dev --save-dev electron
 
       - name: Gerar versão web
-        run: npm run build
+        shell: pwsh
+        run: |
+          npm run build -- --configLoader runner
+          if ($LASTEXITCODE -ne 0) { throw "Build web falhou. Consulte as mensagens de erro acima." }
 
-      - name: Verificar arquivos necessários
+      - name: Verificar arquivos gerados
         shell: pwsh
         run: |
           if (!(Test-Path "dist/client/index.html")) {
-            throw "Build não gerou dist/client/index.html. Verifique a configuração do Vite."
+            Write-Host "Conteúdo de dist:"
+            if (Test-Path "dist") { Get-ChildItem "dist" -Recurse | Select-Object -First 100 FullName }
+            throw "Build não gerou dist/client/index.html; o empacotamento foi interrompido."
           }
-          if (!(Test-Path "electron/main.cjs")) {
-            throw "Arquivo electron/main.cjs não encontrado."
-          }
+          if (!(Test-Path "electron/main.cjs")) { throw "Arquivo electron/main.cjs não encontrado." }
+          if (!(Test-Path "electron/preload.cjs")) { throw "Arquivo electron/preload.cjs não encontrado." }
+          if (!(Test-Path "electron/icon.ico")) { throw "Arquivo electron/icon.ico não encontrado." }
 
       - name: Empacotar aplicativo Windows x64
-        run: npx @electron/packager . Ultrabrasa --platform=win32 --arch=x64 --out=release --overwrite --icon=electron/icon.ico --ignore="^/release" --ignore="^/\.git"
+        shell: pwsh
+        run: |
+          npx @electron/packager . Ultrabrasa --platform=win32 --arch=x64 --out=release --overwrite --icon=electron/icon.ico --ignore="^/release" --ignore="^/\.git"
+          if ($LASTEXITCODE -ne 0) { throw "Empacotamento do Electron falhou." }
+
+      - name: Verificar aplicativo empacotado
+        shell: pwsh
+        run: |
+          $app = "release/Ultrabrasa-win32-x64"
+          if (!(Test-Path "$app/Ultrabrasa.exe")) { throw "Executável Ultrabrasa.exe não foi gerado." }
+          if (!(Test-Path "$app/resources/app/electron/main.cjs")) { throw "Código principal do Electron não foi incluído no pacote." }
+          if (!(Test-Path "$app/resources/app/dist/client/index.html")) { throw "Arquivos web não foram incluídos no pacote." }
 
       - name: Criar ZIP portátil
         shell: pwsh
         run: |
           $app = "release/Ultrabrasa-win32-x64"
-          if (!(Test-Path "$app/Ultrabrasa.exe")) {
-            throw "Executável Ultrabrasa.exe não foi gerado."
-          }
           Compress-Archive -Path "$app/*" -DestinationPath "Ultrabrasa-Desktop-Windows-x64.zip" -Force
+          if (!(Test-Path "Ultrabrasa-Desktop-Windows-x64.zip")) { throw "ZIP portátil não foi criado." }
 
       - name: Disponibilizar arquivo para baixar
         uses: actions/upload-artifact@v4
