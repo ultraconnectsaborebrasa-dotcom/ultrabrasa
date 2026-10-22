@@ -7,7 +7,7 @@
 - [x] Testar cadastro e histórico com conta real e lista do dono; 35 testes aprovados, atendimento fictício removido e checksum original preservado com 45 produtos/3 pedidos.
 - [x] Mostrar preços unitários, subtotais e totais no atendimento; carrinho verificado na conta real, pedido com ajustes coberto por teste automatizado.
 - [x] Excluir atendente com confirmação, revogar acesso sem apagar histórico e proteger administradores; cancelamento e confirmação testados, chamadas sem permissão rejeitadas.
-- [x] Preparar projeto Android com logo, mesmo site/login/dados, Gradle wrapper e instruções exatas; sem Java/SDK neste ambiente, APK e teste nativo pendentes no Android Studio.
+- [x] Preparar projeto Android com logo, mesmo site/login/dados, Gradle wrapper e instruções exatas; APK v1 compilado em ambiente temporário com Java 17/SDK 35, assinatura v2 e integridade verificadas, entregue em Files. É uma versão de teste instalável; instalação, login e sincronização no aparelho real ainda não verificados.
 - [x] Testar as correções: 26 testes aprovados, contas reais verificadas, 45 produtos/3 pedidos/revisão 9 e checksum idênticos antes/depois; publicação solicitada para ultrabrasa.lovable.app, conclusão da implantação não confirmada.
 - [x] Restringir atendentes à projeção com preços e contagem própria, sem caixa/custos/admin; valores enviados pelo cliente não são aceitos, snapshot completo permanece bloqueado.
 - [x] Organizar exatamente cinco mesas, pedidos em preparação e especificações na cozinha; pedido real testado e cancelado para restaurar estoque.

@@ -1,6 +1,6 @@
 # Ultraconnect Sabor e Brasa — Android
 
-Projeto Android nativo pronto para abrir no Android Studio. Não é um APK já compilado.
+Projeto Android nativo pronto para abrir no Android Studio. O APK v1 de teste foi compilado e entregue separadamente em Files; assinatura e integridade verificadas, uso no aparelho real ainda não testado.
 
 ## O que o app usa
 - Site oficial: https://ultrabrasa.lovable.app.
@@ -35,8 +35,8 @@ No Android Studio: Build > Generate Signed App Bundle or APK > APK > Next. Escol
 6. Revogue uma conta de teste autorizada e confirme bloqueio de leitura e novos envios, mantendo histórico.
 
 ## Pendências e limites conhecidos
-- Este ambiente Lovable não tem Java/JDK, SDK Android ou Gradle instalados; o APK não foi compilado nem testado em Android real. Fonte e arquivos de compilação foram preparados; a compilação no Android Studio e testes no aparelho permanecem pendentes.
+- O APK v1 foi compilado com Java 17, SDK Android 35 e Gradle 8.11.1 em ambiente temporário, sem alterar o projeto web; assinatura v2 e conteúdo verificados. Instalação, login e sincronização no aparelho real permanecem pendentes.
 - Google/Lovable OAuth não tem retorno nativo de sessão implementado: os links externos abrem no navegador e não transferem sessão ao app. Use email e senha no aplicativo. Login social, retorno de recuperação de senha e links de confirmação precisam ser validados/adaptados em Android antes de prometer suporte nativo. Recuperação e confirmação podem ser feitas no site; depois entre no app com email e senha.
 - Sem funcionamento offline ou notificações em segundo plano. Sincronização ocorre com o aplicativo aberto/conectado.
 - O Windows v2 é um pacote estático anterior: compartilha dados e permissões, mas não recebe novos elementos visuais automaticamente. Para ter esta interface de preços também no Windows é necessário reempacotar o Windows, tarefa não incluída nesta entrega Android.
-- Não houve teste nativo da compilação, assinatura, instalação, login ou sincronização entre três aparelhos. A interface web foi testada com contas reais, e as regras/cálculos têm testes automatizados.
+- Compilação e assinatura do APK foram verificadas; instalação, login e sincronização entre aparelhos ainda não foram testados. A interface web foi testada com contas reais, e as regras/cálculos têm testes automatizados.
