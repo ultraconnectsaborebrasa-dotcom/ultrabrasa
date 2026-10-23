@@ -30,3 +30,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# QZ Tray local demo signing secrets (never commit private keys)
+*.pem
+.env.qz.local
+QZ Tray Demo Cert/
