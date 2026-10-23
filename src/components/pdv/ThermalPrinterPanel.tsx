@@ -9,6 +9,7 @@ export function ThermalPrinterPanel() {
   const [printers, setPrinters] = useState<string[]>([]);
   const [selected, setSelected] = useState(printerPreferences.selectedPrinter);
   const [autoPrint, setAutoPrint] = useState(printerPreferences.autoPrintEnabled);
+  const [mode, setMode] = useState(printerPreferences.printMode);
   const [busy, setBusy] = useState('');
   const [pending, setPending] = useState<string[]>(pendingPrintIds());
 
@@ -83,11 +84,19 @@ export function ThermalPrinterPanel() {
       </select>
       <p className="text-xs text-muted-foreground">Se a impressora não aparecer, confira se ela está ligada, pareada e instalada em Windows → Printers & scanners.</p>
     </div>
+    <div className="space-y-2">
+      <label htmlFor="thermal-print-mode" className="text-sm font-medium">Modo de impressão</label>
+      <select id="thermal-print-mode" value={mode} onChange={e => { const v = e.target.value === 'raw' ? 'raw' : 'driver'; setMode(v); printerPreferences.printMode = v; }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+        <option value="driver">Pelo driver do Windows (recomendado)</option>
+        <option value="raw">Comandos diretos ESC/POS</option>
+      </select>
+      <p className="text-xs text-muted-foreground">Se o teste não sair no papel, troque o modo e imprima o teste novamente.</p>
+    </div>
     <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
       <div className="space-y-1"><div className="text-sm font-medium">Impressão automática</div><p className="text-xs text-muted-foreground">Imprimir automaticamente cada pedido enviado à cozinha neste computador. O QZ Tray e a impressora precisam estar configurados.</p></div>
       <input aria-label="Impressão automática" type="checkbox" checked={autoPrint} onChange={e => { setAutoPrint(e.target.checked); printerPreferences.autoPrintEnabled = e.target.checked; }} className="mt-1 h-4 w-4 accent-primary"/>
     </div>
-    <Button variant="outline" onClick={test} disabled={!!busy || !selected}>{busy === 'test' ? <LoaderCircle className="animate-spin"/> : <Printer/>} Imprimir teste</Button>
+    <Button variant="outline" onClick={test} disabled={!!busy}>{busy === 'test' ? <LoaderCircle className="animate-spin"/> : <Printer/>} Imprimir teste</Button>
     <div className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
       <CircleAlert size={16} className="mt-0.5 shrink-0"/>
       <p>O QZ Tray precisa estar aberto no mesmo computador que executa o UltraBrasa. O aplicativo já assina as impressões com o certificado "Ultrabrasa PDV": na primeira conexão, se o QZ Tray pedir autorização, marque "Lembrar esta decisão" e clique em Permitir uma única vez. Depois disso a impressão é totalmente automática, sem janelas.</p>
