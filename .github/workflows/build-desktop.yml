@@ -43,17 +43,13 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json válido')"
 
       - name: Instalar dependências do projeto (incluindo opcionais)
-        run: npm install --no-audit --no-fund --include=dev --include=optional
+        run: npm install --no-package-lock --no-audit --no-fund --include=dev --include=optional
 
-      - name: Instalar dependência nativa do Lightning CSS para Windows
+      - name: Validar dependência nativa do Lightning CSS
         shell: pwsh
         run: |
-          $lightningVersion = node -p "JSON.parse(require('fs').readFileSync(require('path').join(require('path').dirname(require.resolve('lightningcss')), '..', 'package.json'), 'utf8')).version"
-          if ($LASTEXITCODE -ne 0) { throw "Não foi possível identificar a versão instalada do Lightning CSS." }
-          npm install --no-save --no-package-lock --no-audit --no-fund --include=optional "lightningcss-win32-x64-msvc@$lightningVersion"
-          if ($LASTEXITCODE -ne 0) { throw "Não foi possível instalar o módulo nativo do Lightning CSS para Windows." }
-          node -e "require('lightningcss').transform({filename:'check.css',code:Buffer.from('body { display: flex; }')}); console.log('Lightning CSS carregado e transformação validada')"
-          if ($LASTEXITCODE -ne 0) { throw "O módulo nativo do Lightning CSS não carregou; build interrompido." }
+          node -e "const p=require('lightningcss'); const r=p.transform({filename:'check.css',code:Buffer.from('body { display: flex; }')}); if (!r.code) process.exit(1); console.log('Lightning CSS carregado e transformação validada')"
+          if ($LASTEXITCODE -ne 0) { throw "O Lightning CSS não carregou corretamente no Windows." }
 
       - name: Gerar versão web
         shell: pwsh
