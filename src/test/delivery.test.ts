@@ -1,0 +1,10 @@
+import { describe,it,expect } from 'vitest';
+import { emptyDelivery,validateDelivery,sortDeliveries,routeTotals,routeMapsLink,isLateDelivery,type Delivery } from '../lib/delivery';
+const delivery=(patch:Partial<Delivery>={}):Delivery=>({id:'1',order_id:'o1',number:1,customer:'Cliente',phone:'',address:{...emptyDelivery().address,street:'Rua A',number:'2',neighborhood:'Centro'},created_at:'2026-10-23T12:00:00Z',delivered_at:null,status:'Pronto para entrega',route_id:null,position:0,courier_id:null,total:30,due:30,payment_method:'Pix',change:0,problem:null,items:[],...patch});
+describe('delivery rules',()=>{
+ for(const key of ['street','number','neighborhood'] as const)it(`requires ${key}`,()=>{const input={...emptyDelivery(),address:{...delivery().address,[key]:''}};expect(validateDelivery(input)).not.toBeNull();expect(validateDelivery({...input,address:delivery().address})).toBeNull();});
+ it('groups by neighborhood then orders street numbers',()=>{const a=delivery({id:'a',address:{...delivery().address,number:'10'}}),b=delivery({id:'b',address:{...delivery().address,number:'2'}}),c=delivery({id:'c',address:{...delivery().address,neighborhood:'Stela Reis'}});expect(sortDeliveries([c,a,b]).map(d=>d.id)).toEqual(['b','a','c']);});
+ it('totals only outstanding cash card and pix for the route',()=>{expect(routeTotals([delivery(),delivery({payment_method:'Dinheiro',total:50,due:40}),delivery({payment_method:'Crédito',total:20,due:0})])).toEqual({total:100,pix:30,cash:40,card:0,other:0});});
+ it('creates origin stops and destination Maps link',()=>{const url=routeMapsLink([delivery(),delivery({address:{...delivery().address,street:'Rua B'}})],'Loja');expect(url).not.toBeNull();const params=new URL(url??'').searchParams;expect(params.get('origin')).toBe('Loja');expect(params.get('waypoints')).toContain('Rua A');expect(params.get('destination')).toContain('Rua B');});
+ it('highlights overdue pending orders only',()=>{const now=new Date('2026-10-23T13:00:00Z').getTime();expect(isLateDelivery(delivery(),45,now)).toBe(true);expect(isLateDelivery(delivery({status:'Entregue'}),45,now)).toBe(false);});
+});
