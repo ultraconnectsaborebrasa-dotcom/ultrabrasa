@@ -127,8 +127,11 @@ export const isPrinterConnected = () => Boolean(typeof window !== 'undefined' &&
 export async function listPrinters() {
  await connectPrinter();
  const names = await (await api()).printers.find();
- return [...names].sort((a, b) => Number(/mo-?5812|atomo|átomo/i.test(b)) - Number(/mo-?5812|atomo|átomo/i.test(a)));
+ return [...names].sort((a, b) => rank(b) - rank(a));
 }
+const THERMAL = /mo-?5812|atomo|átomo|pos-?58|pos-?80|thermal|t[ée]rmica|58mm|80mm|bluetooth|bt-?printer/i;
+const VIRTUAL = /pdf|xps|onenote|fax|anydesk|send to/i;
+const rank = (name: string) => (THERMAL.test(name) ? 2 : 0) - (VIRTUAL.test(name) ? 1 : 0);
 // Escolhe automaticamente a impressora (prioriza a térmica MO-5812) quando nenhuma foi salva.
 async function ensurePrinter() {
  const names = await listPrinters();
