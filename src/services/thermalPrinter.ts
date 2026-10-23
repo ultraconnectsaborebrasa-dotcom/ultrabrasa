@@ -79,7 +79,8 @@ function importSigningKey(): Promise<CryptoKey> {
  if (!signingKey) {
   const body = privateKeyPem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
   const bytes = Uint8Array.from(atob(body), c => c.charCodeAt(0));
-  signingKey = crypto.subtle.importKey('pkcs8', bytes.buffer as ArrayBuffer, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-512' }, false, ['sign']);
+  // QZ Tray valida a assinatura em SHA1 por padrão; assinar com outro algoritmo invalida a impressão.
+  signingKey = crypto.subtle.importKey('pkcs8', bytes.buffer as ArrayBuffer, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-1' }, false, ['sign']);
  }
  return signingKey;
 }
