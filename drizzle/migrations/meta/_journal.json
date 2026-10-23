@@ -134,6 +134,13 @@
       "when": 1792797797533,
       "tag": "0018_delivery_workflow_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792797816984,
+      "tag": "0019_delivery_service_grants",
+      "breakpoints": true
     }
   ]
 }

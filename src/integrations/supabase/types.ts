@@ -385,6 +385,10 @@ export type Database = {
         Args: { request: Json }
         Returns: Json
       }
+      update_delivery_address: {
+        Args: { delivery_id: string; input: Json }
+        Returns: undefined
+      }
       update_delivery_status: {
         Args: { delivery_id: string; issue?: string; new_status: string }
         Returns: undefined
