@@ -166,7 +166,7 @@ async function sendText(qz: QZ, printerName: string, text: string) {
  const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:9pt;font-weight:bold;line-height:1.15;white-space:pre-wrap;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }
-type Job = { target?: PrintTarget; order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
+type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
 const queue: Job[] = [];
 let working = false;
 async function drain() {
