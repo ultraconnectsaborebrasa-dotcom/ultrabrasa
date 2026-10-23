@@ -71,6 +71,13 @@
       "when": 1792732115244,
       "tag": "0009_cashier_sell_and_kitchen",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792710002000,
+      "tag": "0008_cashier_sales_kitchen",
+      "breakpoints": true
     }
   ]
 }
