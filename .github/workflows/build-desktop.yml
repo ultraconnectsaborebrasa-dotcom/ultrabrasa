@@ -45,8 +45,8 @@ jobs:
           }
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json válido')"
 
-      - name: Instalar dependências do projeto (lockfile)
-        run: npm ci --no-audit --no-fund --include=dev --include=optional
+      - name: Instalar dependências do projeto
+        run: npm install --no-package-lock --legacy-peer-deps --force --no-audit --no-fund --include=dev --include=optional
 
       - name: Validar dependência nativa do Lightning CSS
         shell: pwsh
