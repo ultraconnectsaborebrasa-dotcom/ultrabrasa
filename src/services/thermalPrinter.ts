@@ -86,7 +86,6 @@ function importSigningKey(): Promise<CryptoKey> {
 let securityApplied = false;
 async function applySecurity(qz: QZ): Promise<void> {
  if (securityApplied) return;
- qz.security.setSignatureAlgorithm?.('SHA512');
  qz.security.setCertificatePromise(() => Promise.resolve(certificatePem));
  qz.security.setSignaturePromise(async (toSign: string) => {
   const key = await importSigningKey();
@@ -116,6 +115,7 @@ export async function connectPrinter() {
  log('Connecting QZ');
  const qz = await api();
  if (!qz.websocket.isActive()) await qz.websocket.connect();
+ try { qz.security.setSignatureAlgorithm?.('SHA512'); } catch { /* versão antiga do QZ */ }
  log('Connected');
 }
 export async function disconnectPrinter() { const qz = await api(); if (qz.websocket.isActive()) await qz.websocket.disconnect(); }
