@@ -1,4 +1,6 @@
 # PDV: histórico e administração
+- [x] Perfil Caixa ativado no banco: valor `cashier` criado no tipo de função (as três funções de caixa já existiam); leitura de caixa, recebimento e produtos verificados no servidor, sem acesso a faturamento/custos/configurações; remoção de acesso já cobre Caixa e protege administradores.
+- [x] Impressão automática sem janela: QZ Tray assinado com a chave enviada e certificado "Ultrabrasa PDV" (válido até 2036); assinatura RSA validada, 37 testes aprovados, compilação OK. Na primeira conexão, marcar "Lembrar esta decisão" uma única vez.
 - [x] Revisão econômica: site público e preview com HTTP 200 nas três rotas, sem erros no navegador; teste de rotas aprovado e compilação automática OK após corrigir seleção de impressora. Workflow Windows usa configuração Electron, binário Lightning CSS da mesma versão e pacote sem servidor/segredos; YAML validado e logo acessível. ZIP v2 anterior confirmado com executável PE x64, HTML cliente e logo no ASAR.
 - [ ] Executar e confirmar novo pacote Windows no GitHub Actions: URL e estado do repositório não disponíveis às ferramentas; conferir conexão existente em Configurações → Git e executar Build Ultrabrasa Desktop (Windows). Nenhum novo ZIP gerado nesta revisão.
 - [x] Adicionar nome e WhatsApp opcionais, autorização promocional e cadastro compartilhado sem duplicação por telefone.

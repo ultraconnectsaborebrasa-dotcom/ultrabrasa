@@ -140,11 +140,23 @@ export type Database = {
         }
         Returns: boolean
       }
-      read_pdv_operator: { Args: never; Returns: Json }
+      pay_pdv_cashier: {
+        Args: { order_id: string; payment_method: string }
+        Returns: undefined
+      }
       read_pdv_cashier: { Args: never; Returns: Json }
-      pay_pdv_cashier: { Args: { order_id: string; payment_method: string }; Returns: undefined }
-      save_pdv_cashier_product: { Args: { product_id: string | null; product_name: string; product_category: string; product_price: number; product_stock: number | null }; Returns: undefined }
+      read_pdv_operator: { Args: never; Returns: Json }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
+      save_pdv_cashier_product: {
+        Args: {
+          product_category: string
+          product_id: string
+          product_name: string
+          product_price: number
+          product_stock: number
+        }
+        Returns: undefined
+      }
       save_pdv_state: {
         Args: { expected_revision: number; payload: Json }
         Returns: {

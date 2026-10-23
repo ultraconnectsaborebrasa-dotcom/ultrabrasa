@@ -90,7 +90,7 @@ export function ThermalPrinterPanel() {
     <Button variant="outline" onClick={test} disabled={!!busy || !selected}>{busy === 'test' ? <LoaderCircle className="animate-spin"/> : <Printer/>} Imprimir teste</Button>
     <div className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
       <CircleAlert size={16} className="mt-0.5 shrink-0"/>
-      <p>O QZ Tray precisa estar aberto no mesmo computador que executa o UltraBrasa. A primeira conexão pode pedir autorização. Impressão silenciosa em produção requer certificado e assinatura QZ Tray configurados pelo responsável técnico.</p>
+      <p>O QZ Tray precisa estar aberto no mesmo computador que executa o UltraBrasa. O aplicativo já assina as impressões com o certificado "Ultrabrasa PDV": na primeira conexão, se o QZ Tray pedir autorização, marque "Lembrar esta decisão" e clique em Permitir uma única vez. Depois disso a impressão é totalmente automática, sem janelas.</p>
     </div>
   </div>;
 }
