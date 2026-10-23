@@ -1,0 +1,5 @@
+DO $$ DECLARE def text; BEGIN
+SELECT pg_get_functiondef(oid) INTO def FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname='save_delivery_route'; def=replace(def,'route_id uuid, route_name text, courier uuid, origin_address text, stops uuid[]','route_id uuid DEFAULT NULL, route_name text DEFAULT '''', courier uuid DEFAULT NULL, origin_address text DEFAULT '''', stops uuid[] DEFAULT ''{}'''); EXECUTE def;
+SELECT pg_get_functiondef(oid) INTO def FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname='save_delivery_courier'; def=replace(def,'courier_id uuid, courier_name text, courier_phone text, account_id uuid DEFAULT NULL::uuid','courier_id uuid DEFAULT NULL, courier_name text DEFAULT '''', courier_phone text DEFAULT '''', account_id uuid DEFAULT NULL::uuid'); EXECUTE def;
+SELECT pg_get_functiondef(oid) INTO def FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname='save_customer_delivery_address'; def=replace(def,'customer uuid, address_id uuid, input jsonb','customer uuid, address_id uuid DEFAULT NULL, input jsonb DEFAULT ''{}'''); EXECUTE def;
+END $$;

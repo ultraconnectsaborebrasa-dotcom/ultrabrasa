@@ -325,25 +325,25 @@ export type Database = {
       read_pdv_operator: { Args: never; Returns: Json }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
       save_customer_delivery_address: {
-        Args: { address_id: string; customer: string; input: Json }
+        Args: { address_id?: string; customer: string; input?: Json }
         Returns: undefined
       }
       save_delivery_courier: {
         Args: {
           account_id?: string
-          courier_id: string
-          courier_name: string
-          courier_phone: string
+          courier_id?: string
+          courier_name?: string
+          courier_phone?: string
         }
         Returns: string
       }
       save_delivery_route: {
         Args: {
-          courier: string
-          origin_address: string
-          route_id: string
-          route_name: string
-          stops: string[]
+          courier?: string
+          origin_address?: string
+          route_id?: string
+          route_name?: string
+          stops?: string[]
         }
         Returns: string
       }
