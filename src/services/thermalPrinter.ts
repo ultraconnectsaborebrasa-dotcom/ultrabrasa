@@ -6,7 +6,11 @@ type QZ = {
  printers: { find: () => Promise<string[]> };
  configs: { create: (name: string, options?: Record<string, unknown>) => unknown };
  print: (config: unknown, data: unknown[]) => Promise<void>;
- security: { setCertificatePromise: (fn: () => Promise<string>) => void; setSignaturePromise: (fn: (data: string) => Promise<string>) => void };
+ security: {
+  setCertificatePromise: (fn: (resolve: (certificate: string) => void, reject: (reason?: unknown) => void) => void) => void;
+  setSignatureAlgorithm: (algorithm: string) => void;
+  setSignaturePromise: (fn: (data: string) => (resolve: (signature: string) => void, reject: (reason?: unknown) => void) => void) => void;
+ };
 };
 declare global { interface Window { qz?: QZ } }
 const PREFIX = 'ultrabrasa-printer-';
@@ -83,9 +87,39 @@ async function api(): Promise<QZ> {
  }).catch(error => { qzLoader = null; throw error; });
  return qzLoader;
 }
+let demoSigningConfigured = false;
+function configureLocalDemoSigning(qz: QZ) {
+ if (!import.meta.env.DEV || demoSigningConfigured) return;
+ const signingServer = 'http://127.0.0.1:8189';
+ qz.security.setCertificatePromise((resolve, reject) => {
+  fetch(signingServer + '/certificate', { cache: 'no-store' })
+   .then(async response => {
+    if (!response.ok) throw new Error(await response.text() || 'Não foi possível carregar o certificado QZ de demonstração.');
+    resolve(await response.text());
+   })
+   .catch(reject);
+ });
+ qz.security.setSignatureAlgorithm('SHA512');
+ qz.security.setSignaturePromise(toSign => (resolve, reject) => {
+  fetch(signingServer + '/sign', {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json' },
+   cache: 'no-store',
+   body: JSON.stringify({ request: toSign }),
+  })
+   .then(async response => {
+    if (!response.ok) throw new Error(await response.text() || 'Não foi possível assinar a solicitação QZ.');
+    resolve((await response.text()).trim());
+   })
+   .catch(reject);
+ });
+ demoSigningConfigured = true;
+ log('Assinatura local QZ de demonstração configurada');
+}
 export async function connectPrinter() {
  log('Connecting QZ');
  const qz = await api();
+ configureLocalDemoSigning(qz);
  if (!qz.websocket.isActive()) await qz.websocket.connect();
  log('Connected');
 }
