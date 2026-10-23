@@ -115,7 +115,6 @@ export async function connectPrinter() {
  log('Connecting QZ');
  const qz = await api();
  if (!qz.websocket.isActive()) await qz.websocket.connect();
- try { qz.security.setSignatureAlgorithm?.('SHA512'); } catch { /* versão antiga do QZ */ }
  log('Connected');
 }
 export async function disconnectPrinter() { const qz = await api(); if (qz.websocket.isActive()) await qz.websocket.disconnect(); }
