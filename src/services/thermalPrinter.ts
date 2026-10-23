@@ -147,13 +147,13 @@ async function drain() {
    const job = queue.shift()!;
    try {
     if (!job.manual && !job.force && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
-    if (!printerPreferences.selectedPrinter) throw new Error('Selecione uma impressora nas configurações.');
+    await connectPrinter(); await ensurePrinter();
     await connectPrinter();
     log('Printing:', job.order.number);
     const qz = await api();
     const config = qz.configs.create(printerPreferences.selectedPrinter);
     const receipt = formatReceipt(job.order, job.pct);
-    await qz.print(config, [{ type: 'raw', format: 'plain', data: '\x1b@' + receipt }]);
+    await withTimeout(qz.print(config, [{ type: 'raw', format: 'plain', data: '\x1b@' + receipt }]));
     if (!job.manual) {
      const ids = printed(); ids.add(job.order.id); saveSet('printedOrderIds', ids);
      const waiting = pending(); waiting.delete(job.order.id); saveSet('pendingOrderIds', waiting);
