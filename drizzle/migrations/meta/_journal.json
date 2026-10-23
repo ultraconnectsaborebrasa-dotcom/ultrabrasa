@@ -57,6 +57,13 @@
       "when": 1792710001000,
       "tag": "0007_cashier_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792731743335,
+      "tag": "0008_cashier_role",
+      "breakpoints": true
     }
   ]
 }
