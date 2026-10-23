@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import { getState, replaceState, isSaving, subscribeState, type State } from './pdv-store';
 import { mergeSnapshot, type SharedSnapshot } from './pdv-sync';
 import { toast } from 'sonner';
+import { printOrder, printerPreferences } from '@/services/thermalPrinter';
 let revision=0;
 let orderAlerts=true;
 const alertListeners=new Set<()=>void>();
@@ -25,6 +26,7 @@ export function watchCloud(){
   const incoming=merged.orders.filter(o=>o.status==='cozinha'&&!current.orders.some(p=>p.id===o.id&&p.status==='cozinha'));
   revision=snapshot.revision;replaceState(merged);
   if(orderAlerts)incoming.forEach(o=>toast.info(`${o.source==='mobile'?'Pedido do celular':'Novo pedido'} #${o.number} na cozinha`,{description:`${o.tableNumber?`Mesa ${o.tableNumber} · `:''}${o.items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}`}));
+  if(printerPreferences.autoPrintEnabled)incoming.forEach(o=>{void printOrder(o,merged.settings.serviceFeePct).catch((error:unknown)=>{const detail=error instanceof Error?error.message:'verifique a conexão e a impressora selecionada';toast.error(`Comanda #${o.number} recebida, mas não foi possível imprimir: ${detail}`);});});
  }
  async function refresh(){const {data,error}=await supabase.from('pdv_state').select('data,revision').eq('id',1).maybeSingle();if(!active)return;if(error){setStatus('offline');return;}if(data)receive(data);}
  const unsubscribe=subscribeState(()=>{if(pending&&!isSaving()){const next=pending;pending=null;receive(next);}});
