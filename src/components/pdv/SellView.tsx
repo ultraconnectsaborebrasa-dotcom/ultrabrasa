@@ -8,7 +8,6 @@ import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
 import { TableSelector } from './TableSelector';
 import { validTable, tableLabel } from '@/lib/pdv-tables';
-import { printOrder, printerPreferences } from '@/services/thermalPrinter';
 
 const TYPES: OrderType[] = ["Balcão", "Mesa", "Retirada", "Delivery"];
 
@@ -49,12 +48,6 @@ export function SellView({ admin = false }: { admin?: boolean }) {
     const o = commitDraft("cozinha");
     if (!o) return;
     toast.success(`Comanda #${o.number} enviada para a cozinha`);
-    if (printerPreferences.autoPrintEnabled) {
-      void printOrder(o, settings.serviceFeePct, { force: true }).catch((error: unknown) => {
-        const detail = error instanceof Error ? error.message : "verifique a conexão e a impressora selecionada";
-        toast.error(`Comanda #${o.number} enviada, mas não foi possível imprimir: ${detail}`);
-      });
-    }
   };
   const charge = () => {
     if (!draft.items.length) return;
