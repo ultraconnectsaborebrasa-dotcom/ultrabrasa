@@ -72,10 +72,34 @@ export function formatReceipt(order: Order, serviceFeePct: number): string {
  lines.push(line, 'PEDIDO #' + order.number, '', '', '', '');
  return lines.join('\n') + '\n';
 }
+// Assinatura digital das requisições QZ Tray: com certificado + assinatura,
+// o QZ Tray não abre a janela de autorização a cada impressão.
+let signingKey: Promise<CryptoKey> | null = null;
+function importSigningKey(): Promise<CryptoKey> {
+ if (!signingKey) {
+  const body = privateKeyPem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  const bytes = Uint8Array.from(atob(body), c => c.charCodeAt(0));
+  signingKey = crypto.subtle.importKey('pkcs8', bytes.buffer as ArrayBuffer, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-512' }, false, ['sign']);
+ }
+ return signingKey;
+}
+let securityApplied = false;
+async function applySecurity(qz: QZ): Promise<void> {
+ if (securityApplied) return;
+ qz.security.setCertificatePromise(() => Promise.resolve(certificatePem));
+ qz.security.setSignaturePromise(async (toSign: string) => {
+  const key = await importSigningKey();
+  const signature = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(toSign)));
+  let binary = '';
+  for (const byte of signature) binary += String.fromCharCode(byte);
+  return btoa(binary);
+ });
+ securityApplied = true;
+}
 let qzLoader: Promise<QZ> | null = null;
 async function api(): Promise<QZ> {
  if (typeof window === 'undefined') throw new Error('Impressão disponível apenas no computador.');
- if (window.qz) return window.qz;
+ if (window.qz) { await applySecurity(window.qz); return window.qz; }
  if (!qzLoader) qzLoader = new Promise<QZ>((resolve, reject) => {
   const script = document.createElement('script');
   script.src = 'https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.js';
@@ -83,7 +107,9 @@ async function api(): Promise<QZ> {
   script.onerror = () => reject(new Error('Não foi possível carregar a biblioteca QZ Tray.'));
   document.head.appendChild(script);
  }).catch(error => { qzLoader = null; throw error; });
- return qzLoader;
+ const qz = await qzLoader;
+ await applySecurity(qz);
+ return qz;
 }
 export async function connectPrinter() {
  log('Connecting QZ');
