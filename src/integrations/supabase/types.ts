@@ -304,6 +304,7 @@ export type Database = {
         Returns: undefined
       }
       claim_pdv_admin: { Args: never; Returns: boolean }
+      delivery_staff: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -311,10 +312,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      lookup_delivery_addresses: {
+        Args: { phone_query: string }
+        Returns: Json
+      }
       pay_pdv_cashier: {
         Args: { order_id: string; payment_method: string }
         Returns: undefined
       }
+      read_delivery_board: { Args: never; Returns: Json }
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
@@ -355,6 +361,7 @@ export type Database = {
         Args: { request: Json }
         Returns: Json
       }
+      validate_delivery_input: { Args: { input: Json }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "operator" | "cashier" | "courier"
