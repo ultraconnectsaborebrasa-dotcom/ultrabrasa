@@ -168,10 +168,10 @@ async function sendText(qz: QZ, printerName: string, text: string) {
  if (!text.trim()) throw new Error('Não há conteúdo para imprimir.');
  if (printerPreferences.printMode === 'raw') {
   const config = qz.configs.create(printerName, { encoding: 'CP437' });
-  return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + text + '\n\n\n\x1dV\x42\x00' }]);
+  return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@\x1b!\x00\x1d!\x00\x1ba\x00' + text + '\n\n\n\x1dV\x42\x00' }]);
  }
- const config = qz.configs.create(printerName, { units: 'mm', size: { width: 48 }, margins: { top: 0, right: 0, bottom: 0, left: 0 }, scaleContent: true, rasterize: false, colorType: 'blackwhite' });
- const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:9pt;font-weight:bold;line-height:1.15;white-space:pre-wrap;color:#000">' + escapeHtml(text) + '</pre></body></html>';
+ const config = qz.configs.create(printerName, { units: 'mm', size: { width: 48 }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 0, bottom: 0, left: 0 }, scaleContent: true, rasterize: false, colorType: 'blackwhite' });
+ const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:6.5pt;font-weight:bold;line-height:1.2;white-space:pre;width:44mm;padding-left:1mm;overflow:hidden;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }
 type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
