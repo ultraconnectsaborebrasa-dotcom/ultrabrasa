@@ -35,8 +35,11 @@ export const pendingPrintIds = () => [...pending()];
 const saveSet = (name: string, values: Set<string>) => put(name, JSON.stringify([...values]));
 export const wasAutomaticallyPrinted = (id: string) => printed().has(id);
 const normalize = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, '?');
-const WIDTH = 32;
-const line = '='.repeat(WIDTH);
+// Largura conservadora para a Atomo MO-5812 (58 mm, ~48 mm imprimíveis): 28 caracteres na fonte normal.
+const WIDTH = 28;
+const line = '-'.repeat(WIDTH);
+const center = (value: string) => { const text = normalize(value).slice(0, WIDTH); return ' '.repeat(Math.floor((WIDTH - text.length) / 2)) + text; };
+const pair = (label: string, value: string) => { const gap = WIDTH - label.length - value.length; return gap >= 1 ? label + ' '.repeat(gap) + value : [label, '  ' + value].join('\n'); };
 function wrap(value: unknown): string[] {
  const words = normalize(value).split(/\s+/).filter(Boolean);
  const lines: string[] = []; let current = '';
@@ -61,23 +64,26 @@ const money = (value: number) => {
 export function formatReceipt(order: Order, serviceFeePct: number): string {
  const date = new Date(order.createdAt);
  const sum = totals(order, serviceFeePct);
- const lines = [line, 'ULTRACONNECT', 'SABOR E BRASA', line, 'PEDIDO #' + order.number, date.toLocaleString('pt-BR'), line];
- if (order.customer) lines.push('CLIENTE', ...wrap(order.customer));
- if (order.tableNumber) lines.push('MESA ' + order.tableNumber);
- lines.push('TIPO: ' + normalize(order.type), line);
+ const lines = [center('ULTRACONNECT'), center('SABOR E BRASA'), line, center('PEDIDO #' + order.number), line,
+  'DATA: ' + date.toLocaleDateString('pt-BR'), 'HORA: ' + date.toLocaleTimeString('pt-BR'), line, ...wrap('TIPO: ' + String(order.type).toUpperCase())];
+ if (order.tableNumber) lines.push('MESA: ' + order.tableNumber);
+ if (order.customer) lines.push(...wrap('CLIENTE: ' + order.customer));
+ lines.push(line);
  for (const item of order.items) {
-  lines.push(...wrap(item.qty + 'x ' + item.name), 'Unit.: ' + money(item.price), 'Item: ' + money(item.qty * item.price));
-  if (item.note) lines.push('OBS ITEM:', ...wrap(item.note));
-  lines.push('-'.repeat(WIDTH));
+  lines.push(...wrap(item.qty + 'x ' + item.name));
+  if (item.note) lines.push(...wrap('OBS: ' + item.note));
+  lines.push('', pair('Preco unit.:', money(item.price)), pair('Subtotal:', money(item.qty * item.price)), line);
  }
- lines.push('SUBTOTAL: ' + money(sum.sub));
- if (order.discount) lines.push('DESCONTO: ' + money(order.discount));
- if (order.fee) lines.push('TAXA: ' + money(order.fee));
- if (order.serviceFee && sum.service) lines.push('SERVICO: ' + money(sum.service));
- lines.push(line, 'TOTAL: ' + money(sum.total), line);
- if (order.payments?.length) lines.push('PAGAMENTO: ' + order.payments.map(p => normalize(p.method)).join(', '));
- if (order.note) lines.push(line, '          OBS', line, ...wrap(order.note));
- lines.push(line, 'PEDIDO #' + order.number, '', '', '', '');
+ if (order.discount || order.fee || (order.serviceFee && sum.service)) {
+  lines.push(pair('SUBTOTAL:', money(sum.sub)));
+  if (order.discount) lines.push(pair('DESCONTO:', '-' + money(order.discount)));
+  if (order.fee) lines.push(pair('TAXA:', money(order.fee)));
+  if (order.serviceFee && sum.service) lines.push(pair('SERVICO:', money(sum.service)));
+ }
+ lines.push(pair('TOTAL:', money(sum.total)), line);
+ if (order.payments?.length) lines.push(...wrap('PAGAMENTO: ' + order.payments.map(p => p.method).join(', ')), line);
+ if (order.note) lines.push(...wrap('OBS: ' + order.note), line);
+ lines.push(center('FIM DO PEDIDO'), '', '', '', '');
  return lines.join('\n') + '\n';
 }
 // Assinatura digital das requisições QZ Tray: com certificado + assinatura,
@@ -168,10 +174,10 @@ async function sendText(qz: QZ, printerName: string, text: string) {
  if (!text.trim()) throw new Error('Não há conteúdo para imprimir.');
  if (printerPreferences.printMode === 'raw') {
   const config = qz.configs.create(printerName, { encoding: 'CP437' });
-  return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@\x1b!\x00\x1d!\x00\x1ba\x00' + text + '\n\n\n\x1dV\x42\x00' }]);
+  return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + '\x1bM\x00' + '\x1b!\x00' + '\x1d!\x00' + '\x1dL\x00\x00' + '\x1dW\x80\x01' + '\x1b$\x00\x00' + '\x1ba\x00' + text + '\n\n\n' }]);
  }
- const config = qz.configs.create(printerName, { units: 'mm', size: { width: 48 }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 0, bottom: 0, left: 0 }, scaleContent: true, rasterize: false, colorType: 'blackwhite' });
- const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:6.5pt;font-weight:bold;line-height:1.2;white-space:pre;width:44mm;padding-left:1mm;overflow:hidden;color:#000">' + escapeHtml(text) + '</pre></body></html>';
+ const config = qz.configs.create(printerName, { units: 'mm', size: { width: 58 }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 5, bottom: 0, left: 5 }, scaleContent: true, rasterize: false, colorType: 'blackwhite' });
+ const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:8pt;font-weight:bold;line-height:1.25;white-space:pre;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }
 type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
@@ -216,5 +222,5 @@ export async function testPrinter(target?: PrintTarget) {
  const printerName = await ensurePrinter(target);
  const qz = await api();
  const date = new Date();
- await withTimeout(sendText(qz, printerName, [line, 'ULTRACONNECT', 'SABOR E BRASA', '', 'TESTE DE IMPRESSAO', '', 'Impressora:', printerName, '', 'Conexao realizada com sucesso.', date.toLocaleString('pt-BR'), line, '', '', ''].join('\n')));
+ await withTimeout(sendText(qz, printerName, [center('TESTE DE ALINHAMENTO'), line, 'INICIO DA LINHA', 'PEDIDO COMPLETO', 'SUBTOTAL', 'TOTAL', '1234567890', 'R$ 123,45', 'ABCDEFGHIJKLMNOPQRSTUVWX', '-'.repeat(24), 'FIM DA LINHA', line, ...wrap('Impressora: ' + printerName), date.toLocaleString('pt-BR'), '', '', '', ''].join('\n')));
 }
