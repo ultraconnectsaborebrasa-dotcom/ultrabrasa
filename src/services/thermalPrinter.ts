@@ -95,13 +95,17 @@ function importSigningKey(): Promise<CryptoKey> {
 let securityApplied = false;
 async function applySecurity(qz: QZ): Promise<void> {
  if (securityApplied) return;
- qz.security.setCertificatePromise(() => Promise.resolve(certificatePem));
- qz.security.setSignaturePromise(async (toSign: string) => {
-  const key = await importSigningKey();
-  const signature = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(toSign)));
-  let binary = '';
-  for (const byte of signature) binary += String.fromCharCode(byte);
-  return btoa(binary);
+ // O QZ Tray decide como chamar estas funções pelo nome do construtor ("AsyncFunction").
+ // Funções comuns são tratadas como resolver (resolve, reject); por isso usamos exatamente esse formato,
+ // que não depende de como o build transforma funções async.
+ const setCert = qz.security.setCertificatePromise as unknown as (fn: (resolve: (v: string) => void, reject: (e: unknown) => void) => void) => void;
+ setCert((resolve) => resolve(certificatePem));
+ const setSign = qz.security.setSignaturePromise as unknown as (fn: (toSign: string) => (resolve: (v: string) => void, reject: (e: unknown) => void) => void) => void;
+ setSign((toSign: string) => (resolve, reject) => {
+  importSigningKey()
+   .then(key => crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(toSign)))
+   .then(buffer => { let binary = ''; for (const byte of new Uint8Array(buffer)) binary += String.fromCharCode(byte); resolve(btoa(binary)); })
+   .catch(reject);
  });
  securityApplied = true;
 }
@@ -130,7 +134,8 @@ export async function disconnectPrinter() { const qz = await api(); if (qz.webso
 export const isPrinterConnected = () => Boolean(typeof window !== 'undefined' && window.qz?.websocket.isActive());
 export async function listPrinters() {
  await connectPrinter();
- const names = await (await api()).printers.find();
+ const found: unknown = await (await api()).printers.find();
+ const names = Array.isArray(found) ? found.filter((n): n is string => typeof n === 'string' && n.length > 0) : typeof found === 'string' && found ? [found] : [];
  return [...names].sort((a, b) => rank(b) - rank(a));
 }
 const THERMAL = /mo-?5812|atomo|átomo|pos-?58|pos-?80|thermal|t[ée]rmica|58mm|80mm|bluetooth|bt-?printer/i;
@@ -158,6 +163,9 @@ const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g,
 // Envia o texto do cupom. No modo 'driver' o Windows desenha o cupom pelo driver da impressora,
 // o que evita o problema de "imprime sem erro mas não sai nada" em impressoras Bluetooth.
 async function sendText(qz: QZ, printerName: string, text: string) {
+ if (!printerName) throw new Error('Nenhuma impressora configurada. Abra Ajustes → Impressora térmica.');
+ if (!qz.websocket.isActive()) throw new Error('QZ Tray não está conectado neste computador. Abra o QZ Tray e tente novamente.');
+ if (!text.trim()) throw new Error('Não há conteúdo para imprimir.');
  if (printerPreferences.printMode === 'raw') {
   const config = qz.configs.create(printerName, { encoding: 'CP437' });
   return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + text + '\n\n\n\x1dV\x42\x00' }]);
@@ -177,6 +185,8 @@ async function drain() {
    const job = queue.shift()!;
    try {
     if (!job.manual && !job.force && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
+    if (!job.order || !Array.isArray(job.order.items) || job.order.items.length === 0) throw new Error('Pedido sem itens para imprimir.');
+    if (job.order.items.some(i => !i || typeof i.name !== 'string' || !Number.isFinite(Number(i.qty)))) throw new Error('Pedido com itens inválidos; não foi possível imprimir.');
     await connectPrinter();
     const printerName = await ensurePrinter(job.target);
     log('Printing:', job.order.number, printerName, printerPreferences.printMode);
