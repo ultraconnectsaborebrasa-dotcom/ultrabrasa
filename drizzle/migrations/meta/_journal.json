@@ -141,6 +141,13 @@
       "when": 1792797816984,
       "tag": "0019_delivery_service_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792797860401,
+      "tag": "0020_delivery_contact_and_route_validation",
+      "breakpoints": true
     }
   ]
 }
