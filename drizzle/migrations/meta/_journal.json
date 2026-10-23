@@ -127,6 +127,13 @@
       "when": 1792797690602,
       "tag": "0017_delivery_optional_rpc_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792797797533,
+      "tag": "0018_delivery_workflow_hardening",
+      "breakpoints": true
     }
   ]
 }
