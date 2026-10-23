@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Pencil, Plus, Star } from "lucide-react";
+import { Clock, Pencil, Plus, Printer, Star } from "lucide-react";
 import {
   brl, isToday, loadOrderToDraft, paid, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
 } from "@/lib/pdv-store";
@@ -46,8 +46,9 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
                 <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock size={12} />{mins(o.createdAt)} min</span>
                 <span className="font-display text-xl font-bold">{brl(t)}</span>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2">
                 <button className="btn btn-ghost text-xs" onClick={() => { loadOrderToDraft(o); goSell(); }}><Pencil size={13} />Editar</button>
+                <button className="btn btn-ghost text-xs" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={13} />Imprimir</button>
                 {admin && <button className="btn btn-ghost text-xs text-destructive" onClick={() => confirm(`Cancelar comanda #${o.number}? O estoque será devolvido.`) && setOrderStatus(o.id, "cancelado")}>Cancelar</button>}
                 <button className="btn btn-primary text-xs" onClick={() => cashOpen ? setPaying(o) : toast.error("Abra o caixa primeiro.")}>Cobrar</button>
               </div>
@@ -86,6 +87,7 @@ export function KitchenView() {
               {o.sellerName&&<div className="mt-2 text-xs text-muted-foreground">Atendente · {o.sellerName}</div>}
               <ul className="my-3 space-y-1.5">{o.items.map((i) => <li key={i.uid}><b className="text-primary">{i.qty}×</b> {i.name}{i.note && <div className="ml-6 text-xs text-accent">↳ {i.note}</div>}</li>)}</ul>
               {o.note && <p className="mb-3 rounded bg-elevated p-2 text-xs">{o.note}</p>}
+              <Button variant="outline" className="mb-2 w-full" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={14} />Imprimir</Button>
               {o.status === "cozinha"
                 ? <Button className="w-full" onClick={() => setOrderStatus(o.id, "pronto")}>Marcar pronto</Button>
                 : <Button variant="outline" className="w-full text-success" onClick={() => setOrderStatus(o.id, "aberta")}>Servido à mesa ✓</Button>}
