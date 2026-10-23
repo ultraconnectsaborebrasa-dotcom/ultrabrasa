@@ -141,6 +141,9 @@ export type Database = {
         Returns: boolean
       }
       read_pdv_operator: { Args: never; Returns: Json }
+      read_pdv_cashier: { Args: never; Returns: Json }
+      pay_pdv_cashier: { Args: { order_id: string; payment_method: string }; Returns: undefined }
+      save_pdv_cashier_product: { Args: { product_id: string | null; product_name: string; product_category: string; product_price: number; product_stock: number | null }; Returns: undefined }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
       save_pdv_state: {
         Args: { expected_revision: number; payload: Json }
@@ -171,7 +174,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "operator"
+      app_role: "admin" | "operator" | "cashier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -299,7 +302,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "operator"],
+      app_role: ["admin", "operator", "cashier"],
     },
   },
 } as const
