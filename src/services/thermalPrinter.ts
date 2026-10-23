@@ -22,6 +22,10 @@ export const printerPreferences = {
  set autoPrintEnabled(value: boolean) { put('autoPrintEnabled', String(value)); },
  // 'driver' imprime pelo driver do Windows (funciona com qualquer impressora instalada);
  // 'raw' envia comandos ESC/POS direto (só funciona se o driver aceitar dados brutos).
+ get kitchenPrinter() { return get('kitchenPrinter') || ''; },
+ set kitchenPrinter(value: string) { put('kitchenPrinter', value); },
+ get cashierPrinter() { return get('cashierPrinter') || ''; },
+ set cashierPrinter(value: string) { put('cashierPrinter', value); },
  get printMode(): 'driver' | 'raw' { return get('printMode') === 'raw' ? 'raw' : 'driver'; },
  set printMode(value: 'driver' | 'raw') { put('printMode', value); },
 };
@@ -133,8 +137,11 @@ const THERMAL = /mo-?5812|atomo|átomo|pos-?58|pos-?80|thermal|t[ée]rmica|58mm|
 const VIRTUAL = /pdf|xps|onenote|fax|anydesk|send to/i;
 const rank = (name: string) => (THERMAL.test(name) ? 2 : 0) - (VIRTUAL.test(name) ? 1 : 0);
 // Escolhe automaticamente a impressora (prioriza a térmica MO-5812) quando nenhuma foi salva.
-async function ensurePrinter() {
+export type PrintTarget = 'kitchen' | 'cashier';
+async function ensurePrinter(target?: PrintTarget) {
  const names = await listPrinters();
+ const specific = target === 'kitchen' ? printerPreferences.kitchenPrinter : target === 'cashier' ? printerPreferences.cashierPrinter : '';
+ if (specific) { if (names.includes(specific)) return specific; throw new Error(`Impressora "${specific}" não encontrada. Verifique se está ligada e conectada.`); }
  const saved = printerPreferences.selectedPrinter;
  if (saved && names.includes(saved)) return saved;
  const [first] = names;
@@ -159,7 +166,7 @@ async function sendText(qz: QZ, printerName: string, text: string) {
  const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:9pt;font-weight:bold;line-height:1.15;white-space:pre-wrap;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }
-type Job = { order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
+type Job = { target?: PrintTarget; order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
 const queue: Job[] = [];
 let working = false;
 async function drain() {
@@ -171,7 +178,7 @@ async function drain() {
    try {
     if (!job.manual && !job.force && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
     await connectPrinter();
-    const printerName = await ensurePrinter();
+    const printerName = await ensurePrinter(job.target);
     log('Printing:', job.order.number, printerName, printerPreferences.printMode);
     await withTimeout(sendText(await api(), printerName, formatReceipt(job.order, job.pct)));
     if (!job.manual) {
@@ -186,18 +193,18 @@ async function drain() {
   }
  } finally { working = false; }
 }
-export function printOrder(order: Order, serviceFeePct: number, options: { manual?: boolean; force?: boolean } = {}) {
+export function printOrder(order: Order, serviceFeePct: number, options: { manual?: boolean; force?: boolean; target?: PrintTarget } = {}) {
  return new Promise<void>((resolve, reject) => {
   if (!options.manual && (queue.some(j => !j.manual && j.order.id === order.id) || (!options.force && wasAutomaticallyPrinted(order.id)))) { resolve(); return; }
   log('Queue order:', order.number);
-  queue.push({ order, pct: serviceFeePct, manual: Boolean(options.manual), force: Boolean(options.force), resolve, reject });
+  queue.push({ target: options.target, order, pct: serviceFeePct, manual: Boolean(options.manual), force: Boolean(options.force), resolve, reject });
   void drain();
  });
 }
-export async function testPrinter() {
+export async function testPrinter(target?: PrintTarget) {
  await connectPrinter();
- const printerName = await ensurePrinter();
+ const printerName = await ensurePrinter(target);
  const qz = await api();
  const date = new Date();
- await withTimeout(sendText(qz, printerName, [line, 'ULTRACONNECT', 'SABOR E BRASA', '', 'TESTE DE IMPRESSAO', '', 'Impressora:', printerPreferences.selectedPrinter, '', 'Conexao realizada com sucesso.', date.toLocaleString('pt-BR'), line, '', '', ''].join('\n')));
+ await withTimeout(sendText(qz, printerName, [line, 'ULTRACONNECT', 'SABOR E BRASA', '', 'TESTE DE IMPRESSAO', '', 'Impressora:', printerName, '', 'Conexao realizada com sucesso.', date.toLocaleString('pt-BR'), line, '', '', ''].join('\n')));
 }
