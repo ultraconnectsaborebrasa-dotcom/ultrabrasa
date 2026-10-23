@@ -124,6 +124,18 @@ export async function listPrinters() {
  const names = await (await api()).printers.find();
  return [...names].sort((a, b) => Number(/mo-?5812|atomo|átomo/i.test(b)) - Number(/mo-?5812|atomo|átomo/i.test(a)));
 }
+// Escolhe automaticamente a impressora (prioriza a térmica MO-5812) quando nenhuma foi salva.
+async function ensurePrinter() {
+ if (printerPreferences.selectedPrinter) return printerPreferences.selectedPrinter;
+ const [first] = await listPrinters();
+ if (!first) throw new Error('Nenhuma impressora encontrada no computador.');
+ printerPreferences.selectedPrinter = first;
+ return first;
+}
+// Evita que uma impressão travada (ex.: janela de permissão do QZ ignorada) bloqueie a fila.
+function withTimeout<T>(promise: Promise<T>, ms = 20000) {
+ return Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('A impressora não respondeu. Verifique o QZ Tray e permita a impressão.')), ms))]);
+}
 type Job = { order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
 const queue: Job[] = [];
 let working = false;
