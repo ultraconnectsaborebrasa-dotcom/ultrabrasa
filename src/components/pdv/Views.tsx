@@ -10,9 +10,14 @@ import { SalesHistory } from "./SalesHistory";
 import { kitchenTone } from "@/lib/pdv-settings";
 import { tableLabel } from '@/lib/pdv-tables';
 import { Button } from '@/components/ui/button';
+import { printOrder } from '@/services/thermalPrinter';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
+function printManual(o: Order, pct: number) {
+  toast.info(`Imprimindo pedido #${o.number}...`);
+  printOrder(o, pct, { manual: true }).then(() => toast.success(`Pedido #${o.number} impresso`)).catch((e: unknown) => toast.error(e instanceof Error ? e.message : 'Falha ao imprimir'));
+}
 
 /* ---------------- COMANDAS ---------------- */
 export function OrdersView({ goSell, admin = false }: { goSell: () => void; admin?: boolean }) {
