@@ -1,7 +1,7 @@
 import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
-import privateKeyPem from '@/assets/qz-private-key.pem?raw';
-import certificatePem from '@/assets/qz-certificate.pem?raw';
+import privateKeyPem from '@/assets/qz-private-key.txt?raw';
+import certificatePem from '@/assets/qz-certificate.txt?raw';
 
 type QZ = {
  websocket: { connect: () => Promise<void>; disconnect: () => Promise<void>; isActive: () => boolean };
