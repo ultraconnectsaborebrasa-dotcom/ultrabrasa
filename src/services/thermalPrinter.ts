@@ -8,7 +8,7 @@ type QZ = {
  printers: { find: () => Promise<string[]> };
  configs: { create: (name: string, options?: Record<string, unknown>) => unknown };
  print: (config: unknown, data: unknown[]) => Promise<void>;
- security: { setCertificatePromise: (fn: () => Promise<string>) => void; setSignaturePromise: (fn: (data: string) => Promise<string>) => void };
+ security: { setCertificatePromise: (fn: () => Promise<string>) => void; setSignaturePromise: (fn: (data: string) => Promise<string>) => void; setSignatureAlgorithm?: (alg: string) => void };
 };
 declare global { interface Window { qz?: QZ } }
 const PREFIX = 'ultrabrasa-printer-';
@@ -86,6 +86,7 @@ function importSigningKey(): Promise<CryptoKey> {
 let securityApplied = false;
 async function applySecurity(qz: QZ): Promise<void> {
  if (securityApplied) return;
+ qz.security.setSignatureAlgorithm?.('SHA512');
  qz.security.setCertificatePromise(() => Promise.resolve(certificatePem));
  qz.security.setSignaturePromise(async (toSign: string) => {
   const key = await importSigningKey();
