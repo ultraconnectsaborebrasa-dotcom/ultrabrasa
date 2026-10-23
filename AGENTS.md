@@ -32,3 +32,7 @@
 - Desktop fullscreen uses an isolated preload exposing only window-mode actions, with F11 and Escape handled in the main process; browsers use the native fullscreen API.
 - Settings use an administrator-only grouped editor with explicit validated saves; optional settings retain legacy defaults so existing shared snapshots remain compatible.
 - The uploaded brand logo is served through its asset pointer and shared Brand component; never redraw it for navigation or account screens.
+
+- Delivery logistics use separate protected tables and allowlisted RPC reads; a snapshot trigger validates and synchronizes new Delivery orders from every submission path, while legacy orders remain compatible.
+- Courier accounts use a separate user_roles value and can access only assigned routes through validated RPCs; no shared PDV snapshot or closed financial history is exposed.
+- Delivery sequencing works without map credentials using neighborhood/address order and Google Maps deep links; optional distance/time fields are reserved for verified map results, never fabricated.

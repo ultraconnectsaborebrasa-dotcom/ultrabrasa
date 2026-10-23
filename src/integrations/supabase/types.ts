@@ -14,6 +14,169 @@ export type Database = {
   }
   public: {
     Tables: {
+      delivery_addresses: {
+        Row: {
+          address: Json
+          created_at: string
+          customer_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          address: Json
+          created_at?: string
+          customer_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: Json
+          created_at?: string
+          customer_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_couriers: {
+        Row: {
+          active: boolean
+          id: string
+          name: string
+          phone: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          name: string
+          phone?: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          name?: string
+          phone?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      delivery_orders: {
+        Row: {
+          address: Json
+          cash_for: number
+          created_at: string
+          customer: string
+          customer_id: string | null
+          delivered_at: string | null
+          id: string
+          order_id: string
+          payment_method: string
+          phone: string
+          position: number
+          problem: string | null
+          route_id: string | null
+          status: string
+        }
+        Insert: {
+          address?: Json
+          cash_for?: number
+          created_at?: string
+          customer?: string
+          customer_id?: string | null
+          delivered_at?: string | null
+          id?: string
+          order_id: string
+          payment_method?: string
+          phone?: string
+          position?: number
+          problem?: string | null
+          route_id?: string | null
+          status?: string
+        }
+        Update: {
+          address?: Json
+          cash_for?: number
+          created_at?: string
+          customer?: string
+          customer_id?: string | null
+          delivered_at?: string | null
+          id?: string
+          order_id?: string
+          payment_method?: string
+          phone?: string
+          position?: number
+          problem?: string | null
+          route_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_orders_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_routes: {
+        Row: {
+          courier_id: string | null
+          created_at: string
+          created_by: string | null
+          distance_meters: number | null
+          duration_seconds: number | null
+          id: string
+          name: string
+          origin: string
+        }
+        Insert: {
+          courier_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          id?: string
+          name: string
+          origin?: string
+        }
+        Update: {
+          courier_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          id?: string
+          name?: string
+          origin?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_routes_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_customer_visits: {
         Row: {
           created_at: string
@@ -141,6 +304,7 @@ export type Database = {
         Returns: undefined
       }
       claim_pdv_admin: { Args: never; Returns: boolean }
+      delivery_staff: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -148,13 +312,41 @@ export type Database = {
         }
         Returns: boolean
       }
+      lookup_delivery_addresses: {
+        Args: { phone_query: string }
+        Returns: Json
+      }
       pay_pdv_cashier: {
         Args: { order_id: string; payment_method: string }
         Returns: undefined
       }
+      read_delivery_board: { Args: never; Returns: Json }
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
+      save_customer_delivery_address: {
+        Args: { address_id?: string; customer: string; input?: Json }
+        Returns: undefined
+      }
+      save_delivery_courier: {
+        Args: {
+          account_id?: string
+          courier_id?: string
+          courier_name?: string
+          courier_phone?: string
+        }
+        Returns: string
+      }
+      save_delivery_route: {
+        Args: {
+          courier?: string
+          origin_address?: string
+          route_id?: string
+          route_name?: string
+          stops?: string[]
+        }
+        Returns: string
+      }
       save_pdv_cashier_product: {
         Args: {
           product_category: string
@@ -187,14 +379,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_delivery_route: { Args: { route_id: string }; Returns: undefined }
       submit_pdv_operator: { Args: { request: Json }; Returns: Json }
       submit_pdv_operator_with_contact: {
         Args: { request: Json }
         Returns: Json
       }
+      update_delivery_address: {
+        Args: { delivery_id: string; input: Json }
+        Returns: undefined
+      }
+      update_delivery_status: {
+        Args: { delivery_id: string; issue?: string; new_status: string }
+        Returns: undefined
+      }
+      validate_delivery_input: { Args: { input: Json }; Returns: undefined }
     }
     Enums: {
-      app_role: "admin" | "operator" | "cashier"
+      app_role: "admin" | "operator" | "cashier" | "courier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -322,7 +524,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "operator", "cashier"],
+      app_role: ["admin", "operator", "cashier", "courier"],
     },
   },
 } as const

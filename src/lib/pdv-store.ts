@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { toast } from "sonner";
+import { validateDelivery, type DeliveryInput } from "./delivery";
 
 export type Product = {
   id: string;
@@ -31,6 +32,8 @@ export type Order = {
   status: OrderStatus;
   createdAt: number;
   paidAt?: number | undefined;
+  delivery?: DeliveryInput | undefined;
+  customerPhone?: string | undefined;
   sellerId?: string;
   sellerName?: string;
   serviceAmount?: number;
@@ -56,7 +59,7 @@ export type Settings = {
 export type State = {
   products: Product[];
   orders: Order[];
-  draft: { type: OrderType; customer: string; items: CartItem[]; note: string; discount: number; fee: number; serviceFee: boolean; tableNumber?: number | undefined; editingId?: string | undefined };
+  draft: { delivery?: DeliveryInput | undefined; customerPhone?: string | undefined; type: OrderType; customer: string; items: CartItem[]; note: string; discount: number; fee: number; serviceFee: boolean; tableNumber?: number | undefined; editingId?: string | undefined };
   cash: { open: boolean; openedAt?: number; initial: number; moves: CashMove[] };
   settings: Settings;
   nextNumber: number;
@@ -203,6 +206,7 @@ export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []
   let created: Order | null = null;
   setState((s) => {
     if (!s.draft.items.length) return s;
+    if (s.draft.type === "Delivery") { const error = validateDelivery(s.draft.delivery); if (error) { toast.error(error); return s; } }
     if (s.draft.type === 'Mesa' && ![1,2,3,4,5].includes(s.draft.tableNumber ?? 0)) { toast.error('Escolha uma das cinco mesas.'); return s; }
     const { editingId, ...d } = s.draft;
     if (editingId) {
@@ -222,7 +226,7 @@ export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []
   return created;
 }
 export function loadOrderToDraft(o: Order) {
-  setState((s) => ({ ...s, draft: { type: o.type, tableNumber: o.tableNumber, customer: o.customer, items: o.items.map((i) => ({ ...i })), note: o.note, discount: o.discount, fee: o.fee, serviceFee: o.serviceFee, editingId: o.id } }));
+  setState((s) => ({ ...s, draft: { delivery:o.delivery, customerPhone:o.customerPhone, type: o.type, tableNumber: o.tableNumber, customer: o.customer, items: o.items.map((i) => ({ ...i })), note: o.note, discount: o.discount, fee: o.fee, serviceFee: o.serviceFee, editingId: o.id } }));
 }
 export function setOrderStatus(id: string, status: OrderStatus, payments?: Payment[]) {
   setState((s) => {
