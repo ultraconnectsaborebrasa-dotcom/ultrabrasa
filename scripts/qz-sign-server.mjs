@@ -6,8 +6,8 @@ import { join, resolve } from "node:path";
 
 try {
   const localEnv = await readFile(new URL("../.env.qz.local", import.meta.url), "utf8");
-  for (const line of localEnv.split(/\\r?\\n/)) {
-    const match = line.match(/^\\s*([A-Z0-9_]+)\\s*=\\s*(.*?)\\s*$/);
+  for (const line of localEnv.split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
     if (match && !process.env[match[1]]) process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
   }
 } catch { /* optional local-only config */ }
