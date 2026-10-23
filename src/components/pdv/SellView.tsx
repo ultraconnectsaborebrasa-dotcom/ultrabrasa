@@ -4,6 +4,8 @@ import { Minus, Plus, Search, Star, Sparkles, Trash2, ChefHat, MessageSquare } f
 import {
   addToDraft, brl, commitDraft, setItem, setState, totals, updateDraft, useStore, emptyDraft, type OrderType, type Product,
 } from "@/lib/pdv-store";
+import { DeliveryFields } from "./DeliveryFields";
+import { emptyDelivery,validateDelivery } from "@/lib/delivery";
 import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
 import { TableSelector } from './TableSelector';
@@ -59,6 +61,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
   const charge = () => {
     if (!draft.items.length) return;
     if(draft.type==='Mesa'&&!validTable(draft.tableNumber)){toast.error('Escolha uma das cinco mesas.');return;}
+    if(draft.type==="Delivery"){const error=validateDelivery(draft.delivery);if(error){toast.error(error);return;}}
     if (!cashOpen) { toast.error("Abra o caixa antes de cobrar (aba Caixa)."); return; }
     setPay(true);
   };
@@ -76,7 +79,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
   });
 
   return (
-    <div className="grid gap-4 lg:h-full lg:grid-cols-[minmax(0,1fr)_400px]">
+    <div className="grid gap-4 lg:min-h-full lg:grid-cols-[minmax(0,1fr)_400px]">
       {/* Catálogo */}
       <section className="flex min-h-0 flex-col gap-3">
         <div className="flex gap-2">
@@ -142,8 +145,9 @@ export function SellView({ admin = false }: { admin?: boolean }) {
             ))}
           </div>
           {draft.type==='Mesa'&&<TableSelector value={draft.tableNumber} onChange={tableNumber=>updateDraft({tableNumber})}/>}
-          <input className="field mt-2" placeholder={draft.type === "Delivery" ? "Nome, telefone e endereço" : "Nome do cliente (opcional)"}
+          <input className="field mt-2" placeholder="Nome do cliente (opcional)"
             value={draft.customer} onChange={(e) => updateDraft({ customer: e.target.value })} />
+          {draft.type==='Delivery'&&<DeliveryFields value={draft.delivery??emptyDelivery()} phone={draft.customerPhone??''} onPhoneChange={customerPhone=>updateDraft({customerPhone})} onChange={delivery=>updateDraft({delivery})} onCustomerChange={customer=>updateDraft({customer})}/>}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
