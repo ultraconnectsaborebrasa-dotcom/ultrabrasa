@@ -324,6 +324,29 @@ export type Database = {
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
+      save_customer_delivery_address: {
+        Args: { address_id: string; customer: string; input: Json }
+        Returns: undefined
+      }
+      save_delivery_courier: {
+        Args: {
+          account_id?: string
+          courier_id: string
+          courier_name: string
+          courier_phone: string
+        }
+        Returns: string
+      }
+      save_delivery_route: {
+        Args: {
+          courier: string
+          origin_address: string
+          route_id: string
+          route_name: string
+          stops: string[]
+        }
+        Returns: string
+      }
       save_pdv_cashier_product: {
         Args: {
           product_category: string
@@ -356,10 +379,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_delivery_route: { Args: { route_id: string }; Returns: undefined }
       submit_pdv_operator: { Args: { request: Json }; Returns: Json }
       submit_pdv_operator_with_contact: {
         Args: { request: Json }
         Returns: Json
+      }
+      update_delivery_status: {
+        Args: { delivery_id: string; issue?: string; new_status: string }
+        Returns: undefined
       }
       validate_delivery_input: { Args: { input: Json }; Returns: undefined }
     }
