@@ -132,6 +132,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advance_pdv_cashier_order: {
+        Args: { new_status: string; order_id: string }
+        Returns: undefined
+      }
       claim_pdv_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
