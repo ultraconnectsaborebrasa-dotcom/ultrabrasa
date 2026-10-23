@@ -33,6 +33,9 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Fixar versão estável do npm
+        run: npm install --global npm@10.8.2
+
       - name: Verificar arquivos de configuração
         shell: pwsh
         run: |
