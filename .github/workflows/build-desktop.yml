@@ -39,14 +39,14 @@ jobs:
       - name: Verificar arquivos de configuração
         shell: pwsh
         run: |
-          $required = @("package.json", "vite.electron.config.ts", "electron/main.cjs", "electron/preload.cjs", "electron/icon.ico")
+          $required = @("package.json", "package-lock.json", "vite.electron.config.ts", "electron/main.cjs", "electron/preload.cjs", "electron/icon.ico")
           foreach ($file in $required) {
             if (!(Test-Path $file)) { throw "Arquivo obrigatório ausente: $file" }
           }
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json válido')"
 
-      - name: Instalar dependências do projeto (incluindo opcionais)
-        run: npm install --no-package-lock --no-audit --no-fund --include=dev --include=optional
+      - name: Instalar dependências do projeto (lockfile)
+        run: npm ci --no-audit --no-fund --include=dev --include=optional
 
       - name: Validar dependência nativa do Lightning CSS
         shell: pwsh
