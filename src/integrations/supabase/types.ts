@@ -14,6 +14,169 @@ export type Database = {
   }
   public: {
     Tables: {
+      delivery_addresses: {
+        Row: {
+          address: Json
+          created_at: string
+          customer_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          address: Json
+          created_at?: string
+          customer_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: Json
+          created_at?: string
+          customer_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_couriers: {
+        Row: {
+          active: boolean
+          id: string
+          name: string
+          phone: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          name: string
+          phone?: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          name?: string
+          phone?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      delivery_orders: {
+        Row: {
+          address: Json
+          cash_for: number
+          created_at: string
+          customer: string
+          customer_id: string | null
+          delivered_at: string | null
+          id: string
+          order_id: string
+          payment_method: string
+          phone: string
+          position: number
+          problem: string | null
+          route_id: string | null
+          status: string
+        }
+        Insert: {
+          address?: Json
+          cash_for?: number
+          created_at?: string
+          customer?: string
+          customer_id?: string | null
+          delivered_at?: string | null
+          id?: string
+          order_id: string
+          payment_method?: string
+          phone?: string
+          position?: number
+          problem?: string | null
+          route_id?: string | null
+          status?: string
+        }
+        Update: {
+          address?: Json
+          cash_for?: number
+          created_at?: string
+          customer?: string
+          customer_id?: string | null
+          delivered_at?: string | null
+          id?: string
+          order_id?: string
+          payment_method?: string
+          phone?: string
+          position?: number
+          problem?: string | null
+          route_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_orders_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_routes: {
+        Row: {
+          courier_id: string | null
+          created_at: string
+          created_by: string | null
+          distance_meters: number | null
+          duration_seconds: number | null
+          id: string
+          name: string
+          origin: string
+        }
+        Insert: {
+          courier_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          id?: string
+          name: string
+          origin?: string
+        }
+        Update: {
+          courier_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          id?: string
+          name?: string
+          origin?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_routes_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_customer_visits: {
         Row: {
           created_at: string
