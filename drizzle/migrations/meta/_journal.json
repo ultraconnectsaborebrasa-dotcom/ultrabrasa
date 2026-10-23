@@ -43,6 +43,20 @@
       "when": 1792667553140,
       "tag": "0005_customer_contacts_and_private_operator_history",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792710000000,
+      "tag": "0006_cashier_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792710001000,
+      "tag": "0007_cashier_permissions",
+      "breakpoints": true
     }
   ]
 }
