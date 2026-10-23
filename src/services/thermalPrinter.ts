@@ -20,6 +20,10 @@ export const printerPreferences = {
  set selectedPrinter(value: string) { put('selectedPrinter', value); },
  get autoPrintEnabled() { return get('autoPrintEnabled') !== 'false'; },
  set autoPrintEnabled(value: boolean) { put('autoPrintEnabled', String(value)); },
+ // 'driver' imprime pelo driver do Windows (funciona com qualquer impressora instalada);
+ // 'raw' envia comandos ESC/POS direto (só funciona se o driver aceitar dados brutos).
+ get printMode(): 'driver' | 'raw' { return get('printMode') === 'raw' ? 'raw' : 'driver'; },
+ set printMode(value: 'driver' | 'raw') { put('printMode', value); },
 };
 const printed = () => { try { return new Set<string>(JSON.parse(get('printedOrderIds') || '[]')); } catch { return new Set<string>(); } };
 const pending = () => { try { return new Set<string>(JSON.parse(get('pendingOrderIds') || '[]')); } catch { return new Set<string>(); } };
@@ -123,19 +127,37 @@ export const isPrinterConnected = () => Boolean(typeof window !== 'undefined' &&
 export async function listPrinters() {
  await connectPrinter();
  const names = await (await api()).printers.find();
- return [...names].sort((a, b) => Number(/mo-?5812|atomo|átomo/i.test(b)) - Number(/mo-?5812|atomo|átomo/i.test(a)));
+ return [...names].sort((a, b) => rank(b) - rank(a));
 }
+const THERMAL = /mo-?5812|atomo|átomo|pos-?58|pos-?80|thermal|t[ée]rmica|58mm|80mm|bluetooth|bt-?printer/i;
+const VIRTUAL = /pdf|xps|onenote|fax|anydesk|send to/i;
+const rank = (name: string) => (THERMAL.test(name) ? 2 : 0) - (VIRTUAL.test(name) ? 1 : 0);
 // Escolhe automaticamente a impressora (prioriza a térmica MO-5812) quando nenhuma foi salva.
 async function ensurePrinter() {
- if (printerPreferences.selectedPrinter) return printerPreferences.selectedPrinter;
- const [first] = await listPrinters();
+ const names = await listPrinters();
+ const saved = printerPreferences.selectedPrinter;
+ if (saved && names.includes(saved)) return saved;
+ const [first] = names;
  if (!first) throw new Error('Nenhuma impressora encontrada no computador.');
+ if (VIRTUAL.test(first)) throw new Error('A impressora térmica não foi encontrada no Windows. Ligue e pareie a impressora e tente novamente.');
  printerPreferences.selectedPrinter = first;
  return first;
 }
 // Evita que uma impressão travada (ex.: janela de permissão do QZ ignorada) bloqueie a fila.
 function withTimeout<T>(promise: Promise<T>, ms = 20000) {
  return Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('A impressora não respondeu. Verifique o QZ Tray e permita a impressão.')), ms))]);
+}
+const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Envia o texto do cupom. No modo 'driver' o Windows desenha o cupom pelo driver da impressora,
+// o que evita o problema de "imprime sem erro mas não sai nada" em impressoras Bluetooth.
+async function sendText(qz: QZ, printerName: string, text: string) {
+ if (printerPreferences.printMode === 'raw') {
+  const config = qz.configs.create(printerName, { encoding: 'CP437' });
+  return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + text + '\n\n\n\x1dV\x42\x00' }]);
+ }
+ const config = qz.configs.create(printerName, { units: 'mm', size: { width: 48 }, margins: { top: 0, right: 0, bottom: 0, left: 0 }, scaleContent: true, rasterize: false, colorType: 'blackwhite' });
+ const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:9pt;font-weight:bold;line-height:1.15;white-space:pre-wrap;color:#000">' + escapeHtml(text) + '</pre></body></html>';
+ return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }
 type Job = { order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
 const queue: Job[] = [];
@@ -148,13 +170,10 @@ async function drain() {
    const job = queue.shift()!;
    try {
     if (!job.manual && !job.force && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
-    await connectPrinter(); await ensurePrinter();
     await connectPrinter();
-    log('Printing:', job.order.number);
-    const qz = await api();
-    const config = qz.configs.create(printerPreferences.selectedPrinter);
-    const receipt = formatReceipt(job.order, job.pct);
-    await withTimeout(qz.print(config, [{ type: 'raw', format: 'plain', data: '\x1b@' + receipt }]));
+    const printerName = await ensurePrinter();
+    log('Printing:', job.order.number, printerName, printerPreferences.printMode);
+    await withTimeout(sendText(await api(), printerName, formatReceipt(job.order, job.pct)));
     if (!job.manual) {
      const ids = printed(); ids.add(job.order.id); saveSet('printedOrderIds', ids);
      const waiting = pending(); waiting.delete(job.order.id); saveSet('pendingOrderIds', waiting);
@@ -176,9 +195,9 @@ export function printOrder(order: Order, serviceFeePct: number, options: { manua
  });
 }
 export async function testPrinter() {
- if (!printerPreferences.selectedPrinter) throw new Error('Selecione uma impressora.');
  await connectPrinter();
+ const printerName = await ensurePrinter();
  const qz = await api();
  const date = new Date();
- await qz.print(qz.configs.create(printerPreferences.selectedPrinter), [{ type: 'raw', format: 'plain', data: '\x1b@' + [line, 'ULTRACONNECT', 'SABOR E BRASA', '', 'TESTE DE IMPRESSAO', '', 'Impressora:', printerPreferences.selectedPrinter, '', 'Conexao realizada com sucesso.', date.toLocaleString('pt-BR'), line, '', '', ''].join('\n') }]);
+ await withTimeout(sendText(qz, printerName, [line, 'ULTRACONNECT', 'SABOR E BRASA', '', 'TESTE DE IMPRESSAO', '', 'Impressora:', printerPreferences.selectedPrinter, '', 'Conexao realizada com sucesso.', date.toLocaleString('pt-BR'), line, '', '', ''].join('\n')));
 }
