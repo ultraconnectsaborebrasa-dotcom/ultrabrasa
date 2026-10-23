@@ -50,7 +50,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
     if (!o) return;
     toast.success(`Comanda #${o.number} enviada para a cozinha`);
     if (printerPreferences.autoPrintEnabled) {
-      void printOrder(o, settings.serviceFeePct, { force: true }).catch((error: unknown) => {
+      void printOrder(o, settings.serviceFeePct, { force: true, target: 'kitchen' }).catch((error: unknown) => {
         const detail = error instanceof Error ? error.message : "verifique a conexão e a impressora selecionada";
         toast.error(`Comanda #${o.number} enviada, mas não foi possível imprimir: ${detail}`);
       });

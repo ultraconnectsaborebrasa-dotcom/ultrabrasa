@@ -9,6 +9,8 @@ export function ThermalPrinterPanel() {
   const [printers, setPrinters] = useState<string[]>([]);
   const [selected, setSelected] = useState(printerPreferences.selectedPrinter);
   const [autoPrint, setAutoPrint] = useState(printerPreferences.autoPrintEnabled);
+  const [kitchen, setKitchen] = useState(printerPreferences.kitchenPrinter);
+  const [cashier, setCashier] = useState(printerPreferences.cashierPrinter);
   const [mode, setMode] = useState(printerPreferences.printMode);
   const [busy, setBusy] = useState('');
   const [pending, setPending] = useState<string[]>(pendingPrintIds());
@@ -72,7 +74,7 @@ export function ThermalPrinterPanel() {
       {pending.length > 0 && <span className="text-xs text-warning">{pending.length} pedido(s) aguardando impressão</span>}
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button onClick={connect} disabled={!!busy}>{busy === 'connect' ? <LoaderCircle className="animate-spin"/> : <Wifi/>} Conectar QZ Tray</Button>
+      <Button onClick={connect} disabled={!!busy}>{busy === 'connect' ? <LoaderCircle className="animate-spin"/> : <Wifi/>} Conectar ao QZ Tray</Button>
       <Button variant="outline" onClick={refreshPrinters} disabled={!!busy}>{busy === 'list' ? <LoaderCircle className="animate-spin"/> : <RefreshCw/>} Listar impressoras</Button>
       {connected && <Button variant="outline" onClick={disconnect} disabled={!!busy}>Desconectar</Button>}
     </div>
@@ -84,6 +86,16 @@ export function ThermalPrinterPanel() {
       </select>
       <p className="text-xs text-muted-foreground">Se a impressora não aparecer, confira se ela está ligada, pareada e instalada em Windows → Printers & scanners.</p>
     </div>
+    {([['kitchen', 'Impressora da cozinha', kitchen, setKitchen], ['cashier', 'Impressora do caixa', cashier, setCashier]] as const).map(([key, label, value, setValue]) => <div key={key} className="space-y-2">
+      <label htmlFor={`printer-${key}`} className="text-sm font-medium">{label}</label>
+      <div className="flex gap-2">
+        <select id={`printer-${key}`} value={value} onChange={e => { setValue(e.target.value); if (key === 'kitchen') printerPreferences.kitchenPrinter = e.target.value; else printerPreferences.cashierPrinter = e.target.value; }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+          <option value="">Usar a impressora principal</option>
+          {[...new Set([...printers, ...(value ? [value] : [])])].map(name => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <Button variant="outline" disabled={!!busy} onClick={async () => { setBusy('test-' + key); try { await testPrinter(key); toast.success('Teste enviado.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Falha no teste de impressão.'); } finally { setBusy(''); } }}>{busy === 'test-' + key ? <LoaderCircle className="animate-spin"/> : <Printer/>} Testar</Button>
+      </div>
+    </div>)}
     <div className="space-y-2">
       <label htmlFor="thermal-print-mode" className="text-sm font-medium">Modo de impressão</label>
       <select id="thermal-print-mode" value={mode} onChange={e => { const v = e.target.value === 'raw' ? 'raw' : 'driver'; setMode(v); printerPreferences.printMode = v; }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">

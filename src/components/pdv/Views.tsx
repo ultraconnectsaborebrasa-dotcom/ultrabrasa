@@ -14,9 +14,9 @@ import { printOrder } from '@/services/thermalPrinter';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
-function printManual(o: Order, pct: number) {
+function printManual(o: Order, pct: number, target: 'kitchen' | 'cashier' = 'cashier') {
   toast.info(`Imprimindo pedido #${o.number}...`);
-  printOrder(o, pct, { manual: true }).then(() => toast.success(`Pedido #${o.number} impresso`)).catch((e: unknown) => toast.error(e instanceof Error ? e.message : 'Falha ao imprimir'));
+  printOrder(o, pct, { manual: true, target }).then(() => toast.success(`Pedido #${o.number} impresso`)).catch((e: unknown) => toast.error(e instanceof Error ? e.message : 'Falha ao imprimir'));
 }
 
 /* ---------------- COMANDAS ---------------- */
@@ -87,7 +87,7 @@ export function KitchenView() {
               {o.sellerName&&<div className="mt-2 text-xs text-muted-foreground">Atendente · {o.sellerName}</div>}
               <ul className="my-3 space-y-1.5">{o.items.map((i) => <li key={i.uid}><b className="text-primary">{i.qty}×</b> {i.name}{i.note && <div className="ml-6 text-xs text-accent">↳ {i.note}</div>}</li>)}</ul>
               {o.note && <p className="mb-3 rounded bg-elevated p-2 text-xs">{o.note}</p>}
-              <Button variant="outline" className="mb-2 w-full" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={14} />Imprimir</Button>
+              <Button variant="outline" className="mb-2 w-full" onClick={() => printManual(o, settings.serviceFeePct, 'kitchen')}><Printer size={14} />Imprimir</Button>
               {o.status === "cozinha"
                 ? <Button className="w-full" onClick={() => setOrderStatus(o.id, "pronto")}>Marcar pronto</Button>
                 : <Button variant="outline" className="w-full text-success" onClick={() => setOrderStatus(o.id, "aberta")}>Servido à mesa ✓</Button>}
