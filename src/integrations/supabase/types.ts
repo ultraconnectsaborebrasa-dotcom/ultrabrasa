@@ -136,6 +136,10 @@ export type Database = {
         Args: { new_status: string; order_id: string }
         Returns: undefined
       }
+      cancel_pdv_cashier_order: {
+        Args: { order_id: string }
+        Returns: undefined
+      }
       claim_pdv_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
