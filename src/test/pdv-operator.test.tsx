@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { OperatorDesk } from '@/components/pdv/OperatorDesk';
 import { readOperator } from '@/lib/pdv-operator';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const send=vi.fn().mockResolvedValue({number:7});
 vi.mock('@/lib/pdv-operator',async importOriginal=>({...await importOriginal<typeof import('@/lib/pdv-operator')>(),readOperator:vi.fn().mockResolvedValue({products:[{id:'espeto',name:'Espeto',category:'Espetinhos',stock:20,price:8}],orders:[],ownOrders:3,ownSales:2}),submitOperator:(r:unknown)=>send(r)}));
 afterEach(()=>{cleanup();send.mockClear();});
@@ -19,7 +20,9 @@ describe('Atendimento com preços e envio protegido',()=>{
   expect(request).not.toHaveProperty('price');expect(request).not.toHaveProperty('payments');
  });
  it('sends Delivery address and opens deliveries after submission',async()=>{
-  render(<OperatorDesk name="Atendente" signOut={async()=>{}}/>);
+  const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+  client.setQueryData(['delivery-board'],{deliveries:[],routes:[],couriers:[]});
+  render(<QueryClientProvider client={client}><OperatorDesk name="Atendente" signOut={async()=>{}}/></QueryClientProvider>);
   fireEvent.click(await screen.findByRole('button',{name:/Espeto/}));
   fireEvent.click(screen.getByRole('button',{name:'Delivery'}));
   fireEvent.change(screen.getByLabelText('Bairro *'),{target:{value:'Stela Reis'}});
