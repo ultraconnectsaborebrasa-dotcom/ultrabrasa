@@ -18,7 +18,7 @@ function desktop(response: number) {
     dialog: { showMessageBox }, Menu: { buildFromTemplate: vi.fn(), setApplicationMenu: vi.fn() },
   };
   // Do not create a real window: start-up is exercised separately by Electron.
-  const source = readFileSync(new URL('../../electron/main.cjs', import.meta.url), 'utf8').replace('  createWindow(url);', '');
+  const source = readFileSync(require.resolve('../../electron/main.cjs'), 'utf8').replace('  createWindow(url);', '');
   runInNewContext(source, { __dirname: '/desktop/electron', require: (name: string) => name === 'electron' ? electron : name === './update-policy.cjs' ? policy : require(name) });
   return { update: handlers.get('ultraconnect:update'), reload, showMessageBox };
 }
