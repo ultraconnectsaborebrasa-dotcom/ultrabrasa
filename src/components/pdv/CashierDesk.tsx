@@ -12,6 +12,7 @@ import { ThermalPrinterPanel } from './ThermalPrinterPanel';
 import { printOrder, listPrinters, printerPreferences } from '@/services/thermalPrinter';
 import type { Order as StoreOrder } from '@/lib/pdv-store';
 import { ChefHat, ShoppingBag, CreditCard, Package, Printer } from 'lucide-react';
+import { NewOrderAlerts } from './NewOrderAlerts';
 
 type Product = {id:string;name:string;category:string;price:number;stock:number|null;active:boolean};
 type Item = {name:string;productId?:string;qty:number;price:number;note?:string};
@@ -56,6 +57,7 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
  const payable=data.orders.filter(o=>['aberta','cozinha','pronto'].includes(o.status));
  return <div className="min-h-dvh p-5 space-y-5">
   <header className="flex flex-wrap items-center gap-3 border-b pb-4"><Brand/><div><h1 className="text-xl font-bold">Caixa · Ultrabrasa</h1><p className="text-sm text-muted-foreground">{name} · Acesso limitado</p></div><Button className="ml-auto" variant="outline" onClick={()=>void signOut()}>Sair</Button></header>
+  <NewOrderAlerts orders={data.orders} ready={data !== empty} onOpen={()=>setTab('kitchen')}/>
   <nav className="flex flex-wrap gap-2">
    <Button variant={tab==='sell'?'default':'outline'} onClick={()=>setTab('sell')}><ShoppingBag className="mr-1 h-4 w-4"/>Vender produtos</Button>
    <Button variant={tab==='kitchen'?'default':'outline'} onClick={()=>setTab('kitchen')}><ChefHat className="mr-1 h-4 w-4"/>Cozinha ({kitchenOrders.length})</Button>

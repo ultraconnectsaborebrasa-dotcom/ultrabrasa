@@ -14,6 +14,7 @@ import { Brand } from "@/components/pdv/Brand";
 import { TablesView } from "@/components/pdv/TablesView";
 import { DeliveryBoard } from "@/components/pdv/DeliveryBoard";
 import { CustomersView } from "@/components/pdv/CustomersView";
+import { NewOrderAlerts } from "@/components/pdv/NewOrderAlerts";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -102,6 +103,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
           </Button>
         </div>
       </header>
+      <NewOrderAlerts orders={orders} onOpen={() => setTab('cozinha')}/>
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
         {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin} onDelivery={()=>setTab('rotas')}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
           : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}

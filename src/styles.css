@@ -154,6 +154,10 @@ button:active:not(:disabled) { transform: translateY(1px); }
 .table-tile, .product-choice { transition: border-color 180ms, transform 180ms, box-shadow 180ms; }
 .table-tile:hover, .product-choice:hover { transform: translateY(-2px); box-shadow: var(--shadow-glow); }
 .kitchen-ticket { border-top-width: 5px; }
+@keyframes order-arrival { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes order-bell { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } }
+.order-arrival { animation: order-arrival 260ms ease-out; }
+.order-arrival-bell { animation: order-bell 500ms ease-in-out 3; }
 [data-animations="off"] *, [data-animations="off"] *::before, [data-animations="off"] *::after { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
