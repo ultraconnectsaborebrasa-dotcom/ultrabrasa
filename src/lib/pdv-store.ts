@@ -208,7 +208,8 @@ export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []
     if (!s.draft.items.length) return s;
     if (s.draft.type === "Delivery") { const error = validateDelivery(s.draft.delivery); if (error) { toast.error(error); return s; } }
     if (s.draft.type === 'Mesa' && ![1,2,3,4,5].includes(s.draft.tableNumber ?? 0)) { toast.error('Escolha uma das cinco mesas.'); return s; }
-    const { editingId, ...d } = s.draft;
+    const { editingId, ...draft } = s.draft;
+    const d = { ...draft, delivery: draft.type === 'Delivery' ? draft.delivery : undefined };
     if (editingId) {
       const prev = s.orders.find((o) => o.id === editingId);
       if (prev) {
