@@ -1,6 +1,6 @@
 export type DeliveryAddress = { label: string; street: string; number: string; neighborhood: string; city: string; state: string; postalCode: string; complement: string; reference: string; latitude: string; longitude: string };
 export type DeliveryInput = { address: DeliveryAddress; paymentMethod: string; cashFor: string };
-export const emptyAddress = (): DeliveryAddress => ({label:'Casa',street:'',number:'',neighborhood:'',city:'',state:'',postalCode:'',complement:'',reference:'',latitude:'',longitude:''});
+export const emptyAddress = (): DeliveryAddress => ({label:'Casa',street:'',number:'',neighborhood:'',city:'Eunápolis',state:'BA',postalCode:'',complement:'',reference:'',latitude:'',longitude:''});
 export const emptyDelivery = (): DeliveryInput => ({address:emptyAddress(),paymentMethod:'Pix',cashFor:''});
 export const DELIVERY_STATUSES = ['Aguardando preparo','Pronto para entrega','Em rota','Entregue','Cancelado'] as const;
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number];

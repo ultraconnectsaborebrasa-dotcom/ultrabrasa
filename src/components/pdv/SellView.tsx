@@ -14,7 +14,7 @@ import { printOrder, printerPreferences } from '@/services/thermalPrinter';
 
 const TYPES: OrderType[] = ["Balcão", "Mesa", "Retirada", "Delivery"];
 
-export function SellView({ admin = false }: { admin?: boolean }) {
+export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDelivery?: () => void }) {
   const products = useStore((s) => s.products);
   const settings = useStore((s) => s.settings);
   const draft = useStore((s) => s.draft);
@@ -51,6 +51,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
     const o = commitDraft("cozinha");
     if (!o) return;
     toast.success(`Comanda #${o.number} enviada para a cozinha`);
+    if (o.type === "Delivery") onDelivery?.();
     if (printerPreferences.autoPrintEnabled) {
       void printOrder(o, settings.serviceFeePct, { force: true, target: 'kitchen' }).catch((error: unknown) => {
         const detail = error instanceof Error ? error.message : "verifique a conexão e a impressora selecionada";
@@ -223,7 +224,7 @@ export function SellView({ admin = false }: { admin?: boolean }) {
       </aside>
 
       <Checkout open={pay} onClose={() => setPay(false)} total={t.total} methods={settings.paymentMethods} title="Cobrar pedido"
-        onConfirm={(p) => { const o = commitDraft("pago", p); setPay(false); if (o) toast.success(`Pedido #${o.number} pago — ${brl(t.total)}`); }} />
+        onConfirm={(p) => { const o = commitDraft("pago", p); setPay(false); if (o) { toast.success(`Pedido #${o.number} pago — ${brl(t.total)}`); if (o.type === "Delivery") onDelivery?.(); } }} />
       <EditProduct product={editing} onClose={() => setEditing(null)} />
     </div>
   );
