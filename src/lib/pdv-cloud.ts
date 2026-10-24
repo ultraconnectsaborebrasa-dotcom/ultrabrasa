@@ -5,11 +5,9 @@ import { getState, replaceState, isSaving, subscribeState, type State } from './
 import { mergeSnapshot, type SharedSnapshot } from './pdv-sync';
 import { toast } from 'sonner';
 import { printOrder, printerPreferences } from '@/services/thermalPrinter';
+import { loadOrderAlerts } from './order-alerts';
+export { useOrderAlerts, toggleOrderAlerts } from './order-alerts';
 let revision=0;
-let orderAlerts=true;
-const alertListeners=new Set<()=>void>();
-export function useOrderAlerts(){return useSyncExternalStore(l=>{alertListeners.add(l);return()=>{alertListeners.delete(l);};},()=>orderAlerts,()=>true);}
-export function toggleOrderAlerts(){orderAlerts=!orderAlerts;try{localStorage.setItem('ultraconnect-order-alerts',String(orderAlerts));}catch{}alertListeners.forEach(l=>l());}
 let tail: Promise<void> = Promise.resolve();
 type SyncStatus = 'connecting'|'live'|'offline';
 let status:SyncStatus='connecting';
@@ -17,7 +15,7 @@ const statusListeners=new Set<()=>void>();
 function setStatus(next:SyncStatus){status=next;statusListeners.forEach(l=>l());}
 export function useSyncStatus(){return useSyncExternalStore(l=>{statusListeners.add(l);return()=>{statusListeners.delete(l);};},()=>status,()=>'connecting' as SyncStatus);}
 export function watchCloud(){
- try{orderAlerts=localStorage.getItem('ultraconnect-order-alerts')!=='false';alertListeners.forEach(l=>l());}catch{}
+ loadOrderAlerts();
  let active=true;let pending:SharedSnapshot|null=null;
  function receive(snapshot:SharedSnapshot){
   if(!active)return;
@@ -25,7 +23,6 @@ export function watchCloud(){
   const current=getState();const merged=mergeSnapshot(current,snapshot,revision);if(!merged)return;
   const incoming=merged.orders.filter(o=>o.status==='cozinha'&&!current.orders.some(p=>p.id===o.id&&p.status==='cozinha'));
   revision=snapshot.revision;replaceState(merged);
-  if(orderAlerts)incoming.forEach(o=>toast.info(`${o.source==='mobile'?'Pedido do celular':'Novo pedido'} #${o.number} na cozinha`,{description:`${o.tableNumber?`Mesa ${o.tableNumber} · `:''}${o.items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}`}));
   if(printerPreferences.autoPrintEnabled)incoming.forEach(o=>{void printOrder(o,merged.settings.serviceFeePct,{target:'kitchen'}).catch((error:unknown)=>{const detail=error instanceof Error?error.message:'verifique a conexão e a impressora selecionada';toast.error(`Comanda #${o.number} recebida, mas não foi possível imprimir: ${detail}`);});});
  }
  async function refresh(){const {data,error}=await supabase.from('pdv_state').select('data,revision').eq('id',1).maybeSingle();if(!active)return;if(error){setStatus('offline');return;}if(data)receive(data);}
