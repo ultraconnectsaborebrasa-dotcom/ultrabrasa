@@ -1,4 +1,5 @@
 # PDV: histórico e administração
+- [ ] Restringir rotas a Delivery, chegada automática de pedidos e catálogo pesquisado de bairros de Eunápolis–BA com zonas de entrega e testes.
 - [x] Rotas de entrega: endereços reutilizáveis e obrigatórios no Delivery, lista/filtros/bairros, montagem/ordenação por bairro/endereço, links Google Maps, entregadores com acesso restrito e histórico. 44 testes aprovados; envio Caixa → rota → entrega verificado no banco com rollback; 47 produtos/78 pedidos preservados.
 - [ ] Verificar o fluxo de Rotas na tela com conta real: sessão da conta não disponível e autorização para teste indisponível nesta conversa; entrar no preview para concluir. Integração de cálculo de mapas e distâncias não configurada (fallback funcional); site não publicado e Windows não reempacotado nesta tarefa.
 - [x] Perfil Caixa ativado no banco: valor `cashier` criado no tipo de função (as três funções de caixa já existiam); leitura de caixa, recebimento e produtos verificados no servidor, sem acesso a faturamento/custos/configurações; remoção de acesso já cobre Caixa e protege administradores.
