@@ -11,9 +11,9 @@
 
 ## Desktop packaging (Electron)
 
-- The Windows executable is built with `vite.electron.config.ts` (static client build with `base: "./"` and prerender of `/`), then the generated `dist/client/index.html` paths are rewritten from `/assets/` to `./assets/`. Never ship the nitro server output (`dist/server`) in the package — Electron serves `dist/client` through an internal http server in `electron/main.cjs` so SPA routing works without `file://` quirks.
+- The connected Windows edition loads the fixed HTTPS published app, not a bundled snapshot; web updates arrive on opening after publication without rebuilding the executable. Do not ship server output or secrets.
 - Package with `@electron/packager --platform=win32 --arch=x64 --electron-version=<installed>`, never electron-builder (7zip errors in the sandbox). Keep the output outside the project directory (`electron-release` exceeds the repo per-file commit limit) — build to /tmp or move it out before finishing.
-- Desktop uses a single-instance loopback origin on a stable port for account persistence; packaged asset-pointer URLs must be materialized under dist/client so branding is served locally.
+- Desktop remains single-instance with persistent browser storage on the published origin; clear only HTTP cache, never account storage, and require confirmation before a manual reload so active drafts are not silently lost. Native Electron updates still require a new verified package.
 - Windows CI installs the Lightning CSS native package at the resolved wrapper version and validates a transform before building; this prevents missing or mismatched optional Windows binaries without changing project dependencies.
 
 ## PDV access and persistence
@@ -30,7 +30,7 @@
 - Sales history uses payment timestamps, local inclusive calendar dates, product-ID aggregation, and stored service amounts for new orders to preserve historical details.
 - Shared state Realtime subscriptions mount only for authorized accounts and clean up on exit; monotonic revisions and deferred updates preserve local drafts and in-flight writes.
 - New-order alerts observe only each role's authorized order list, baseline the first load, and unlock browser audio after interaction; this avoids historical alerts and preserves permission boundaries.
-- Desktop fullscreen uses an isolated preload exposing only window-mode actions, with F11 and Escape handled in the main process; browsers use the native fullscreen API.
+- Desktop uses an isolated preload exposing only fullscreen and confirmed reload actions, validates the exact app origin for IPC and sends external HTTP(S) links to the browser; F11/Escape remain in the main process.
 - Settings use an administrator-only grouped editor with explicit validated saves; optional settings retain legacy defaults so existing shared snapshots remain compatible.
 - The uploaded brand logo is served through its asset pointer and shared Brand component; never redraw it for navigation or account screens.
 

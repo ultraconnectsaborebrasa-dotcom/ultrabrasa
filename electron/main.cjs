@@ -1,57 +1,24 @@
-// Electron main process — opens Ultraconnect fullscreen as a desktop app.
-// Serves the built app from a local-only internal server so it behaves
-// exactly like the web version (SPA routing works, no file:// quirks).
-const { app, BrowserWindow, shell, ipcMain } = require("electron");
+// Connected desktop: published PDV updates arrive on the next opening.
+// Never reload a sale automatically while the cashier is working.
+const { app, BrowserWindow, shell, ipcMain, dialog, Menu } = require("electron");
 const path = require("path");
-const http = require("http");
-const fs = require("fs");
+const { APP_URL, isAppUrl, isSafeExternalUrl } = require('./update-policy.cjs');
 
-const APP_DIR = path.join(__dirname, "..", "dist", "client");
-
-const MIME = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json",
-  ".ico": "image/x-icon",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".svg": "image/svg+xml",
-  ".woff": "font/woff",
-  ".woff2": "font/woff2",
-  ".webmanifest": "application/manifest+json",
-};
-
-function startServer() {
-  return new Promise((resolve, reject) => {
-    const server = http.createServer((req, res) => {
-      try {
-        let urlPath = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
-        if (urlPath === "/") urlPath = "/index.html";
-        let filePath = path.join(APP_DIR, path.normalize(urlPath).replace(/^(\.\.[/\\])+/, ""));
-        // SPA fallback: unknown paths without an extension get index.html
-        if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-          if (!path.extname(filePath)) {
-            filePath = path.join(APP_DIR, "index.html");
-          }
-        }
-        const ext = path.extname(filePath).toLowerCase();
-        const body = fs.readFileSync(filePath);
-        res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
-        res.end(body);
-      } catch (err) {
-        res.writeHead(404);
-        res.end("Not found");
-      }
-    });
-    server.listen(43187, "127.0.0.1", () => {
-      const { port } = server.address();
-      resolve(`http://127.0.0.1:${port}/`);
-    });
-    server.on("error", reject);
+async function updatePdv(win) {
+  if (!win || win.isDestroyed()) return false;
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'question', title: 'Atualizar Ultrabrasa',
+    message: 'Abrir a versão mais recente publicada?',
+    detail: 'Finalize ou salve o pedido em edição antes de continuar. A tela será recarregada. Pedidos já enviados permanecem salvos.',
+    buttons: ['Agora não', 'Atualizar'], defaultId: 0, cancelId: 0,
   });
+  if (response !== 1 || win.isDestroyed()) return false;
+  if (!isAppUrl(win.webContents.getURL())) {
+    await win.loadURL(APP_URL);
+  } else {
+    win.webContents.reloadIgnoringCache();
+  }
+  return true;
 }
 
 function createWindow(url) {
@@ -72,6 +39,9 @@ function createWindow(url) {
 
   win.setMenuBarVisibility(false);
   win.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && (input.key === 'F5' || ((input.control || input.meta) && input.key.toLowerCase() === 'r'))) {
+      event.preventDefault(); void updatePdv(win);
+    }
     if (input.type === 'keyDown' && input.key === 'F11') {
       event.preventDefault();
       win.setFullScreen(!win.isFullScreen());
@@ -83,13 +53,32 @@ function createWindow(url) {
 
   // Open any external link (e.g. WhatsApp share) in the user's browser.
   win.webContents.setWindowOpenHandler(({ url: target }) => {
-    if (target.startsWith("http://") || target.startsWith("https://")) {
+    if (isSafeExternalUrl(target)) {
       shell.openExternal(target);
     }
     return { action: "deny" };
   });
 
-  win.loadURL(url);
+  win.webContents.on('will-navigate', (event, target) => {
+    if (!isAppUrl(target)) {
+      event.preventDefault();
+      if (isSafeExternalUrl(target)) void shell.openExternal(target);
+    }
+  });
+  win.webContents.on('did-fail-load', async (_event, code, _description, _url, isMainFrame) => {
+    if (!isMainFrame || code === -3 || win.isDestroyed()) return;
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning', title: 'Ultrabrasa', message: 'Não foi possível conectar ao PDV.',
+      detail: 'Verifique a internet e tente novamente. Seus pedidos enviados continuam salvos.',
+      buttons: ['Fechar', 'Tentar novamente'], defaultId: 1, cancelId: 0,
+    });
+    if (win.isDestroyed()) return;
+    if (response === 1) void win.loadURL(APP_URL).catch(() => {}); else win.close();
+  });
+  // Avoid a stale HTTP cache; persistent login and local settings are retained.
+  void win.webContents.session.clearCache().then(() => {
+    if (!win.isDestroyed()) return win.loadURL(url);
+  }).catch(() => {});
 }
 
 const locked = app.requestSingleInstanceLock();
@@ -97,17 +86,26 @@ if (!locked) app.quit();
 app.on('second-instance', () => { const win = BrowserWindow.getAllWindows()[0]; if(win){if(win.isMinimized())win.restore();win.focus();} });
 app.whenReady().then(async () => {
   ipcMain.handle('ultraconnect:toggle-fullscreen', event => {
+    if (!isAppUrl(event.senderFrame?.url)) return false;
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return false;
     win.setFullScreen(!win.isFullScreen()); return win.isFullScreen();
   });
-  ipcMain.handle('ultraconnect:is-fullscreen', event => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false);
-  const url = await startServer();
+  ipcMain.handle('ultraconnect:is-fullscreen', event => isAppUrl(event.senderFrame?.url) && (BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false));
+  ipcMain.handle('ultraconnect:update', event => {
+    if (!isAppUrl(event.senderFrame?.url)) return false;
+    return updatePdv(BrowserWindow.fromWebContents(event.sender));
+  });
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Ultrabrasa', submenu: [
+    { label: 'Atualizar PDV publicado', click: () => void updatePdv(BrowserWindow.getFocusedWindow()) },
+    { type: 'separator' }, { role: 'quit', label: 'Sair' },
+  ] }]));
+  const url = APP_URL;
   createWindow(url);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(url);
   });
-}).catch(() => { const { dialog } = require('electron'); dialog.showErrorBox('Ultraconnect', 'Não foi possível abrir o PDV. A porta local 43187 pode estar em uso. Feche a outra instância e tente novamente.'); app.quit(); });
+}).catch(() => { dialog.showErrorBox('Ultraconnect', 'Não foi possível abrir o PDV. Feche o aplicativo e tente novamente.'); app.quit(); });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
