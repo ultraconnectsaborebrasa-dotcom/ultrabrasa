@@ -103,7 +103,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
         </div>
       </header>
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
-        {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
+        {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin} onDelivery={()=>setTab('rotas')}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
           : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
       </main>
       {saving && <div role="status" className="fixed inset-0 z-50 flex items-center justify-center gap-3 bg-background/70 text-foreground"><LoaderCircle className="animate-spin"/>Salvando…</div>}
