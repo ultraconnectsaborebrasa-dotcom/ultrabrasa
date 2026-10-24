@@ -36,3 +36,4 @@
 - Delivery logistics use separate protected tables and allowlisted RPC reads; a snapshot trigger validates and synchronizes new Delivery orders from every submission path, while legacy orders remain compatible.
 - Courier accounts use a separate user_roles value and can access only assigned routes through validated RPCs; no shared PDV snapshot or closed financial history is exposed.
 - Delivery sequencing works without map credentials using neighborhood/address order and Google Maps deep links; optional distance/time fields are reserved for verified map results, never fabricated.
+- Delivery-zone catalog uses sourced municipal operational groupings, preserves free-text addresses and treats unknown locations as unassigned; batches prioritize oldest unassigned orders and cap Maps links at ten stops without claiming traffic optimization.
