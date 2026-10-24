@@ -1,0 +1,15 @@
+import { describe, it, expect } from 'vitest';
+import { deliveryZone, EUNAPOLIS_NEIGHBORHOODS, zoneBatch } from '../lib/eunapolis-delivery';
+import { emptyAddress, type Delivery } from '../lib/delivery';
+import { commitDraft, configurePersistence, getState, replaceState } from '../lib/pdv-store';
+
+const delivery=(id:string,patch:Partial<Delivery>={}):Delivery=>({id,order_id:id,number:1,customer:'',phone:'',address:{...emptyAddress(),neighborhood:'Stela Reis'},created_at:'2026-10-24T00:00:00Z',delivered_at:null,status:'Pronto para entrega',route_id:null,position:0,courier_id:null,total:8,due:8,payment_method:'Pix',change:0,problem:null,items:[],...patch});
+describe('Eunápolis delivery zones',()=>{
+ it('groups Stela Reis and Arnaldão together, separate from Centro',()=>{expect(deliveryZone({...emptyAddress(),neighborhood:'Stela Reis'})?.id).toBe('arnaldao');expect(deliveryZone({...emptyAddress(),neighborhood:'Arnaldão'})?.id).toBe('arnaldao');expect(deliveryZone({...emptyAddress(),neighborhood:'Centro'})?.id).toBe('centro');});
+ it('keeps unknown neighborhoods and other cities unassigned',()=>{expect(deliveryZone({...emptyAddress(),neighborhood:'Bairro não catalogado'})).toBeUndefined();expect(deliveryZone({...emptyAddress(),neighborhood:'Centro',city:'Porto Seguro'})).toBeUndefined();expect(deliveryZone({...emptyAddress(),neighborhood:'Centro',state:'SP'})).toBeUndefined();});
+ it('recognizes accent and local spelling variants',()=>{expect(deliveryZone({...emptyAddress(),neighborhood:'Estela Reis'})?.id).toBe('arnaldao');expect(deliveryZone({...emptyAddress(),neighborhood:'Santa Isabel'})?.id).toBe('alecrim');});
+ it('catalog has no duplicate neighborhoods',()=>{expect(new Set(EUNAPOLIS_NEIGHBORHOODS).size).toBe(EUNAPOLIS_NEIGHBORHOODS.length);expect(EUNAPOLIS_NEIGHBORHOODS).toContain('Pequi');});
+ it('batches only unassigned active deliveries in the same zone, oldest first',()=>{const rows=[delivery('new',{created_at:'2026-10-24T01:00:00Z'}),delivery('old'),delivery('assigned',{route_id:'r'}),delivery('done',{status:'Entregue'}),delivery('cancelled',{status:'Cancelado'}),delivery('travel',{status:'Em rota'}),delivery('center',{address:{...emptyAddress(),neighborhood:'Centro'}})];expect(zoneBatch(rows,'arnaldao').map(d=>d.id)).toEqual(['old','new']);});
+ it('caps batches at ten destinations',()=>{expect(zoneBatch(Array.from({length:12},(_,i)=>delivery(String(i))),'arnaldao')).toHaveLength(10);});
+ it('does not save delivery details on Balcão, Mesa or Retirada orders',()=>{const previous=getState();configurePersistence(null);try {for(const type of ['Balcão','Mesa','Retirada'] as const){replaceState({...previous,orders:[],draft:{...previous.draft,type,tableNumber:1,editingId:undefined,items:[{uid:'i',productId:'p',name:'Espeto',qty:1,price:8,note:''}],delivery:{address:{...emptyAddress(),neighborhood:'Centro',street:'Rua A',number:'1'},paymentMethod:'Pix',cashFor:''}}});const order=commitDraft('cozinha');expect(order?.type).toBe(type);expect(order?.delivery).toBeUndefined();}}finally{replaceState(previous);}});
+});
