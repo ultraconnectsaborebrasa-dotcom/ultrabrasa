@@ -6,7 +6,7 @@ export type OperatorProduct = { id: string; name: string; category: string; stoc
 export type OperatorItem = { productId: string; qty: number; note: string };
 export type OperatorOrder = { id: string; number: number; type: string; tableNumber?: number; customer: string; customerPhone?: string | undefined; status: string; note: string; createdAt: number; own: boolean; total: number | null; items: { name: string; qty: number; price: number | null; note: string }[] };
 export type OperatorHistoryOrder = Omit<OperatorOrder, 'items' | 'total' | 'own'> & { paidAt?: number; items: { name: string; qty: number; note: string }[] };
-export type OperatorData = { products: OperatorProduct[]; orders: OperatorOrder[]; history?: OperatorHistoryOrder[]; ownSales: number; ownOrders: number };
+export type OperatorData = { products: OperatorProduct[]; orders: OperatorOrder[]; history?: OperatorHistoryOrder[]; ownSales: number; ownOrders: number; deliveryFee?: number };
 export const emptyOperator: OperatorData = { products: [], orders: [], ownSales: 0, ownOrders: 0 };
 export async function readOperator(): Promise<OperatorData> {
   const { data, error } = await supabase.rpc('read_pdv_operator');
