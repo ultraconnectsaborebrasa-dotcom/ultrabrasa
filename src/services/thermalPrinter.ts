@@ -241,6 +241,15 @@ export function printOrder(order: Order, serviceFeePct: number, options: { manua
   void drain();
  });
 }
+// Imprime o cupom de entrega com endereço. Manual e sem registro de automática:
+// o entregador pode reimprimir quantas vezes precisar.
+export function printDeliveryTicket(delivery: Delivery) {
+ return new Promise<void>((resolve, reject) => {
+  const order = { id: 'delivery-' + delivery.id, number: delivery.number, items: [] } as unknown as Order;
+  queue.push({ target: undefined, order, pct: 0, manual: true, force: true, text: formatDeliveryTicket(delivery), resolve, reject });
+  void drain();
+ });
+}
 export async function testPrinter(target?: PrintTarget) {
  await connectPrinter();
  const printerName = await ensurePrinter(target);
