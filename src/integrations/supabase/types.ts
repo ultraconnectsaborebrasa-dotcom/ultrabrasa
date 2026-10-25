@@ -305,6 +305,10 @@ export type Database = {
       }
       claim_pdv_admin: { Args: never; Returns: boolean }
       delivery_staff: { Args: never; Returns: boolean }
+      finish_delivery_route: {
+        Args: { new_status: string; route_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
