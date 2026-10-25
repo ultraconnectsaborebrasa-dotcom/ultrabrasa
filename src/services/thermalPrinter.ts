@@ -204,7 +204,7 @@ async function sendText(qz: QZ, printerName: string, text: string) {
  const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:8pt;font-weight:bold;line-height:1.25;white-space:pre;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }
-type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
+type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; text?: string; resolve: () => void; reject: (error: unknown) => void };
 const queue: Job[] = [];
 let working = false;
 async function drain() {
@@ -215,12 +215,12 @@ async function drain() {
    const job = queue.shift()!;
    try {
     if (!job.manual && !job.force && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
-    if (!job.order || !Array.isArray(job.order.items) || job.order.items.length === 0) throw new Error('Pedido sem itens para imprimir.');
-    if (job.order.items.some(i => !i || typeof i.name !== 'string' || !Number.isFinite(Number(i.qty)))) throw new Error('Pedido com itens inválidos; não foi possível imprimir.');
+    if (!job.text && (!job.order || !Array.isArray(job.order.items) || job.order.items.length === 0)) throw new Error('Pedido sem itens para imprimir.');
+    if (!job.text && job.order.items.some(i => !i || typeof i.name !== 'string' || !Number.isFinite(Number(i.qty)))) throw new Error('Pedido com itens inválidos; não foi possível imprimir.');
     await connectPrinter();
     const printerName = await ensurePrinter(job.target);
     log('Printing:', job.order.number, printerName, printerPreferences.printMode);
-    await withTimeout(sendText(await api(), printerName, formatReceipt(job.order, job.pct)));
+    await withTimeout(sendText(await api(), printerName, job.text ?? formatReceipt(job.order, job.pct)));
     if (!job.manual) {
      const ids = printed(); ids.add(job.order.id); saveSet('printedOrderIds', ids);
      const waiting = pending(); waiting.delete(job.order.id); saveSet('pendingOrderIds', waiting);
