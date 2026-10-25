@@ -1,5 +1,6 @@
 import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
+import { addressText, type Delivery } from '@/lib/delivery';
 import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
 
@@ -84,6 +85,29 @@ export function formatReceipt(order: Order, serviceFeePct: number): string {
  if (order.payments?.length) lines.push(...wrap('PAGAMENTO: ' + order.payments.map(p => p.method).join(', ')), line);
  if (order.note) lines.push(...wrap('OBS: ' + order.note), line);
  lines.push(center('FIM DO PEDIDO'), '', '', '', '');
+ return lines.join('\n') + '\n';
+}
+// Cupom de entrega: destaca o endereço completo para o entregador, sem preço por item
+// (o painel de entregas não recebe preço unitário, apenas o total do pedido).
+export function formatDeliveryTicket(delivery: Delivery): string {
+ const date = new Date(delivery.created_at);
+ const lines = [center('ULTRACONNECT'), center('SABOR E BRASA'), line, center('DELIVERY #' + delivery.number), line,
+  'DATA: ' + date.toLocaleDateString('pt-BR'), 'HORA: ' + date.toLocaleTimeString('pt-BR'), line];
+ if (delivery.customer) lines.push(...wrap('CLIENTE: ' + delivery.customer));
+ if (delivery.phone) lines.push(...wrap('WHATSAPP: ' + delivery.phone));
+ lines.push(line, center('ENTREGAR EM:'), ...wrap(addressText(delivery.address)));
+ if (delivery.address.reference) lines.push(...wrap('REF: ' + delivery.address.reference));
+ lines.push(line);
+ for (const item of delivery.items) {
+  lines.push(...wrap(item.qty + 'x ' + item.name));
+  if (item.note) lines.push(...wrap('OBS: ' + item.note));
+ }
+ lines.push(line);
+ if (delivery.total !== null) lines.push(pair('TOTAL:', money(delivery.total)));
+ lines.push(...wrap('PAGAMENTO NA ENTREGA: ' + delivery.payment_method));
+ if (delivery.due !== null) lines.push(pair('A RECEBER:', money(delivery.due)));
+ if ((delivery.change ?? 0) > 0) lines.push(pair('TROCO PARA:', money(delivery.change ?? 0)));
+ lines.push(line, center('FIM DO PEDIDO'), '', '', '', '');
  return lines.join('\n') + '\n';
 }
 // Assinatura digital das requisições QZ Tray: com certificado + assinatura,
@@ -180,7 +204,7 @@ async function sendText(qz: QZ, printerName: string, text: string) {
  const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:8pt;font-weight:bold;line-height:1.25;white-space:pre;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }
-type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; resolve: () => void; reject: (error: unknown) => void };
+type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; text?: string; resolve: () => void; reject: (error: unknown) => void };
 const queue: Job[] = [];
 let working = false;
 async function drain() {
@@ -191,12 +215,12 @@ async function drain() {
    const job = queue.shift()!;
    try {
     if (!job.manual && !job.force && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
-    if (!job.order || !Array.isArray(job.order.items) || job.order.items.length === 0) throw new Error('Pedido sem itens para imprimir.');
-    if (job.order.items.some(i => !i || typeof i.name !== 'string' || !Number.isFinite(Number(i.qty)))) throw new Error('Pedido com itens inválidos; não foi possível imprimir.');
+    if (!job.text && (!job.order || !Array.isArray(job.order.items) || job.order.items.length === 0)) throw new Error('Pedido sem itens para imprimir.');
+    if (!job.text && job.order.items.some(i => !i || typeof i.name !== 'string' || !Number.isFinite(Number(i.qty)))) throw new Error('Pedido com itens inválidos; não foi possível imprimir.');
     await connectPrinter();
     const printerName = await ensurePrinter(job.target);
     log('Printing:', job.order.number, printerName, printerPreferences.printMode);
-    await withTimeout(sendText(await api(), printerName, formatReceipt(job.order, job.pct)));
+    await withTimeout(sendText(await api(), printerName, job.text ?? formatReceipt(job.order, job.pct)));
     if (!job.manual) {
      const ids = printed(); ids.add(job.order.id); saveSet('printedOrderIds', ids);
      const waiting = pending(); waiting.delete(job.order.id); saveSet('pendingOrderIds', waiting);
@@ -214,6 +238,15 @@ export function printOrder(order: Order, serviceFeePct: number, options: { manua
   if (!options.manual && (queue.some(j => !j.manual && j.order.id === order.id) || (!options.force && wasAutomaticallyPrinted(order.id)))) { resolve(); return; }
   log('Queue order:', order.number);
   queue.push({ target: options.target, order, pct: serviceFeePct, manual: Boolean(options.manual), force: Boolean(options.force), resolve, reject });
+  void drain();
+ });
+}
+// Imprime o cupom de entrega com endereço. Manual e sem registro de automática:
+// o entregador pode reimprimir quantas vezes precisar.
+export function printDeliveryTicket(delivery: Delivery) {
+ return new Promise<void>((resolve, reject) => {
+  const order = { id: 'delivery-' + delivery.id, number: delivery.number, items: [] } as unknown as Order;
+  queue.push({ target: undefined, order, pct: 0, manual: true, force: true, text: formatDeliveryTicket(delivery), resolve, reject });
   void drain();
  });
 }
