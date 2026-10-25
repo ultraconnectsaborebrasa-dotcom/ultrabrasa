@@ -1,5 +1,6 @@
 import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
+import { addressText, type Delivery } from '@/lib/delivery';
 import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
 
@@ -84,6 +85,29 @@ export function formatReceipt(order: Order, serviceFeePct: number): string {
  if (order.payments?.length) lines.push(...wrap('PAGAMENTO: ' + order.payments.map(p => p.method).join(', ')), line);
  if (order.note) lines.push(...wrap('OBS: ' + order.note), line);
  lines.push(center('FIM DO PEDIDO'), '', '', '', '');
+ return lines.join('\n') + '\n';
+}
+// Cupom de entrega: destaca o endereço completo para o entregador, sem preço por item
+// (o painel de entregas não recebe preço unitário, apenas o total do pedido).
+export function formatDeliveryTicket(delivery: Delivery): string {
+ const date = new Date(delivery.created_at);
+ const lines = [center('ULTRACONNECT'), center('SABOR E BRASA'), line, center('DELIVERY #' + delivery.number), line,
+  'DATA: ' + date.toLocaleDateString('pt-BR'), 'HORA: ' + date.toLocaleTimeString('pt-BR'), line];
+ if (delivery.customer) lines.push(...wrap('CLIENTE: ' + delivery.customer));
+ if (delivery.phone) lines.push(...wrap('WHATSAPP: ' + delivery.phone));
+ lines.push(line, center('ENTREGAR EM:'), ...wrap(addressText(delivery.address)));
+ if (delivery.address.reference) lines.push(...wrap('REF: ' + delivery.address.reference));
+ lines.push(line);
+ for (const item of delivery.items) {
+  lines.push(...wrap(item.qty + 'x ' + item.name));
+  if (item.note) lines.push(...wrap('OBS: ' + item.note));
+ }
+ lines.push(line);
+ if (delivery.total !== null) lines.push(pair('TOTAL:', money(delivery.total)));
+ lines.push(...wrap('PAGAMENTO NA ENTREGA: ' + delivery.payment_method));
+ if (delivery.due !== null) lines.push(pair('A RECEBER:', money(delivery.due)));
+ if ((delivery.change ?? 0) > 0) lines.push(pair('TROCO PARA:', money(delivery.change ?? 0)));
+ lines.push(line, center('FIM DO PEDIDO'), '', '', '', '');
  return lines.join('\n') + '\n';
 }
 // Assinatura digital das requisições QZ Tray: com certificado + assinatura,
