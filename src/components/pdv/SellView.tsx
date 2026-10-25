@@ -5,7 +5,7 @@ import {
   addToDraft, brl, commitDraft, setItem, setState, totals, updateDraft, useStore, emptyDraft, type OrderType, type Product,
 } from "@/lib/pdv-store";
 import { DeliveryFields } from "./DeliveryFields";
-import { emptyDelivery,validateDelivery } from "@/lib/delivery";
+import { emptyDelivery,validateDelivery,deliveryFeeFor } from "@/lib/delivery";
 import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
 import { TableSelector } from './TableSelector';
@@ -148,7 +148,7 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
           {draft.type==='Mesa'&&<TableSelector value={draft.tableNumber} onChange={tableNumber=>updateDraft({tableNumber})}/>}
           <input className="field mt-2" placeholder="Nome do cliente (opcional)"
             value={draft.customer} onChange={(e) => updateDraft({ customer: e.target.value })} />
-          {draft.type==='Delivery'&&<DeliveryFields value={draft.delivery??emptyDelivery()} phone={draft.customerPhone??''} onPhoneChange={customerPhone=>updateDraft({customerPhone})} onChange={delivery=>updateDraft({delivery})} onCustomerChange={customer=>updateDraft({customer})}/>}
+          {draft.type==='Delivery'&&<DeliveryFields deliveryFee={settings.deliveryFee} value={draft.delivery??emptyDelivery()} phone={draft.customerPhone??''} onPhoneChange={customerPhone=>updateDraft({customerPhone})} onChange={delivery=>updateDraft({delivery,fee:deliveryFeeFor(draft.type,delivery,settings.deliveryFee)})} onCustomerChange={customer=>updateDraft({customer})}/>}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">

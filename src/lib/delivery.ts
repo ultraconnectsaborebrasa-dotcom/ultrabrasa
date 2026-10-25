@@ -1,7 +1,9 @@
 export type DeliveryAddress = { label: string; street: string; number: string; neighborhood: string; city: string; state: string; postalCode: string; complement: string; reference: string; latitude: string; longitude: string };
-export type DeliveryInput = { address: DeliveryAddress; paymentMethod: string; cashFor: string };
+export type DeliveryInput = { address: DeliveryAddress; paymentMethod: string; cashFor: string; chargeDeliveryFee?: boolean };
 export const emptyAddress = (): DeliveryAddress => ({label:'Casa',street:'',number:'',neighborhood:'',city:'Eunápolis',state:'BA',postalCode:'',complement:'',reference:'',latitude:'',longitude:''});
-export const emptyDelivery = (): DeliveryInput => ({address:emptyAddress(),paymentMethod:'Pix',cashFor:''});
+export const emptyDelivery = (): DeliveryInput => ({address:emptyAddress(),paymentMethod:'Pix',cashFor:'',chargeDeliveryFee:false});
+export const deliveryFeeFor = (type:string,input:DeliveryInput|undefined,configured:number) => type==='Delivery'&&input?.chargeDeliveryFee===true?configured:0;
+export const canFinishDelivery = (status:DeliveryStatus) => !['Entregue','Cancelado'].includes(status);
 export const DELIVERY_STATUSES = ['Aguardando preparo','Pronto para entrega','Em rota','Entregue','Cancelado'] as const;
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number];
 export type Delivery = { id:string; order_id:string; number:number; customer:string; phone:string; address:DeliveryAddress; created_at:string; delivered_at:string|null; status:DeliveryStatus; route_id:string|null; position:number; courier_id:string|null; total:number|null; due:number|null; payment_method:string; change:number|null; problem:string|null; items:{name:string;qty:number;note?:string}[] };
