@@ -9,6 +9,15 @@ const original = structuredClone(getState());
 afterEach(() => { cleanup(); replaceState(structuredClone(original)); });
 
 describe('Configurações do administrador', () => {
+  it('selecionar Delivery não aplica a taxa configurada automaticamente', () => {
+    replaceState({...structuredClone(original),settings:{...original.settings,deliveryFee:5}});
+    updateDraft({type:'Delivery'});
+    expect(getState().draft.fee).toBe(0);
+    updateDraft({fee:5});
+    expect(getState().draft.fee).toBe(5);
+    updateDraft({type:'Balcão'});
+    expect(getState().draft.fee).toBe(0);
+  });
   it('salva a preferência de serviço e aplica apenas aos próximos pedidos de mesa', () => {
     render(<SettingsView goAdmin={() => {}}/>);
     fireEvent.click(screen.getByRole('button', { name: 'Vendas e taxas' }));
