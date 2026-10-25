@@ -181,6 +181,7 @@ export function updateDraft(patch: Partial<State["draft"]>) {
     const d = { ...s.draft, ...patch };
     if (patch.type) {
       d.fee = 0;
+      if (d.delivery) d.delivery = { ...d.delivery, chargeDeliveryFee: false };
       d.serviceFee = patch.type === "Mesa" && s.settings.autoServiceOnTable !== false;
     }
     return { ...s, draft: d };
