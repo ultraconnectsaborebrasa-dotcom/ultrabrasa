@@ -38,7 +38,7 @@ const TABS = [
   { id: "produtos", label: "Produtos", icon: Package, key: "4" },
   { id: "caixa", label: "Caixa", icon: Wallet, key: "5" },
   { id: "ajustes", label: "Ajustes", icon: Settings, key: "6" },
-  { id: "historico", label: "Histórico", icon: History, key: "7" },
+  { id: "historico", label: "Vendas", icon: History, key: "7" },
   { id: "admin", label: "Admin", icon: ShieldCheck, key: "8" },
   { id: "rotas", label: "Rotas", icon: ShoppingCart, key: "r" },
   { id: "clientes", label: "Clientes", icon: Users, key: "0" },
