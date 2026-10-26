@@ -162,6 +162,13 @@
       "when": 1792945222953,
       "tag": "0022_optional_delivery_fee_and_route_closure",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793031986608,
+      "tag": "0023_close_paid_deliveries",
+      "breakpoints": true
     }
   ]
 }
