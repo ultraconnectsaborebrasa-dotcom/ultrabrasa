@@ -169,6 +169,13 @@
       "when": 1793031986608,
       "tag": "0023_close_paid_deliveries",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793032107841,
+      "tag": "0024_manual_delivery_closure",
+      "breakpoints": true
     }
   ]
 }
