@@ -36,6 +36,7 @@
 - The uploaded brand logo is served through its asset pointer and shared Brand component; never redraw it for navigation or account screens.
 
 - Delivery logistics use separate protected tables and allowlisted RPC reads; a snapshot trigger validates and synchronizes new Delivery orders from every submission path, while legacy orders remain compatible.
+- All order-print paths include Delivery addresses; when role-specific order projections omit them, resolve the matching order through the existing authorized delivery read and stop printing on a missing address rather than emit an incomplete ticket.
 - Delivery fees are opt-in per new order and priced from shared settings; route completion/cancellation uses an atomic authorized RPC that preserves closed stops and does not change sale/payment records.
 - Courier accounts use a separate user_roles value and can access only assigned routes through validated RPCs; no shared PDV snapshot or closed financial history is exposed.
 - Delivery sequencing works without map credentials using neighborhood/address order and Google Maps deep links; optional distance/time fields are reserved for verified map results, never fabricated.
