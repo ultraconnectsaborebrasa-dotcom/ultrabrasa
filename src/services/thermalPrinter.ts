@@ -1,6 +1,7 @@
 import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
 import { addressText, type Delivery } from '@/lib/delivery';
+import { receiptOrderWithDelivery } from './deliveryReceipt';
 import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
 
@@ -69,6 +70,11 @@ export function formatReceipt(order: Order, serviceFeePct: number): string {
   'DATA: ' + date.toLocaleDateString('pt-BR'), 'HORA: ' + date.toLocaleTimeString('pt-BR'), line, ...wrap('TIPO: ' + String(order.type).toUpperCase())];
  if (order.tableNumber) lines.push('MESA: ' + order.tableNumber);
  if (order.customer) lines.push(...wrap('CLIENTE: ' + order.customer));
+  if (order.type === 'Delivery' && order.delivery?.address) {
+   if (order.customerPhone) lines.push(...wrap('WHATSAPP: ' + order.customerPhone));
+   lines.push(line, center('ENTREGAR EM:'), ...wrap(addressText(order.delivery.address)));
+   if (order.delivery.address.reference) lines.push(...wrap('REF: ' + order.delivery.address.reference));
+  }
  lines.push(line);
  for (const item of order.items) {
   lines.push(...wrap(item.qty + 'x ' + item.name));
@@ -212,15 +218,17 @@ async function drain() {
  working = true;
  try {
   while (queue.length) {
-   const job = queue.shift()!;
+    const job = queue.shift();
+    if (!job) continue;
    try {
     if (!job.manual && !job.force && wasAutomaticallyPrinted(job.order.id)) { job.resolve(); continue; }
     if (!job.text && (!job.order || !Array.isArray(job.order.items) || job.order.items.length === 0)) throw new Error('Pedido sem itens para imprimir.');
     if (!job.text && job.order.items.some(i => !i || typeof i.name !== 'string' || !Number.isFinite(Number(i.qty)))) throw new Error('Pedido com itens inválidos; não foi possível imprimir.');
-    await connectPrinter();
+     const receiptOrder = job.text ? job.order : await receiptOrderWithDelivery(job.order);
+     await connectPrinter();
     const printerName = await ensurePrinter(job.target);
     log('Printing:', job.order.number, printerName, printerPreferences.printMode);
-    await withTimeout(sendText(await api(), printerName, job.text ?? formatReceipt(job.order, job.pct)));
+     await withTimeout(sendText(await api(), printerName, job.text ?? formatReceipt(receiptOrder, job.pct)));
     if (!job.manual) {
      const ids = printed(); ids.add(job.order.id); saveSet('printedOrderIds', ids);
      const waiting = pending(); waiting.delete(job.order.id); saveSet('pendingOrderIds', waiting);
