@@ -28,6 +28,7 @@
 - Operator submissions derive prices, stock and seller identity in a locked database function; client amounts are never accepted, and idempotency prevents duplicate sends.
 - Table selection is structured and validated against the fixed table list; kitchen and floor views share table labels to keep destinations unambiguous.
 - Sales history uses payment timestamps, local inclusive calendar dates, product-ID aggregation, and stored service amounts for new orders to preserve historical details.
+- Administrator daily sales, payment/day summaries and shift bestseller rankings share the sales-history calculation helpers to keep quantities and legacy timestamp fallbacks consistent.
 - Shared state Realtime subscriptions mount only for authorized accounts and clean up on exit; monotonic revisions and deferred updates preserve local drafts and in-flight writes.
 - New-order alerts observe only each role's authorized order list, baseline the first load, and unlock browser audio after interaction; this avoids historical alerts and preserves permission boundaries.
 - Desktop uses an isolated preload exposing only fullscreen and confirmed reload actions, validates the exact app origin for IPC and sends external HTTP(S) links to the browser; F11/Escape remain in the main process.

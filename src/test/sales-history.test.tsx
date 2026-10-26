@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {filterSales,summarizeSales} from '@/lib/sales-history';
+import {filterSales,summarizeSales,paidSalesSince} from '@/lib/sales-history';
 import {type Order} from '@/lib/pdv-store';
 const sale=(patch:Partial<Order>={}):Order=>({id:'sale-1',number:1,type:'Balcão',customer:'Ana',items:[{uid:'item-1',productId:'p1',name:'Espeto',price:8,qty:3,note:''}],note:'',discount:0,fee:0,serviceFee:false,payments:[{method:'Pix',amount:24}],status:'pago',createdAt:new Date('2026-10-21T23:50:00').getTime(),paidAt:new Date('2026-10-22T00:10:00').getTime(),...patch});
 describe('Histórico de vendas',()=>{
@@ -10,4 +10,7 @@ describe('Histórico de vendas',()=>{
  it('mantém produtos distintos com o mesmo nome separados',()=>{const other=sale({items:[{uid:'2',productId:'p2',name:'Espeto',price:8,qty:1,note:''}]});expect(summarizeSales([sale(),other]).products.map(p=>p.qty)).toEqual([3,1]);});
  it('retorna vazio em intervalo invertido ou inválido',()=>{expect(filterSales([sale()],'2026-10-23','2026-10-21')).toEqual([]);expect(filterSales([sale()],'invalid','')).toEqual([]);});
  it('histórico funciona independentemente da abertura do caixa',()=>{expect(summarizeSales([sale()]).revenue).toBe(24);expect(filterSales([sale()],'','')).toHaveLength(1);});
+ it('separa unidades e recebimentos por dia sem somar cancelamentos',()=>{const rows=[sale(),sale({id:'day2',paidAt:new Date('2026-10-23T10:00:00').getTime()}),sale({id:'cancel',status:'cancelado'})];expect(summarizeSales(rows).days).toEqual([{date:'2026-10-23',count:1,units:3,revenue:24},{date:'2026-10-22',count:1,units:3,revenue:24}]);});
+ it('soma pagamentos divididos nas respectivas formas sem incluir cancelados',()=>{expect(summarizeSales([sale({payments:[{method:'Pix',amount:14},{method:'Dinheiro',amount:10}]}),sale({id:'cancel',status:'cancelado'})]).payments).toEqual([{method:'Pix',amount:14},{method:'Dinheiro',amount:10}]);});
+ it('inclui vendas legadas no turno pela criação quando não há data de pagamento',()=>{const legacy=sale({paidAt:undefined});expect(paidSalesSince([legacy,sale({id:'cancel',status:'cancelado'})],new Date('2026-10-21T00:00:00').getTime()).map(o=>o.id)).toEqual(['sale-1']);expect(paidSalesSince([legacy],new Date('2026-10-22T00:00:00').getTime())).toEqual([]);});
 });

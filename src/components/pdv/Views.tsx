@@ -7,6 +7,7 @@ import {
 import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
 import { SalesHistory } from "./SalesHistory";
+import { paidSalesSince, summarizeSales } from '@/lib/sales-history';
 import { kitchenTone } from "@/lib/pdv-settings";
 import { tableLabel } from '@/lib/pdv-tables';
 import { Button } from '@/components/ui/button';
@@ -159,7 +160,7 @@ export function CashView() {
   const [counted, setCounted] = useState("");
 
   const since = cash.openedAt ?? new Date().setHours(0, 0, 0, 0);
-  const paidOrders = orders.filter((o) => o.status === "pago" && (o.paidAt ?? 0) >= since);
+  const paidOrders = paidSalesSince(orders, since);
   const byMethod = useMemo(() => {
     const m: Record<string, number> = {};
     paidOrders.forEach((o) => o.payments.forEach((p) => (m[p.method] = (m[p.method] ?? 0) + p.amount)));
@@ -170,11 +171,7 @@ export function CashView() {
   const cmv = paidOrders.reduce((a, o) => a + o.items.reduce((x, i) => x + (products.find((p) => p.id === i.productId)?.cost ?? 0) * i.qty, 0), 0);
   const moves = cash.moves.reduce((a, m) => a + (m.kind === "sangria" ? -m.amount : m.amount), 0);
   const expectedCash = cash.initial + (byMethod["Dinheiro"] ?? 0) + moves;
-  const top = useMemo(() => {
-    const m: Record<string, number> = {};
-    paidOrders.forEach((o) => o.items.forEach((i) => (m[i.name] = (m[i.name] ?? 0) + i.qty)));
-    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [paidOrders]);
+  const top = useMemo(() => summarizeSales(paidOrders).products.slice(0, 5), [paidOrders]);
   const goalPct = Math.min(100, (revenue / (settings.dailyGoal || 1)) * 100);
   const n = (s: string) => parseFloat(s.replace(",", ".")) || 0;
 
@@ -203,7 +200,7 @@ export function CashView() {
       </div>
       <div className="grid gap-3 lg:grid-cols-3">
         <Box t="Por forma de pagamento">{settings.paymentMethods.map((m) => <Line key={m} k={m} v={brl(byMethod[m] ?? 0)} />)}</Box>
-        <Box t="Mais vendidos">{top.length ? top.map(([k, v]) => <Line key={k} k={k} v={`${v} un`} />) : <p className="text-sm text-muted-foreground">Sem vendas ainda.</p>}</Box>
+        <Box t="Mais vendidos">{top.length ? top.map(p => <Line key={p.id} k={p.name} v={`${p.qty} un`} />) : <p className="text-sm text-muted-foreground">Sem vendas ainda.</p>}</Box>
         <Box t="Sangria / suprimento">
           <div className="flex gap-1">{(["sangria", "suprimento"] as const).map((k) => <button key={k} onClick={() => setMv({ ...mv, kind: k })} className={`btn flex-1 text-xs ${mv.kind === k ? "btn-primary" : "btn-ghost"}`}>{k}</button>)}</div>
           <input className="field font-mono" placeholder="Valor" inputMode="decimal" value={mv.amount} onChange={(e) => setMv({ ...mv, amount: e.target.value })} />
