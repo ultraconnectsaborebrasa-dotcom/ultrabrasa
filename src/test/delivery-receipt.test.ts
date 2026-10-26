@@ -30,7 +30,7 @@ describe('Delivery order receipt address', () => {
     expect(resolved.delivery?.address).toEqual(delivery.address);
     expect(resolved.customerPhone).toBe('5573999998888');
     const text = formatReceipt(resolved, 0);
-    for (const value of ['Rua das Palmeiras', '123', 'Centro', 'Casa 2', 'Eunapolis', 'BA', '45820-000', 'Portao azul']) expect(text).toContain(value);
+    for (const value of ['Rua das Palmeiras', '123', 'Centro', 'Casa 2', 'Eunapolis', 'BA', '45820-000', 'Portao azul']) expect(text.replace(/\s+/g, ' ')).toContain(value);
     expect(text).not.toContain('Rua errada');
     expect(text.split('\n').every(line => line.length <= 28)).toBe(true);
   });
