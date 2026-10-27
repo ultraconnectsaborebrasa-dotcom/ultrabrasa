@@ -7,3 +7,13 @@ describe('delivery print ticket',()=>{
  it('never exceeds the 58mm line width',()=>{for(const l of formatDeliveryTicket(delivery()).split('\n'))expect(l.length).toBeLessThanOrEqual(28);});
  it('shows payment, amount to collect and change',()=>{const t=formatDeliveryTicket(delivery());expect(t).toContain('Dinheiro');expect(t).toContain('A RECEBER:');expect(t).toContain('TROCO PARA:');});
 });
+describe('route sheet print',()=>{
+ it('lists every stop in order with full address and total to collect',()=>{
+  const t=formatRouteSheet({name:'Rota Centro',courier:'João'},[delivery({number:7,position:1}),delivery({number:8,position:2,phone:'5573888887777'})]);
+  expect(t).toContain('ROTA');expect(t).toContain('Rota Centro');expect(t).toContain('ENTREGADOR: Joao');
+  expect(t).toContain('#7');expect(t).toContain('#8');
+  expect(t).toContain('Rua das Palmeiras');expect(t).toContain('WHATSAPP: 5573888887777');
+  expect(t).toContain('TOTAL A RECEBER:');expect(t).toContain('90,00');
+ });
+ it('never exceeds the 58mm line width',()=>{for(const l of formatRouteSheet({name:'Rota Centro',courier:'João'},[delivery()]).split('\n'))expect(l.length).toBeLessThanOrEqual(28);});
+});
