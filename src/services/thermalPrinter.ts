@@ -116,6 +116,33 @@ export function formatDeliveryTicket(delivery: Delivery): string {
  lines.push(line, center('FIM DO PEDIDO'), '', '', '', '');
  return lines.join('\n') + '\n';
 }
+// Folha da rota: sequência de paradas com endereço completo para o entregador.
+export function formatRouteSheet(route: { name: string; courier?: string | null }, stops: Delivery[]): string {
+ const now = new Date();
+ const lines = [center('ULTRACONNECT'), center('SABOR E BRASA'), line, center('ROTA'), ...wrap(route.name), line,
+  'DATA: ' + now.toLocaleDateString('pt-BR'), 'HORA: ' + now.toLocaleTimeString('pt-BR'),
+  ...wrap('ENTREGADOR: ' + (route.courier || 'Sem entregador')), line];
+ stops.forEach((stop, index) => {
+  lines.push(...wrap(`${index + 1}. #${stop.number} ${stop.customer || 'Cliente'}`));
+  lines.push(...wrap(addressText(stop.address)));
+  if (stop.address.reference) lines.push(...wrap('REF: ' + stop.address.reference));
+  if (stop.phone) lines.push(...wrap('WHATSAPP: ' + stop.phone));
+  lines.push(...wrap('PAGAMENTO: ' + stop.payment_method));
+  if (stop.due !== null) lines.push(pair('A RECEBER:', money(stop.due)));
+  lines.push(line);
+ });
+ const due = stops.reduce((n, s) => n + (s.due ?? 0), 0);
+ if (due) lines.push(pair('TOTAL A RECEBER:', money(due)));
+ lines.push(center('FIM DA ROTA'), '', '', '', '');
+ return lines.join('\n') + '\n';
+}
+export function printRouteSheet(route: { name: string; courier?: string | null }, stops: Delivery[]) {
+ return new Promise<void>((resolve, reject) => {
+  const order = { id: 'route-' + route.name + '-' + Date.now(), number: 0, items: [] } as unknown as Order;
+  queue.push({ target: undefined, order, pct: 0, manual: true, force: true, text: formatRouteSheet(route, stops), resolve, reject });
+  void drain();
+ });
+}
 // Assinatura digital das requisições QZ Tray: com certificado + assinatura,
 // o QZ Tray não abre a janela de autorização a cada impressão.
 let signingKey: Promise<CryptoKey> | null = null;
