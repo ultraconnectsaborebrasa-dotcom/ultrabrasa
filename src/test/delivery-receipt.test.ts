@@ -34,6 +34,11 @@ describe('Delivery order receipt address', () => {
     expect(text).not.toContain('Rua errada');
     expect(text.split('\n').every(line => line.length <= 28)).toBe(true);
   });
+  it('looks up the address when the saved one is empty or type casing differs', async () => {
+    rpc.mockResolvedValue({ data: { deliveries: [{ order_id: 'delivery-order', address: delivery.address, phone: '', payment_method: 'Pix' }] }, error: null });
+    const resolved = await receiptOrderWithDelivery(order({ type: 'delivery' as Order['type'], delivery: { ...delivery, address: emptyDelivery().address } }));
+    expect(formatReceipt(resolved, 0)).toContain('Rua das Palmeiras');
+  });
   it('uses the saved address without querying again', async () => {
     const original = order({ delivery });
     expect(await receiptOrderWithDelivery(original)).toBe(original);
