@@ -1,7 +1,7 @@
 import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
 import { addressText, type Delivery } from '@/lib/delivery';
-import { receiptOrderWithDelivery } from './deliveryReceipt';
+import { receiptOrderWithDelivery, isDeliveryOrder } from './deliveryReceipt';
 import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
 
@@ -70,7 +70,7 @@ export function formatReceipt(order: Order, serviceFeePct: number): string {
   'DATA: ' + date.toLocaleDateString('pt-BR'), 'HORA: ' + date.toLocaleTimeString('pt-BR'), line, ...wrap('TIPO: ' + String(order.type).toUpperCase())];
  if (order.tableNumber) lines.push('MESA: ' + order.tableNumber);
  if (order.customer) lines.push(...wrap('CLIENTE: ' + order.customer));
-  if (order.type === 'Delivery' && order.delivery?.address) {
+  if (isDeliveryOrder(order) && order.delivery?.address) {
    if (order.customerPhone) lines.push(...wrap('WHATSAPP: ' + order.customerPhone));
    lines.push(line, center('ENTREGAR EM:'), ...wrap(addressText(order.delivery.address)));
    if (order.delivery.address.reference) lines.push(...wrap('REF: ' + order.delivery.address.reference));
