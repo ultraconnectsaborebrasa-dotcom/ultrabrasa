@@ -295,6 +295,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_pdv_cashier_items: {
+        Args: { items: Json; order_id: string }
+        Returns: undefined
+      }
       advance_pdv_cashier_order: {
         Args: { new_status: string; order_id: string }
         Returns: undefined
