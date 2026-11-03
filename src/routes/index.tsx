@@ -62,7 +62,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const saving = useSaving();
   const sync = useSyncStatus();
   const alerts = useOrderAlerts();
-  const tabs = TABS.filter(t=>admin || !['produtos','ajustes','admin','clientes','whatsapp'].includes(t.id));
+  const tabs = TABS.filter(t=>admin || !['produtos','ajustes','admin','clientes','whatsapp','cardapio'].includes(t.id));
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.altKey) { const t = tabs.find((x) => x.key === e.key); if (t) { e.preventDefault(); setTab(t.id); } }
