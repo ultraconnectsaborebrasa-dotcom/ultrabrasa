@@ -12,6 +12,8 @@ import { kitchenTone } from "@/lib/pdv-settings";
 import { tableLabel } from '@/lib/pdv-tables';
 import { Button } from '@/components/ui/button';
 import { printOrder } from '@/services/thermalPrinter';
+import { supabase } from '@/integrations/supabase/client';
+import { ReceiptReview } from './ReceiptReview';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -50,8 +52,8 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button className="btn btn-ghost text-xs" onClick={() => { loadOrderToDraft(o); goSell(); }}><Pencil size={13} />Editar</button>
                 <button className="btn btn-ghost text-xs" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={13} />Imprimir</button>
-                {admin && <button className="btn btn-ghost text-xs text-destructive" onClick={() => confirm(`Cancelar comanda #${o.number}? O estoque será devolvido.`) && setOrderStatus(o.id, "cancelado")}>Cancelar</button>}
-                <button className="btn btn-primary text-xs" onClick={() => cashOpen ? setPaying(o) : toast.error("Abra o caixa primeiro.")}>Cobrar</button>
+                {admin && <Button variant="destructive" size="sm" onClick={() => {const reason=window.prompt(`Motivo para cancelar #${o.number}? Cancelar não estorna pagamentos.`);if(reason?.trim())void supabase.rpc('close_pdv_order',{_id:o.id,_reason:reason}).then(r=>r.error?toast.error(r.error.message):toast.success('Pedido cancelado'));}}>Cancelar</Button>}
+                <Button size="sm" disabled={o.paymentStatus==='pago'||o.payments.length>0} onClick={() => cashOpen ? setPaying(o) : toast.error("Abra o caixa primeiro.")}>{o.paymentStatus==='pago'?'Pago':'Cobrar'}</Button>
               </div>
             </div>
           );
@@ -163,7 +165,7 @@ export function CashView() {
   const paidOrders = paidSalesSince(orders, since);
   const byMethod = useMemo(() => {
     const m: Record<string, number> = {};
-    paidOrders.forEach((o) => o.payments.forEach((p) => (m[p.method] = (m[p.method] ?? 0) + p.amount)));
+    paidOrders.forEach((o) => o.payments.filter(p=>p.verification!=='unverified').forEach((p) => (m[p.method] = (m[p.method] ?? 0) + p.amount)));
     return m;
   }, [paidOrders]);
   const revenue = Object.values(byMethod).reduce((a, b) => a + b, 0);
@@ -187,6 +189,8 @@ export function CashView() {
   return (
     <div className="space-y-5">
       <Header title="Caixa do turno" sub={`Aberto em ${new Date(cash.openedAt ?? since).toLocaleString("pt-BR")}`} />
+      <p className="text-sm text-warning">Baixas por comprovante ainda não verificadas: {brl(summarizeSales(paidOrders).unverified)}</p>
+      <ReceiptReview/>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi k="Faturamento" v={brl(revenue)} />
         <Kpi k="Pedidos · ticket médio" v={`${paidOrders.length} · ${brl(ticket)}`} />

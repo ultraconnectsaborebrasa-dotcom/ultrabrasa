@@ -16,7 +16,7 @@ export type Product = {
 };
 export type CartItem = { uid: string; productId: string; name: string; price: number; qty: number; note: string };
 export type OrderType = "Balcão" | "Mesa" | "Retirada" | "Delivery";
-export type Payment = { method: string; amount: number };
+export type Payment = { method: string; amount: number; receiptId?: string; origin?: string; verification?: 'unverified'|'confirmed'|'bank_confirmed' };
 export type OrderStatus = "aberta" | "cozinha" | "pronto" | "pago" | "cancelado";
 export type Order = {
   id: string;
@@ -32,6 +32,7 @@ export type Order = {
   status: OrderStatus;
   createdAt: number;
   paidAt?: number | undefined;
+  paymentStatus?: 'pago'|'pendente';
   delivery?: DeliveryInput | undefined;
   customerPhone?: string | undefined;
   sellerId?: string;
@@ -164,7 +165,7 @@ export function totals(o: { items: CartItem[]; discount: number; fee: number; se
   const total = Math.max(0, sub - o.discount + o.fee + service);
   return { sub, service, total };
 }
-export const paid = (o: Order) => o.payments.reduce((a, p) => a + p.amount, 0);
+export const paid = (o: Order) => o.payments.reduce((a, p) => a + (p.verification==='unverified'?0:p.amount), 0);
 
 // ---- ações do rascunho
 export function addToDraft(prod: Product) {
@@ -234,6 +235,7 @@ export function setOrderStatus(id: string, status: OrderStatus, payments?: Payme
   setState((s) => {
     const o = s.orders.find((x) => x.id === id);
     if (!o) return s;
+    if (o.status === 'cancelado') return s;
     let products = s.products;
     if (status === "cancelado" && o.status !== "cancelado") products = applyStock(s, o.items, 1);
     return {
