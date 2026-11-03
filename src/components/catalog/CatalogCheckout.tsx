@@ -13,7 +13,7 @@ function PixBox() {
       <p className="font-bold">Pix (celular): {PIX_KEY.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3')}</p>
       <p>Favorecido: Ultraconnect LTDA</p>
       <Button type="button" variant="outline" size="sm" onClick={() => { navigator.clipboard?.writeText(PIX_KEY).then(() => setCopied(true)); }}>{copied ? 'Chave copiada!' : 'Copiar chave Pix'}</Button>
-      <p className="text-muted-foreground">Faça o Pix pelo app do seu banco e envie o comprovante no WhatsApp. A loja confere o pagamento antes de confirmar.</p>
+      <p className="text-muted-foreground">Faça o Pix pelo app do seu banco e envie o comprovante no WhatsApp. Seu pedido é confirmado assim que o pagamento for conferido.</p>
     </div>
   );
 }
@@ -146,7 +146,7 @@ export function CatalogCheckout({ cart, setCart, open, setOpen }: {
               <div className="grid grid-cols-2 gap-2">
                 {PAYMENTS.map((p) => <Button key={p} variant={form.payment === p ? 'default' : 'outline'} onClick={() => set('payment', p)}>{p === 'Crédito' || p === 'Débito' ? `Cartão de ${p.toLowerCase()}` : p}</Button>)}
               </div>
-              <p className="text-xs text-muted-foreground">Pagamento online ainda não está disponível. Você paga {form.type === 'Delivery' ? 'ao receber' : 'ao retirar'}; a loja confirma o recebimento.</p>
+              <p className="text-xs font-semibold text-primary">Pague no Pix e agilize: a confirmação do pedido segue a ordem dos pagamentos. Envie o comprovante no WhatsApp.</p>
               {form.payment === 'Dinheiro' && <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.needChange} onChange={(e) => set('needChange', e.target.checked)} />Preciso de troco</label>
                 {form.needChange && <input className="field" inputMode="decimal" placeholder="Troco para quanto? (R$)" value={form.cashFor} onChange={(e) => set('cashFor', e.target.value)} />}
