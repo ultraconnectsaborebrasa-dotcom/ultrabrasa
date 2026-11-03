@@ -288,6 +288,13 @@
       "when": 1793693544332,
       "tag": "0040_receipt_review_and_terminal_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793693600490,
+      "tag": "0041_receipt_jobs_and_acceptance_messages",
+      "breakpoints": true
     }
   ]
 }

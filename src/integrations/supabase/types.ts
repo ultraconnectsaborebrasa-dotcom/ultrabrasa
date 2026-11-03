@@ -931,6 +931,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      link_payment_receipt: {
+        Args: { _id: string; _request: string }
+        Returns: undefined
+      }
       lookup_delivery_addresses: {
         Args: { phone_query: string }
         Returns: Json
