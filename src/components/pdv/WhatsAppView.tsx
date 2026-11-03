@@ -35,7 +35,7 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [showCfg, setShowCfg] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [filter,setFilter]=useState('all');const[search,setSearch]=useState('');const[note,setNote]=useState('');
+  const [filter,setFilter]=useState('new');const[search,setSearch]=useState('');const[note,setNote]=useState('');
   const[jobErrors,setJobErrors]=useState<{id:string;phone:string;processing_error:string|null;state:string}[]>([]);
   const[notes,setNotes]=useState<{id:string;body:string;author_name:string|null}[]>([]);
   const[requests,setRequests]=useState<{id:string;phone:string;quoted_total:number;request:unknown;created_at:string}[]>([]);
@@ -97,10 +97,10 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
       <ul className="min-h-0 overflow-y-auto rounded-lg border">
         <li className="p-2"><input aria-label="Buscar conversa" className="field" placeholder="Nome ou WhatsApp" value={search} onChange={e=>setSearch(e.target.value)}/></li>
         {convs.length === 0 && <li className="p-4 text-sm text-muted-foreground">Nenhuma conversa ainda.</li>}
-        {convs.filter(c=>(filter==='all'||c.attendance_status===filter)&&`${c.name} ${c.phone}`.toLowerCase().includes(search.toLowerCase())).map(c => <li key={c.phone}><Button variant="ghost" onClick={() => setActive(c.phone)} className={`h-auto w-full flex-col items-stretch border-b p-3 text-left ${active === c.phone ? 'bg-primary/10' : 'hover:bg-elevated'}`}>
+        {[...convs].sort((a,b)=>(a.awaiting_since?Date.parse(a.awaiting_since):Infinity)-(b.awaiting_since?Date.parse(b.awaiting_since):Infinity)).filter(c=>(filter==='all'||queueOf(c)===filter)&&`${c.name} ${c.phone}`.toLowerCase().includes(search.toLowerCase())).map(c => <li key={c.phone}><Button variant="ghost" onClick={() => setActive(c.phone)} className={`h-auto w-full flex-col items-stretch border-b p-3 text-left ${active === c.phone ? 'bg-primary/10' : 'hover:bg-elevated'}`}>
           <div className="flex justify-between gap-2"><span className="truncate font-semibold">{c.name || `+${c.phone}`}</span>{c.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-success px-1 text-[10px] text-background">{c.unread}</span>}</div>
           <div className="truncate text-xs text-muted-foreground">{c.last_message}</div>
-          <div className="flex flex-wrap justify-between gap-1 text-[10px] text-muted-foreground"><span>{c.assigned_name||'Sem responsável'}</span>{c.awaiting_since&&<span className={Date.now()-Date.parse(c.awaiting_since)>(cfg?.business.reminderMinutes??5)*60000?'text-warning':''}>{Math.floor((Date.now()-Date.parse(c.awaiting_since))/60000)} min aguardando</span>}</div>
+          <div className="flex flex-wrap justify-between gap-1 text-[10px] text-muted-foreground"><span className={c.assigned_name?'font-semibold text-foreground':''}>{c.assigned_name?`Responsável: ${c.assigned_name}`:'Sem responsável'}</span>{c.attendance_status==='needs_reply'&&c.assigned_name&&<span className="rounded bg-warning/20 px-1 font-semibold text-warning">Precisa de resposta</span>}{c.awaiting_since&&<span className={Date.now()-Date.parse(c.awaiting_since)>(cfg?.business.reminderMinutes??5)*60000?'text-warning':''}>{Math.floor((Date.now()-Date.parse(c.awaiting_since))/60000)} min aguardando</span>}</div>
         </Button></li>)}
       </ul>
       <div className="flex min-h-[360px] flex-col rounded-lg border">
