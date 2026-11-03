@@ -14,6 +14,7 @@ import {WhatsAppCustomerCard} from './WhatsAppCustomerCard';
 import {refreshWhatsAppConversations} from '@/lib/whatsapp-alerts';
 import {ReceiptReview} from './ReceiptReview';
 import {ReceiptRegistration} from './ReceiptRegistration';
+import {retryReceiptAnalysis} from '@/lib/receipt-actions.functions';
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status:string; assigned_name:string|null; automation_paused:boolean; awaiting_since:string|null };
 type Msg = { id: string; direction: string; source: string; kind: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
@@ -77,6 +78,23 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
     try { const r = await syncFn(); toast.message('Pedido de importação enviado', { description: r.results.join(' · ') }); } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha'); } finally { setBusy(false); }
   }
   const orderMsg = (o: Order) => `Olá${o.customer ? `, ${o.customer}` : ''}! Pedido #${o.number}: ${STATUS_LABEL[o.status] ?? o.status}.`;
+
+  const [linkingMsg,setLinkingMsg]=useState<string|null>(null);
+  const linkableOrders=(o:Order)=>o.status!=='cancelado'&&o.paymentStatus!=='pago'&&!o.payments.length;
+  async function linkReceipt(messageId:string,order:Order){
+    setBusy(true);
+    try{
+      const r=await supabase.rpc('register_staff_receipt',{_message:messageId,_order:order.id,_path:null});
+      if(r.error)throw r.error;
+      toast.success(`Comprovante vinculado ao pedido #${order.number} — conferência pendente no caixa`);
+      setLinkingMsg(null);
+    }catch(e){
+      const msg=e instanceof Error?e.message:'Falha ao vincular';
+      if(msg.includes('ainda não baixado')){
+        try{await retryFn({data:{messageId}});toast.message('Arquivo recuperado — tente vincular de novo');}catch(re){toast.error(re instanceof Error?re.message:'Não foi possível processar o arquivo');}
+      }else toast.error(msg);
+    }finally{setBusy(false);}
+  }
 
   return <section className="mx-auto flex h-full max-w-7xl flex-col gap-3">
     <div className="flex flex-wrap items-center gap-3 border-b pb-3">
