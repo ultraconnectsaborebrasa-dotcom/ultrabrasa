@@ -35,6 +35,12 @@ export function missingOrderFields(d: ConversationDraft) {
   if (d.payment === 'Dinheiro' && d.cashFor === null) missing.push('troco (ou sem troco)');
   return missing;
 }
+/** Endereço de entrega informado implica Delivery; evita repetir a pergunta do endereço. */
+export function normalizeDraft(d: ConversationDraft): ConversationDraft {
+  const out = { ...d, address: { ...d.address, city: 'Eunápolis' } };
+  if (!out.type && (out.address.street || out.address.neighborhood)) out.type = 'Delivery';
+  return out;
+}
 /** Resumo só com pedido válido: itens com quantidade, total do cadastro > 0, entrega/retirada, endereço e pagamento. */
 export function summaryReady(d: ConversationDraft, total: number, missing = missingOrderFields(d)) {
   return missing.length === 0 && d.items.length > 0 && d.items.every(i => Number.isFinite(i.qty) && i.qty > 0 && !!i.productId)
@@ -69,7 +75,7 @@ export function followUpMessage(missing: string[]) {
   const has=(k:string)=>missing.includes(k);
   const addr=['rua','número','bairro'].filter(has);
   if(has('itens e quantidades'))return 'Quantas marmitas você vai querer?';
-  if(has('entrega ou retirada')||addr.length===3)return 'Me passa a rua, o número e o bairro da entrega.';
+  if(addr.length===3||has('entrega ou retirada')&&!has('itens e quantidades'))return 'Me passa a rua, o número e o bairro da entrega.';
   if(addr.length===1&&addr[0]==='número')return 'Me passa só o número da casa.';
   if(addr.length===1&&addr[0]==='bairro')return 'Me passa só o bairro.';
   if(addr.length)return `Me passa ${addr.length===1?'só ':''}${addr.map(a=>a==='número'?'o número da casa':`o ${a}`).join(', ').replace(/, ([^,]*)$/,' e $1')}.`;
