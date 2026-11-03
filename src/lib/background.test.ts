@@ -11,13 +11,16 @@ describe('runAfterResponse', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     let held: Promise<unknown> | undefined;
     const waitUntil = vi.fn((task: Promise<unknown>) => { held = task; });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
     let done = false;
     await runAfterResponse(requestWith({ waitUntil }), 'wa', async () => {
-      await Promise.resolve();
+      await gate;
       done = true;
     });
     expect(waitUntil).toHaveBeenCalledTimes(1);
     expect(done).toBe(false);
+    release();
     await held;
     expect(done).toBe(true);
   });
