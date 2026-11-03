@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_products: {
+        Row: {
+          description: string
+          featured: boolean
+          illustrative: boolean
+          image_url: string | null
+          product_id: string
+          published: boolean
+          sort: number
+          updated_at: string
+        }
+        Insert: {
+          description?: string
+          featured?: boolean
+          illustrative?: boolean
+          image_url?: string | null
+          product_id: string
+          published?: boolean
+          sort?: number
+          updated_at?: string
+        }
+        Update: {
+          description?: string
+          featured?: boolean
+          illustrative?: boolean
+          image_url?: string | null
+          product_id?: string
+          published?: boolean
+          sort?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalog_settings: {
+        Row: {
+          config: Json
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       delivery_addresses: {
         Row: {
           address: Json
@@ -689,7 +740,20 @@ export type Database = {
       read_delivery_board: { Args: never; Returns: Json }
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }
+      read_public_catalog: { Args: never; Returns: Json }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
+      save_catalog_product: {
+        Args: {
+          _description: string
+          _featured: boolean
+          _illustrative: boolean
+          _image_url: string
+          _product_id: string
+          _published: boolean
+          _sort: number
+        }
+        Returns: undefined
+      }
       save_customer_delivery_address: {
         Args: { address_id?: string; customer: string; input?: Json }
         Returns: undefined

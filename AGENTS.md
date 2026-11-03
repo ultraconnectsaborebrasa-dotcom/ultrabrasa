@@ -9,12 +9,7 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-## Desktop packaging (Electron)
-
-- The connected Windows edition loads the fixed HTTPS published app, not a bundled snapshot; web updates arrive on opening after publication without rebuilding the executable. Do not ship server output or secrets.
-- Package with `@electron/packager --platform=win32 --arch=x64 --electron-version=<installed>`, never electron-builder (7zip errors in the sandbox). Keep the output outside the project directory (`electron-release` exceeds the repo per-file commit limit) — build to /tmp or move it out before finishing.
-- Desktop remains single-instance with persistent browser storage on the published origin; clear only HTTP cache, never account storage, and require confirmation before a manual reload so active drafts are not silently lost. Native Electron updates still require a new verified package.
-- Windows CI installs the Lightning CSS native package at the resolved wrapper version and validates a transform before building; this prevents missing or mismatched optional Windows binaries without changing project dependencies.
+Subdirectories may have their own AGENTS.md (desktop rules: electron/AGENTS.md); read it before changing files there.
 
 ## PDV access and persistence
 - Public home renders an inline account entry until a verified Cloud user has a database role; database RLS and RPC authorization enforce permissions independently of the UI.
@@ -31,7 +26,6 @@
 - Administrator daily sales, payment/day summaries and shift bestseller rankings share the sales-history calculation helpers to keep quantities and legacy timestamp fallbacks consistent.
 - Shared state Realtime subscriptions mount only for authorized accounts and clean up on exit; monotonic revisions and deferred updates preserve local drafts and in-flight writes.
 - New-order alerts observe only each role's authorized order list, baseline the first load, and unlock browser audio after interaction; this avoids historical alerts and preserves permission boundaries.
-- Desktop uses an isolated preload exposing only fullscreen and confirmed reload actions, validates the exact app origin for IPC and sends external HTTP(S) links to the browser; F11/Escape remain in the main process.
 - Settings use an administrator-only grouped editor with explicit validated saves; optional settings retain legacy defaults so existing shared snapshots remain compatible.
 - The uploaded brand logo is served through its asset pointer and shared Brand component; never redraw it for navigation or account screens.
 
@@ -42,3 +36,4 @@
 - Delivery sequencing works without map credentials using neighborhood/address order and Google Maps deep links; optional distance/time fields are reserved for verified map results, never fabricated.
 - Delivery-zone catalog uses sourced municipal operational groupings, preserves free-text addresses and treats unknown locations as unassigned; batches prioritize oldest unassigned orders and cap Maps links at ten stops without claiming traffic optimization.
 - WhatsApp stays official; attendance (queues, replies, assignment/transfer, order acceptance) is open to admin and cashier via wa_staff checks in RPCs, RLS and server functions, while connection, history sync and automation settings stay admin-only: signed durable inbox, leased deduplicated jobs, monotonic provider callbacks; attendance/request/payment states are independent. Atomic acceptance revalidates prices through existing stock-authoritative submission. Ambiguous sends and provider denials pause rather than replay.
+- Digital catalog metadata (photos, descriptions, publish/sort) lives in catalog tables keyed by PDV product id and is read publicly only through an allowlisted security-definer RPC; prices, stock and availability always come from the shared PDV snapshot so the menu never diverges from the PDV.

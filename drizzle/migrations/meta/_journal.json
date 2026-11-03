@@ -232,6 +232,13 @@
       "when": 1793680251399,
       "tag": "0032_whatsapp_cashier_access",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793682212923,
+      "tag": "0033_digital_catalog",
+      "breakpoints": true
     }
   ]
 }
