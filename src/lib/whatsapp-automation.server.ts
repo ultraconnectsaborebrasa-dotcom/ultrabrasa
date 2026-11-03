@@ -79,8 +79,9 @@ async function interpret(db:Admin,j:Job){
   if(!updated.length)return;
   const hadAuto=messages.some(m=>m.direction==='out');
   if(period==='lunch'&&!hadAuto&&!d.items.length&&!d.address.street&&!d.address.neighborhood)reply=initialLunchMessage(b)+(missing.includes('nome')?'\nQual seu nome?':'');
-  if(period==='night'&&!hadAuto&&!d.items.length)reply=`Olá! Nosso cardápio disponível:\n${catalog.filter(p=>/hamb|espet|acomp/i.test(p.name+' '+p.category)).map(p=>`${p.name} — ${p.price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`).join('\n')}\n${reply}`;
-  if(parsed.wantsPdf||period==='night'&&!hadAuto){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não foi cadastrado. Nossa equipe pode ajudar.';}
+  if(period==='night'&&!hadAuto&&!d.items.length)reply=`Oi! Que bom te ver por aqui 😊 Hoje à noite temos:\n${catalog.filter(p=>/hamb|espet|acomp/i.test(p.name+' '+p.category)).map(p=>`${p.name} — ${p.price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`).join('\n')}\n${reply}`;
+  if(parsed.wantsPdf||period==='night'&&!hadAuto){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não está por aqui, mas pode perguntar que a gente te conta o que tem 😊';}
+  if(parsed.answer.trim()&&!missing.length===false||parsed.answer.trim()&&!reply.startsWith('Resumo'))reply=`${parsed.answer.trim()}\n\n${reply}`.trim();
   await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,...(!missing.length?{summaryVersion:c.draft_version+1,summaryTotal:total}:{})});
 }
 export async function processJobs(db:Admin,limit=2){
