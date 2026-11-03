@@ -134,7 +134,7 @@ export async function processJobs(db:Admin,limit=2){
         if(j.kind==='text'){
           const text=p.text??'';
           if(p.automatic){
-            await sendTyping(j.phone,j.dedup_key.split(':').slice(1).join(':'));
+            await sendTyping(j.phone,String(j.dedup_key??'').split(':').slice(1).join(':'));
             await new Promise(r=>setTimeout(r,3000+Math.min(2000,text.length*10)));
           }
           providerId=await sendText(db,j.phone,text,{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
