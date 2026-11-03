@@ -121,6 +121,7 @@ export function closedMenuMessage(b: Business, opts: { price: number; menuUrl: s
   const brl = opts.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const n = nextOpeningInfo(b, now);
   const greet = n && n.current < '12:00' ? 'Bom dia!' : 'Oi!';
+  if (n && n.offset === 0 && n.time === b.advanceFrom) return initialLunchMessage(b, now, opts.price);
   if (n && n.time === b.advanceFrom) {
     const when = n.offset === 0 ? `Hoje começamos às ${n.time}` : `Começamos ${/^(sábado|domingo)/.test(n.weekday) ? 'no' : 'na'} ${n.weekday}, às ${n.time}`;
     return `${greet} ${when}. Nossa marmita é ${brl} e vem com ${b.lunchMenu}.${b.acceptAdvanceOrders ? '\n\nQuer deixar seu pedido adiantado? Me passa a quantidade e o endereço com bairro e número.' : ''}`;
