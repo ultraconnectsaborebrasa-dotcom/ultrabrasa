@@ -16,7 +16,7 @@ import {ReceiptReview} from './ReceiptReview';
 import {ReceiptRegistration} from './ReceiptRegistration';
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status:string; assigned_name:string|null; automation_paused:boolean; awaiting_since:string|null };
-type Msg = { id: string; direction: string; source: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
+type Msg = { id: string; direction: string; source: string; kind: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
 type Cfg = { auto_reply_enabled: boolean; auto_reply_text: string; quick_replies: string[]; account_state: string; account_event: string | null; business:Business };
 type Status = Awaited<ReturnType<typeof whatsappStatus>>;
 
@@ -55,7 +55,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
 
   const checkStatus = () => statusFn().then(setStatus).catch(e => setStatus({ connected: false, reason: String(e?.message ?? e) }));
   const loadConvs = async () => { const r = await supabase.from('whatsapp_conversations').select('phone,name,last_message,last_message_at,unread,last_inbound_at,attendance_status,assigned_name,automation_paused,awaiting_since').order('last_message_at', { ascending: false }).limit(200); if (!r.error) setConvs(r.data); };
-  const loadMsgs = async (phone: string) => { const r = await supabase.from('whatsapp_messages').select('id,direction,source,body,status,error,provider_at,order_id,sent_by_name').eq('phone', phone).order('provider_at').limit(500); if (!r.error) setMsgs(r.data); };
+  const loadMsgs = async (phone: string) => { const r = await supabase.from('whatsapp_messages').select('id,direction,source,kind,body,status,error,provider_at,order_id,sent_by_name').eq('phone', phone).order('provider_at').limit(500); if (!r.error) setMsgs(r.data); };
   const loadCfg = async () => { const r = await supabase.from('whatsapp_settings').select('auto_reply_enabled,auto_reply_text,quick_replies,account_state,account_event,business').eq('id', 1).single(); if (!r.error) setCfg({ ...r.data,business:businessSchema.parse(r.data.business), quick_replies: Array.isArray(r.data.quick_replies) ? r.data.quick_replies as string[] : [] }); };
 
   useEffect(() => { void checkStatus(); void loadConvs(); void loadCfg();void loadRequests();void staffFn().then(setStaff).catch(()=>{}); const t = setInterval(() => {void loadConvs();void loadRequests();}, 5000); return () => clearInterval(t); }, []);
