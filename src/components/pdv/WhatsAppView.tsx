@@ -10,6 +10,7 @@ import { whatsappSend, whatsappStatus, whatsappSyncHistory } from '@/lib/whatsap
 import {businessSchema,attendanceLabels,type Business} from '@/lib/whatsapp-business';
 import {whatsappAction,whatsappRequestAction,whatsappSendPdf,whatsappStaff} from '@/lib/whatsapp-attendance.functions';
 import {WhatsAppBusinessSettings} from './WhatsAppBusinessSettings';
+import {WhatsAppCustomerCard} from './WhatsAppCustomerCard';
 import {refreshWhatsAppConversations} from '@/lib/whatsapp-alerts';
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status:string; assigned_name:string|null; automation_paused:boolean; awaiting_since:string|null };
@@ -127,6 +128,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
         </>}
       </div>
       <aside className="space-y-2 rounded-lg border p-3 text-sm md:col-span-2 xl:col-span-1">
+        {active&&<WhatsAppCustomerCard phone={active}/>}
         <div className="font-semibold">Notas internas</div>{notes.map(n=><div key={n.id} className="border-l-2 border-warning pl-2 text-xs">{n.body}<span className="block text-muted-foreground">{n.author_name}</span></div>)}<textarea aria-label="Nota interna" className="field" value={note} onChange={e=>setNote(e.target.value)} placeholder="Somente para a equipe"/><Button size="sm" variant="outline" disabled={!note.trim()||!active} onClick={()=>void action('note')}>Salvar nota interna</Button>
         <div className="font-semibold">Pedidos deste cliente</div>
         {!active ? <p className="text-muted-foreground">—</p> : linked.length === 0 ? <p className="text-muted-foreground">Nenhum pedido com este WhatsApp.</p> : linked.map(o => <div key={o.id} className={`rounded border p-2 ${orderId === o.id ? 'border-primary' : ''}`}>
