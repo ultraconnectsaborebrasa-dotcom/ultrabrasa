@@ -43,7 +43,7 @@ describe('cardápio e preço por período',()=>{
   it('às 04:26 com almoço no dia: apresenta a marmita e a abertura, sem listar a loja',()=>{
     const t=closedMenuMessage(b,{price:19.9,menuUrl:url,pdfOffer:true,now:new Date('2026-11-03T07:26:00Z')});
     expect(t).toContain('Bom dia!');expect(t).toContain('Hoje começamos às 10:00');
-    expect(t).toContain('R$ 19,90');expect(t).toContain('carne assada');
+    expect(t).toContain('R$\u00a019,90');expect(t).toContain('carne assada');
     expect(t).toContain('pedido adiantado');expect(t).not.toContain(url);
   });
   it('às 04:26 sem pedido antecipado: não oferece adiantamento',()=>{
@@ -55,6 +55,6 @@ describe('cardápio e preço por período',()=>{
     expect(t).toContain(url);expect(t).toContain('hoje às 18:00');expect(t).not.toContain('marmita é');
   });
   it('preço no almoço: só a marmita, com entrega grátis',()=>{
-    expect(lunchPriceMessage(19.9,true)).toBe('A marmita completa sai por R$ 19,90! E a entrega está grátis pra qualquer bairro de Eunápolis.');
+    expect(lunchPriceMessage(19.9,true)).toBe('A marmita completa sai por R$\u00a019,90! E a entrega está grátis pra qualquer bairro de Eunápolis.');
   });
 });
