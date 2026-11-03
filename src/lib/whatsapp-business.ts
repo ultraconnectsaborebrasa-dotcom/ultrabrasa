@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const attendanceLabels = { new: 'Novos', needs_reply: 'Precisam de resposta', in_service: 'Em atendimento', waiting_customer: 'Aguardando cliente', finished: 'Finalizados' } as const;
 export const businessSchema = z.object({
   lunchPrice: z.number().min(0.01).max(10000).default(19.9),
-  lunchMenu: z.string().min(1).max(1000).default('carne assada, linguiça de frango, arroz, salada, macarrão e farofa de feijão'),
+  lunchMenu: z.string().min(1).max(1000).default('churrasco de carne assada, linguiça de frango, arroz, salada, macarrão e farofa de feijão'),
   lunchProductId: z.string().max(100).default(''),
   freeDelivery: z.boolean().default(true),
   highDemand: z.boolean().default(true),
@@ -73,6 +73,22 @@ export function nextLunchInfo(b: Business, now = new Date()) {
     if(b.hours.find(h=>h.day===day)?.lunchEnd)return offset===1?`amanhã, a partir das ${b.advanceFrom}`:`${date.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',weekday:'long'})}, a partir das ${b.advanceFrom}`;
   }
   return null;
+}
+const spDay=(now:Date)=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short'}).format(now));
+const hourLabel=(t:string)=>t.replace(/^0?(\d+):00$/,'$1h').replace(/^0?(\d+):([1-5]\d)$/,'$1h$2');
+/** Pedido de cardápio fora da noite: fala o que vem na marmita e mantém o cardápio digital. */
+export function menuOutsideNightMessage(b: Business, opts: { price: number; available: boolean; menuUrl: string; pdfOffer: boolean; now?: Date }) {
+  const now = opts.now ?? new Date();
+  const brl = opts.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const next = nextLunchInfo(b, now);
+  const lunchToday = !!b.hours.find(h => h.day === spDay(now))?.lunchEnd;
+  const lead = opts.available
+    ? `Nossa marmita vem com ${b.lunchMenu}. É ${brl}${b.freeDelivery ? ', com entrega grátis pra qualquer bairro de Eunápolis' : ''}.`
+    : `Nossas marmitas de hoje já acabaram${next ? `, mas a próxima leva sai ${next}` : ''}.`;
+  const when = opts.available && lunchToday && spTime(now) < b.departureFrom
+    ? ` As entregas de hoje começam a sair às ${hourLabel(b.departureFrom)}.`
+    : opts.available && next ? ` A próxima leva sai ${next}.` : '';
+  return `${lead}${when}\n\nDá pra ver tudo e pedir pelo cardápio digital: ${opts.menuUrl}${opts.pdfOffer ? '\n\nSe preferir, te mando em PDF. É só pedir.' : ''}`;
 }
 export function nextOpening(b: Business, now = new Date()) {
   for(let offset=0;offset<8;offset++) {
