@@ -1,4 +1,5 @@
 # PDV: histórico e administração
+- [x] Logo Ultraconnect no ícone do navegador e edição de nome no editor do cardápio usando o produto original.
 - [x] Ajustar mensagens de aceite e Pix separado; bloquear cobranças com recibo ou pagamento existente.
 - [x] Baixa opcional por comprovante, auditoria e conferência no Caixa/Admin; valores não verificados separados e preparo/entrega preservados.
 - [x] Investigar pendentes: pedido WhatsApp recusado e pedido catálogo C1002/comanda 371 já cancelada; somente vínculo comprovado reconciliado, sem presumir duplicação.

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useStore, brl } from "@/lib/pdv-store";
+import { useStore, brl, setState } from "@/lib/pdv-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ export function CatalogAdmin() {
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [q, setQ] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
+  const [names, setNames] = useState<Record<string,string>>({});
 
   useEffect(() => {
     supabase.from("catalog_products").select("*").then(({ data, error }) => {
@@ -26,9 +27,15 @@ export function CatalogAdmin() {
   const set = (id: string, patch: Partial<Row>) => setRows((r) => ({ ...r, [id]: { ...get(id), ...patch } }));
 
   async function save(id: string, override?: Partial<Row>) {
+    const name=(names[id]??products.find(p=>p.id===id)?.name??'').trim();
+    if(!override&&!name){toast.error('Informe o nome do produto');return;}
     const r = { ...get(id), ...override }; setSaving(id);
     const { error } = await supabase.rpc("save_catalog_product", { _product_id: id, _description: r.description, _image_url: (r.image_url?.trim() || null) as string, _illustrative: false, _published: r.published, _featured: r.featured, _sort: r.sort });
     setSaving(null);
+    if(!error&&!override&&names[id]!==undefined){
+      setState(s=>({...s,products:s.products.map(p=>p.id===id?{...p,name}:p)}));
+      setNames(previous=>{const next={...previous};delete next[id];return next;});
+    }
     error ? toast.error(error.message) : toast.success("Cardápio atualizado");
   }
 
@@ -65,6 +72,7 @@ export function CatalogAdmin() {
             </div>
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex items-center justify-between gap-2"><b className="truncate">{p.name}</b><span className="text-sm text-muted-foreground">{brl(p.price)}</span></div>
+              <label className="block space-y-1 text-sm"><span>Nome do produto</span><Input aria-label={`Nome do produto ${p.name}`} maxLength={120} value={names[p.id]??p.name} onChange={e=>setNames(n=>({...n,[p.id]:e.target.value}))}/></label>
               <Textarea rows={2} maxLength={400} placeholder="Descrição" value={r.description} onChange={(e) => set(p.id, { description: e.target.value })} />
               <div className="flex gap-2">
                 <Button type="button" size="sm" variant="outline" asChild disabled={saving === p.id}>
