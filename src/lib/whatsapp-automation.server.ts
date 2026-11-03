@@ -22,6 +22,11 @@ async function interpret(db:Admin,j:Job){
   const current=messages.find(m=>m.wa_message_id===payload.inboundId);
   const latestInbound=messages.filter(m=>m.direction==='in').at(-1);
   if(latestInbound?.wa_message_id!==payload.inboundId)return;
+  if(current&&current.kind==='audio'){
+    const text=await transcribeInbound(db,payload.inboundId??'');
+    if(!text){await handoff(db,j.phone,'Áudio não pôde ser transcrito');return;}
+    current.body=text;current.kind='text';
+  }
   if(current&&current.kind!=='text') {await handoff(db,j.phone,'Mensagem com mídia requer atendimento humano');return;}
   const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
   const catalogSchema=z.object({products:z.array(z.object({id:z.string(),name:z.string(),price:z.number(),stock:z.number().nullable(),active:z.boolean(),category:z.string()}))});
@@ -166,4 +171,20 @@ export async function processJobs(db:Admin,limit=2){
       }
     }
   }
+}
+async function transcribeInbound(db:Admin,inboundId:string):Promise<string>{
+  const row=checkEmpty(await db.from('whatsapp_messages').select('id,media_id,body').eq('wa_message_id',inboundId).maybeSingle());
+  if(!row?.media_id)return '';
+  if(row.body&&row.body.startsWith('🎤 '))return row.body.slice(3);
+  try{
+    const {downloadWhatsAppMedia}=await import('./whatsapp.server');
+    const media=await downloadWhatsAppMedia(row.media_id,{audio:true});
+    const ext=media.mime.includes('mpeg')?'mp3':media.mime.includes('mp4')||media.mime.includes('aac')?'m4a':media.mime.includes('webm')?'webm':'ogg';
+    const {transcribeAudio}=await import('@lovable.dev/ai-gateway');
+    const r=await transcribeAudio({model:'openai/gpt-transcribe',file:new File([media.bytes],`audio.${ext}`,{type:media.mime.split(';')[0]}),language:'pt',response_format:'json'},{maxRetries:0});
+    const text=String((r as {text?:unknown}).text??'').trim().slice(0,2000);
+    if(!text)return '';
+    checkEmpty(await db.from('whatsapp_messages').update({body:'🎤 '+text}).eq('id',row.id));
+    return text;
+  }catch(e){console.error('Audio transcription failed',e instanceof Error?e.message:e);return '';}
 }
