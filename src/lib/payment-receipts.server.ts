@@ -8,7 +8,7 @@ export async function processReceipt(db: Admin, messageId: string) {
   if(m.error)throw new Error(m.error.message);
   const exists=await db.from('payment_receipts').select('id').eq('message_id',m.data.id).maybeSingle();
   if(exists.error)throw new Error(exists.error.message);
-  if(exists.data){const {queueJob}=await import('./whatsapp-automation.server');await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:'Recebi seu arquivo. A equipe vai conferir por aqui.',automatic:false});return;}
+  if(exists.data){const {queueJob}=await import('./whatsapp-automation.server');await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:'Comprovante recebido, obrigado! 😊 Já deixei aqui junto do seu pedido.',automatic:false});return;}
   const config=await db.from('whatsapp_settings').select('business').eq('id',1).single();
   if(config.error)throw new Error(config.error.message);const b=businessSchema.parse(config.data.business);
   let path:string|null=null,hash:string|null=null;
@@ -43,5 +43,5 @@ export async function processReceipt(db: Admin, messageId: string) {
   const saved=await db.rpc('record_payment_receipt_input',{_input:{message:m.data.id,path,hash,evidence,request:requestId,compatible,reason}});
   if(saved.error)throw new Error(saved.error.message);
   const {queueJob}=await import('./whatsapp-automation.server');
-  await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:compatible?'Recebi seu comprovante, obrigado! 😊':requestId?'Recebi seu arquivo. A equipe vai conferir por aqui.':'Recebi seu arquivo. Me fala o código do pedido para a equipe conferir?',automatic:false});
+  await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:compatible?'Comprovante recebido, obrigado! 😊 Já deixei aqui junto do seu pedido.':requestId?'Recebi seu arquivo, obrigado! 😊 Vamos dar uma olhada e já te falamos.':'Recebi seu arquivo! Me fala o número do pedido para eu anotar junto dele?',automatic:false});
 }

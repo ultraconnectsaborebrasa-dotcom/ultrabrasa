@@ -19,6 +19,9 @@ import { WhatsAppView } from "@/components/pdv/WhatsAppView";
 import { NewOrderAlerts } from "@/components/pdv/NewOrderAlerts";
 import { WhatsAppNotifications } from '@/components/pdv/WhatsAppNotifications';
 import { useWhatsAppConversations,useWhatsAppPendingOrders } from '@/lib/whatsapp-alerts';
+import { useServerFn } from '@tanstack/react-start';
+import { toast } from 'sonner';
+import { whatsappRequestAction } from '@/lib/whatsapp-attendance.functions';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,6 +62,9 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const [whatsappPhone,setWhatsAppPhone]=useState<string|null>(null);
   const whatsappConvs=useWhatsAppConversations();const whatsappUnread=whatsappConvs.reduce((n,c)=>n+c.unread,0);
   const whatsappPending=useWhatsAppPendingOrders();
+  const requestFn=useServerFn(whatsappRequestAction);
+  const products=useStore(s=>s.products);
+  const acceptWhatsAppOrder=async(id:string)=>{try{await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
   const saving = useSaving();
   const sync = useSyncStatus();
   const alerts = useOrderAlerts();
@@ -113,7 +119,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
         </div>
       </header>
       <NewOrderAlerts orders={orders} onOpen={() => setTab('cozinha')}/>
-      {admin&&<WhatsAppNotifications onOpen={phone=>{setWhatsAppPhone(phone);setTab('whatsapp');}}/>}
+      {admin&&<WhatsAppNotifications onOpen={phone=>{setWhatsAppPhone(phone);setTab('whatsapp');}} onAccept={acceptWhatsAppOrder} productName={id=>products.find(p=>p.id===id)?.name??'item'}/>}
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
         {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin} onDelivery={()=>setTab('rotas')}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
           : tab === "whatsapp" && admin ? <WhatsAppView openPhone={whatsappPhone}/> : tab === "cardapio" && admin ? <CatalogAdmin/> : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}

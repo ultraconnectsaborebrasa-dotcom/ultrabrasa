@@ -18,6 +18,8 @@ import { WhatsAppNotifications } from './WhatsAppNotifications';
 import { useWhatsAppConversations } from '@/lib/whatsapp-alerts';
 import { MessageCircle } from 'lucide-react';
 import { ReceiptReview } from './ReceiptReview';
+import { useServerFn } from '@tanstack/react-start';
+import { whatsappRequestAction } from '@/lib/whatsapp-attendance.functions';
 
 type Product = {id:string;name:string;category:string;price:number;stock:number|null;active:boolean};
 type Item = {name:string;productId?:string;qty:number;price:number;note?:string};
@@ -31,6 +33,8 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
  const [tab,setTab]=useState<'sell'|'kitchen'|'payments'|'products'|'printer'|'routes'|'whatsapp'>('sell');const [waPhone,setWaPhone]=useState<string|null>(null);const [waLink,setWaLink]=useState<string|null>(null);
  const waConvs=useWhatsAppConversations();
  const waUnread=waConvs.reduce((sum,c)=>sum+(c.unread||0),0);
+ const requestFn=useServerFn(whatsappRequestAction);
+ const acceptWhatsAppOrder=async(id:string)=>{try{await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
  const [busy,setBusy]=useState(false);
  const [method,setMethod]=useState('');
  const [selected,setSelected]=useState<string|null>(null);
@@ -63,12 +67,12 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
  useEffect(()=>{setPrinter(printerPreferences.selectedPrinter);},[]);
  async function findPrinters(){try{const list=await listPrinters();setPrinters(list);if(!printerPreferences.selectedPrinter&&list.length===1){const only=list[0]??"";printerPreferences.selectedPrinter=only;setPrinter(only);}if(!list.length)toast.warning('Nenhuma impressora encontrada.');}catch(e){toast.error(e instanceof Error?e.message:'Abra o QZ Tray no computador.');}}
  async function printTicket(o:Order,method?:string,target:'kitchen'|'cashier'='cashier'){try{const order={id:o.id,number:o.number,type:o.type,tableNumber:o.tableNumber,customer:o.customer,note:o.note,createdAt:o.createdAt??Date.now(),items:o.items.map(i=>({...i,price:i.price??0})),discount:0,fee:0,serviceFee:false,payments:method?[{method,amount:o.total}]:[]} as unknown as StoreOrder;toast.info(`Imprimindo pedido #${o.number}...`);await printOrder(order,0,{manual:true,target});setPrinter(printerPreferences.selectedPrinter);toast.success(`Pedido #${o.number} impresso`);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao imprimir');}}
- async function cancelOrder(o:Order){const reason=window.prompt(`Motivo para cancelar #${o.number}? Cancelar não estorna pagamentos.`);if(!reason?.trim())return;setBusy(true);try{const {error}=await supabase.rpc('close_pdv_order',{_id:o.id,_reason:reason});if(error)throw error;toast.success(`Pedido #${o.number} cancelado`);await refresh();}catch(e){toast.error(e instanceof Error?e.message:'Falha ao cancelar');}finally{setBusy(false);}}
+ async function cancelOrder(o:Order){const reason=window.prompt(`Motivo para cancelar #${o.number}? Cancelar não estorna pagamentos.`);if(!reason?.trim())return;setBusy(true);try{const {error}=await supabase.rpc('close_pdv_order',{_id:o.id,_reason:reason});if(error)throw error;toast.success(`Pedido #${o.number} cancelado`);if(o.hasPayment||o.paymentStatus==='pago')toast.warning('Este pedido tinha pagamento informado — verifique eventual devolução.');await refresh();}catch(e){toast.error(e instanceof Error?e.message:'Falha ao cancelar');}finally{setBusy(false);}}
  const kitchenOrders=data.orders.filter(o=>o.status==='cozinha'||o.status==='pronto');
  const payable=data.orders.filter(o=>['aberta','cozinha','pronto'].includes(o.status)&&o.paymentStatus!=='pago'&&!o.hasPayment&&!receiptOrders.includes(o.id));
  return <div className="min-h-dvh p-5 space-y-5">
   <header className="flex flex-wrap items-center gap-3 border-b pb-4"><Brand/><div><h1 className="text-xl font-bold">Caixa · Ultrabrasa</h1><p className="text-sm text-muted-foreground">{name} · Acesso limitado</p></div><Button className="ml-auto" variant="outline" onClick={()=>void signOut()}>Sair</Button></header>
-  <WhatsAppNotifications onOpen={phone=>{setWaPhone(phone);setTab('whatsapp');}}/>
+  <WhatsAppNotifications onOpen={phone=>{setWaPhone(phone);setTab('whatsapp');}} onAccept={acceptWhatsAppOrder} productName={id=>data.products.find(p=>p.id===id)?.name??'item'}/>
   <NewOrderAlerts orders={data.orders} ready={data !== empty} onOpen={()=>setTab('kitchen')}/>
   <nav className="flex flex-wrap gap-2">
    <Button variant={tab==='sell'?'default':'outline'} onClick={()=>setTab('sell')}><ShoppingBag className="mr-1 h-4 w-4"/>Vender produtos</Button>
