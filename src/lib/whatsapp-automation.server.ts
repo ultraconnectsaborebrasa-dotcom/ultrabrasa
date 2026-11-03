@@ -29,7 +29,7 @@ async function interpret(db:Admin,j:Job){
   const catalog=allProducts.filter(p=>p.stock===null||p.stock>0);
   const soldOut=allProducts.filter(p=>p.stock!==null&&p.stock<=0).map(p=>({id:p.id,name:p.name}));
   const ai=async(prompt:string,tokens=600)=>{const r=await generateResponse({model:'openai/gpt-6-astra',input:prompt,text:{format:{type:'json_object'}},max_output_tokens:tokens},{maxRetries:0});return (r.output??[]).flatMap(o=>o.type==='message'?o.content??[]:[]).filter(p=>p.type==='output_text').map(p=>p.text).join('');};
-  const TONE='Tom: simples, próximo e educado, como uma pessoa da UltraBrasa. Use "a gente", "por aqui", "pode deixar" quando fizer sentido. No máximo um emoji. Frases curtas, sem diminutivos, sem promoção forçada, sem "fora do expediente", "solicitação", "avaliação da loja" ou "próximo atendimento". Nunca diga que pedido está reservado ou confirmado. Não prometa avisar depois. Não invente preços, horários ou produtos.';
+  const TONE='Tom: simples, próximo e educado, como uma pessoa da UltraBrasa. Use "a gente", "por aqui", "pode deixar" quando fizer sentido. Não repita saudação (oi/olá) depois da primeira mensagem e quase nunca use emoji. Use preço, promoção e disponibilidade atuais do PDV. Nunca mande link do catálogo. Frases curtas, sem diminutivos, sem promoção forçada, sem "fora do expediente", "solicitação", "avaliação da loja" ou "próximo atendimento". Nunca diga que pedido está reservado ou confirmado. Não prometa avisar depois. Não invente preços, horários ou produtos.';
   const period=businessPeriod(b);
   if(period==='closed'){
     const recentClosed=messages.some(m=>m.direction==='out'&&/Que bom receber sua mensagem|Daqui a pouco começamos/.test(m.body??''));
@@ -62,7 +62,7 @@ async function interpret(db:Admin,j:Job){
   if(parsed.needsHuman){await handoff(db,j.phone,'Solicitação encaminhada à equipe');return;}
   const d=parsed.draft;d.summarySent=false;d.quotedTotal=0;
   let total=0;
-  for(const i of d.items){const p=catalog.find(p=>p.id===i.productId);if(!p||p.stock!==null&&p.stock<i.qty){await handoff(db,j.phone,'Produto indisponível');return;}if(period==='lunch'&&p.id===b.lunchProductId&&p.price!==b.lunchPrice){await handoff(db,j.phone,'Preço da marmita precisa de revisão');return;}total+=p.price*i.qty;}
+  for(const i of d.items){const p=catalog.find(p=>p.id===i.productId);if(!p||p.stock!==null&&p.stock<i.qty){await handoff(db,j.phone,'Produto indisponível');return;}total+=p.price*i.qty;}
   if(d.type==='Delivery'&&d.address.city&&!inEunapolis(d.address.city)){await handoff(db,j.phone,'Endereço fora da cidade');return;}
   if(d.type==='Delivery'&&!b.freeDelivery){await handoff(db,j.phone,'Taxa de entrega precisa de avaliação');return;}
   if(d.payment==='Pix'&&!b.pixKey){await handoff(db,j.phone,'Chave Pix não configurada');return;}
