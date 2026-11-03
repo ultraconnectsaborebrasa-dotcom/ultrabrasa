@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CardapioRouteImport } from './routes/cardapio'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ApiPublicCatalogPhotoNameRouteImport } from './routes/api/public/catalog-photo.$name'
 import { Route as ApiPublicWhatsappProcessRouteImport } from './routes/api/public/whatsapp/process'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
 
@@ -42,6 +43,12 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCatalogPhotoNameRoute =
+  ApiPublicCatalogPhotoNameRouteImport.update({
+    id: '/api/public/catalog-photo/$name',
+    path: '/api/public/catalog-photo/$name',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWhatsappProcessRoute =
   ApiPublicWhatsappProcessRouteImport.update({
     id: '/api/public/whatsapp/process',
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -70,6 +78,7 @@ export interface FileRoutesByTo {
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -80,6 +89,7 @@ export interface FileRoutesById {
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -91,6 +101,7 @@ export interface FileRouteTypes {
     | '/cardapio'
     | '/login'
     | '/reset-password'
+    | '/api/public/catalog-photo/$name'
     | '/api/public/whatsapp/process'
     | '/api/public/whatsapp/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -100,6 +111,7 @@ export interface FileRouteTypes {
     | '/cardapio'
     | '/login'
     | '/reset-password'
+    | '/api/public/catalog-photo/$name'
     | '/api/public/whatsapp/process'
     | '/api/public/whatsapp/webhook'
   id:
@@ -109,6 +121,7 @@ export interface FileRouteTypes {
     | '/cardapio'
     | '/login'
     | '/reset-password'
+    | '/api/public/catalog-photo/$name'
     | '/api/public/whatsapp/process'
     | '/api/public/whatsapp/webhook'
   fileRoutesById: FileRoutesById
@@ -119,6 +132,7 @@ export interface RootRouteChildren {
   CardapioRoute: typeof CardapioRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicCatalogPhotoNameRoute: typeof ApiPublicCatalogPhotoNameRoute
   ApiPublicWhatsappProcessRoute: typeof ApiPublicWhatsappProcessRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
 }
@@ -160,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/catalog-photo/$name': {
+      id: '/api/public/catalog-photo/$name'
+      path: '/api/public/catalog-photo/$name'
+      fullPath: '/api/public/catalog-photo/$name'
+      preLoaderRoute: typeof ApiPublicCatalogPhotoNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/whatsapp/process': {
       id: '/api/public/whatsapp/process'
       path: '/api/public/whatsapp/process'
@@ -183,6 +204,7 @@ const rootRouteChildren: RootRouteChildren = {
   CardapioRoute: CardapioRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicCatalogPhotoNameRoute: ApiPublicCatalogPhotoNameRoute,
   ApiPublicWhatsappProcessRoute: ApiPublicWhatsappProcessRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
 }
