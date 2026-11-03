@@ -91,22 +91,26 @@ async function interpret(db:Admin,j:Job){
   const hadAuto=messages.some(m=>m.direction==='out');
   let answer=parsed.answer.trim();
   if(period==='lunch'&&!hadAuto&&!answer&&lunchAvailable&&!d.items.length&&!d.address.street&&!d.address.neighborhood)reply=initialLunchMessage(b,new Date(),lunchP.price);
-  if(period==='night'&&!hadAuto&&!d.items.length)reply=`Oi! Que bom te ver por aqui 😊 Dá pra ver tudo e pedir pelo cardápio digital: ${MENU_URL}${b.pdfPath?'\n\nSe preferir, te mando em PDF. É só pedir.':''}\n\n${reply}`;
+  if(period==='night'&&!hadAuto&&!d.items.length)reply=`Oi! Que bom te ver por aqui 😊 Dá pra ver tudo e pedir pelo cardápio digital: ${MENU_URL}\n\n${reply}`;
   if(period==='closed'&&!hadAuto&&!answer&&!d.items.length)reply=closedMessage(b);
   if(period==='closed'&&!hadAuto&&d.items.length)reply=`Anotado! Seu pedido fica adiantado e a loja confirma quando abrir 😊\n\n${reply}`;
-  // Pedido de cardápio: no almoço a marmita; à noite o digital; fora da noite a marmita e o digital.
-  const digitalMenu=`Claro! Aqui está nosso cardápio digital, dá pra ver tudo e pedir por lá: ${MENU_URL}${b.pdfPath?'\n\nSe preferir, te mando em PDF. É só pedir.':''}`;
-  if(parsed.wantsMenu&&!answer&&!d.items.length){
-    if(period==='lunch')reply=lunchAvailable?initialLunchMessage(b,new Date(),lunchP.price):`Poxa, as marmitas de hoje já acabaram.${nextLunchInfo(b)?` A próxima leva sai ${nextLunchInfo(b)}.`:''}`;
-    else if(!parsed.wantsPdf)reply=period==='night'||!lunchP?digitalMenu:menuOutsideNightMessage(b,{price:lunchP.price,available:lunchAvailable,menuUrl:MENU_URL,pdfOffer:!!b.pdfPath});
+  // Cardápio: marmita sempre por mensagem; link só à noite ou quando pedem o cardápio da noite. Nunca PDF.
+  const lastBody=(latestInbound?.body??'').trim();
+  const nightAsk=isNightMenuAsk(lastBody);
+  const digitalMenu=`Claro! Aqui está nosso cardápio digital, dá pra ver tudo e pedir por lá: ${MENU_URL}`;
+  if((parsed.wantsMenu||parsed.wantsPdf)&&!answer&&!d.items.length){
+    if(period==='night')reply=digitalMenu;
+    else if(nightAsk)reply=nightMenuOffHours(b,MENU_URL);
+    else if(period==='lunch')reply=lunchAvailable?initialLunchMessage(b,new Date(),lunchP.price):`Poxa, as marmitas de hoje já acabaram.${nextLunchInfo(b)?` A próxima leva sai ${nextLunchInfo(b)}.`:''}`;
+    else if(lunchP)reply=menuOutsideNightMessage(b,{price:lunchP.price,available:lunchAvailable,menuUrl:MENU_URL,pdfOffer:false});
   }
   // Pergunta genérica de preço: no almoço só a marmita; à noite o cardápio digital, sem listar produtos.
   if(parsed.genericPrice&&!parsed.wantsMenu&&!d.items.length){
     if(period==='lunch'&&lunchP){reply=lunchPriceMessage(lunchP.price,b.freeDelivery);answer='';}
     else if(period==='night'){reply=`Dá pra ver todos os preços no cardápio digital: ${MENU_URL}`;answer='';}
   }
-  // PDF só vai quando o cliente pede.
-  if(parsed.wantsPdf){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não está por aqui, mas pode perguntar que a gente te conta o que tem.';}
+  // Por política, nenhum fluxo automático envia PDF.
+  if(period!=='night'&&!nightAsk)reply=reply.replace(/[^\n]*https?:\/\/\S*cardapio\S*[^\n]*\n*/gi,'').trim()||reply;
   // Pergunta específica: responde direto e só depois pede o que falta, sem repetir a apresentação.
   if(answer)reply=`${answer}${missing.length&&!d.items.length?'':`\n\n${reply}`}`.trim();
   await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,...(!missing.length?{summaryVersion:c.draft_version+1,summaryTotal:total}:{})});
