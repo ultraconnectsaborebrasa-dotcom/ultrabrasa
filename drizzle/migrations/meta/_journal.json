@@ -218,6 +218,13 @@
       "when": 1793677362338,
       "tag": "0030_whatsapp_atomic_inbound",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793679092617,
+      "tag": "0031_whatsapp_queue_rules",
+      "breakpoints": true
     }
   ]
 }
