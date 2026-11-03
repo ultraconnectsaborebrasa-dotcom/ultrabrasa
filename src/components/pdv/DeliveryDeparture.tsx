@@ -3,7 +3,7 @@ import {toast} from 'sonner';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {supabase} from '@/integrations/supabase/client';
-export function DeliveryDeparture({orderId,onSaved}:{orderId:string;onSaved?:()=>void}){
+export function DeliveryDeparture({orderId,onSaved}:{orderId:string;onSaved?:(()=>void)|undefined}){
  const[open,setOpen]=useState(false),[busy,setBusy]=useState(false),[courier,setCourier]=useState('');const[couriers,setCouriers]=useState<{id:string;name:string}[]>([]);
  async function start(){setOpen(true);const r=await supabase.from('delivery_couriers').select('id,name').eq('active',true);if(r.error)toast.error(r.error.message);else setCouriers(r.data);}
  async function save(){setBusy(true);try{const r=await supabase.rpc('depart_delivery',{_order:orderId,...(courier?{_courier:courier}:{})});if(r.error)throw r.error;toast.success('Saiu para entrega');setOpen(false);onSaved?.();}catch(e){toast.error(e instanceof Error?e.message:'Não foi possível registrar a saída');}finally{setBusy(false);}}

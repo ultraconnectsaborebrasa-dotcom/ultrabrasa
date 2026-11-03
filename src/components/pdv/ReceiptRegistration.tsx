@@ -6,14 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { retryReceiptAnalysis } from '@/lib/receipt-actions.functions';
 
-export function ReceiptRegistration({phone,orderId,onSaved}:{phone?:string;orderId?:string;onSaved?:()=>void}) {
+export function ReceiptRegistration({phone,orderId,onSaved}:{phone?:string|undefined;orderId?:string|undefined;onSaved?:(()=>void)|undefined}) {
   const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
   const [orders,setOrders]=useState<{id:string;number:number;customer:string;customerPhone?:string;status:string}[]>([]);
   const [messages,setMessages]=useState<{id:string;body:string|null;provider_at:string}[]>([]);
   const [selectedOrder,setSelectedOrder]=useState(orderId??''),[messageId,setMessageId]=useState('');
   const [file,setFile]=useState<File|null>(null);
   const retry=useServerFn(retryReceiptAnalysis);
-  useEffect(()=>{if(!open)return;setSelectedOrder(orderId??'');setFile(null);setMessageId('');void supabase.rpc('read_pdv_cashier').then(r=>{if(r.error){toast.error(r.error.message);return;}const data=r.data as unknown as {orders:typeof orders};setOrders(data.orders.filter(o=>o.status!=='cancelado'&&(!phone||o.customerPhone?.replace(/\D/g,'')===phone)));});},[open,phone,orderId]);
+  useEffect(()=>{if(!open)return;setSelectedOrder(orderId??'');setFile(null);setMessageId('');void (async()=>{const role=await supabase.rpc('has_role',{_user_id:(await supabase.auth.getUser()).data.user?.id??'',_role:'admin'});const r=role.data?await supabase.from('pdv_state').select('data').eq('id',1).single():await supabase.rpc('read_pdv_cashier');if(r.error){toast.error(r.error.message);return;}const data=(role.data?(r.data as {data:unknown}).data:r.data) as {orders:typeof orders};setOrders(data.orders.filter(o=>['aberta','cozinha','pronto','pago'].includes(o.status)&&(!phone||o.customerPhone?.replace(/\D/g,'')===phone)));})();},[open,phone,orderId]);
   const selected=orders.find(o=>o.id===selectedOrder);
   const customerPhone=phone??selected?.customerPhone;
   useEffect(()=>{if(!open||!customerPhone){setMessages([]);return;}void supabase.from('whatsapp_messages').select('id,body,provider_at').eq('phone',customerPhone.replace(/\D/g,'')).eq('direction','in').in('kind',['image','document']).order('provider_at',{ascending:false}).limit(30).then(r=>{if(r.error)toast.error(r.error.message);else setMessages(r.data);});},[open,customerPhone]);
