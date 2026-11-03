@@ -26,7 +26,7 @@ type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['su
 export const digits = (s: string) => s.replace(/\D/g, '');
 
 /** Sends a text and records the outbound message. Returns the provider id. */
-export async function sendText(db: Admin, phone: string, text: string, extra: { orderId?: string | null; sentBy?: string | null; source?: string; replyTo?: string | null } = {}) {
+export async function sendText(db: Admin, phone: string, text: string, extra: { orderId?: string | null; sentBy?: string | null; sentByName?: string | null; source?: string; replyTo?: string | null } = {}) {
   const to = digits(phone);
   if (!/^[1-9]\d{9,14}$/.test(to)) throw new Error('Número inválido');
   const body = text.trim().slice(0, 4000);
@@ -35,7 +35,7 @@ export async function sendText(db: Admin, phone: string, text: string, extra: { 
   if(settings.error || settings.data.account_state !== 'ok') throw new Error('WhatsApp indisponível');
   const conversation = await db.from('whatsapp_conversations').select('last_inbound_at').eq('phone',to).single();
   if(conversation.error || !conversation.data.last_inbound_at || Date.now()-Date.parse(conversation.data.last_inbound_at)>=86400000) throw new Error('Fora da janela de 24h: é necessário um modelo aprovado');
-  const reserved = await db.from('whatsapp_messages').insert({phone:to,direction:'out',source:extra.source??'pdv',body,status:'sending',order_id:extra.orderId??null,sent_by:extra.sentBy??null,reply_to:extra.replyTo??null}).select('id').single();
+  const reserved = await db.from('whatsapp_messages').insert({phone:to,direction:'out',source:extra.source??'pdv',body,status:'sending',order_id:extra.orderId??null,sent_by:extra.sentBy??null,sent_by_name:extra.sentByName??null,reply_to:extra.replyTo??null}).select('id').single();
   if(reserved.error) throw new Error(reserved.error.message);
   let accepted = false;
   try {
