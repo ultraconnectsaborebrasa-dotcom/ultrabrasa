@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Armchair, Bell, BellOff, ShoppingCart, ClipboardList, ChefHat, Package, Wallet, Settings, History, ShieldCheck, LogOut, Wifi, WifiOff, LoaderCircle, Users, MessageCircle, BookOpen } from "lucide-react";
-import { brl, isToday, useStore, useSaving } from "@/lib/pdv-store";
+import { brl, paid, useStore, useSaving } from "@/lib/pdv-store";
+import { paidSalesSince } from "@/lib/sales-history";
 import { AccountGate, AdminTeam } from "@/components/pdv/AccountGate";
 import { SalesHistory } from "@/components/pdv/SalesHistory";
 import { Button } from "@/components/ui/button";
