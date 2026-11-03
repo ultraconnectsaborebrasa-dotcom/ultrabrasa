@@ -17,7 +17,7 @@ export type Product = {
 export type CartItem = { uid: string; productId: string; name: string; price: number; qty: number; note: string };
 export type OrderType = "Balcão" | "Mesa" | "Retirada" | "Delivery";
 export type Payment = { method: string; amount: number; receiptId?: string; origin?: string; verification?: 'unverified'|'confirmed'|'bank_confirmed' };
-export type OrderStatus = "aberta" | "cozinha" | "pronto" | "pago" | "cancelado";
+export type OrderStatus = "aberta" | "cozinha" | "pronto" | "entrega" | "entregue" | "retirado" | "pago" | "cancelado";
 export type Order = {
   id: string;
   number: number;
@@ -246,6 +246,17 @@ export function setOrderStatus(id: string, status: OrderStatus, payments?: Payme
       products,
       orders: s.orders.map((x) => (x.id === id ? { ...x, status, payments: payments ?? x.payments, paidAt: status === "pago" ? Date.now() : x.paidAt } : x)),
     };
+  });
+}
+
+/** Registra o recebimento sem mudar a etapa operacional do pedido. */
+export function markPaid(id: string, payments: Payment[]) {
+  setState((s) => {
+    const o = s.orders.find((x) => x.id === id);
+    if (!o || o.status === 'cancelado') return s;
+    if (o.paymentStatus === 'pago' || o.payments.length > 0) { toast.error('Pagamento já registrado para este pedido.'); return s; }
+    if (o.payments.some(p => p.receiptId)) { toast.error('Pedido já possui comprovante; use a conferência.'); return s; }
+    return { ...s, orders: s.orders.map((x) => (x.id === id ? { ...x, paymentStatus: 'pago' as const, payments, paidAt: Date.now() } : x)) };
   });
 }
 

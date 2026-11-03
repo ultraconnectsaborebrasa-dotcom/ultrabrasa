@@ -14,9 +14,10 @@ import {WhatsAppCustomerCard} from './WhatsAppCustomerCard';
 import {refreshWhatsAppConversations} from '@/lib/whatsapp-alerts';
 import {ReceiptReview} from './ReceiptReview';
 import {ReceiptRegistration} from './ReceiptRegistration';
+import {retryReceiptAnalysis} from '@/lib/receipt-actions.functions';
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status:string; assigned_name:string|null; automation_paused:boolean; awaiting_since:string|null };
-type Msg = { id: string; direction: string; source: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
+type Msg = { id: string; direction: string; source: string; kind: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
 type Cfg = { auto_reply_enabled: boolean; auto_reply_text: string; quick_replies: string[]; account_state: string; account_event: string | null; business:Business };
 type Status = Awaited<ReturnType<typeof whatsappStatus>>;
 
@@ -28,7 +29,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
   const statusFn = useServerFn(whatsappStatus);
   const sendFn = useServerFn(whatsappSend);
   const syncFn = useServerFn(whatsappSyncHistory);
-  const actionFn=useServerFn(whatsappAction);const requestFn=useServerFn(whatsappRequestAction);const pdfFn=useServerFn(whatsappSendPdf);
+  const actionFn=useServerFn(whatsappAction);const requestFn=useServerFn(whatsappRequestAction);const pdfFn=useServerFn(whatsappSendPdf);const retryFn=useServerFn(retryReceiptAnalysis);
   const storeOrders = useStore(s => s.orders);const orders=externalOrders??storeOrders;
   const [status, setStatus] = useState<Status | null>(null);
   const [convs, setConvs] = useState<Conv[]>([]);
@@ -55,7 +56,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
 
   const checkStatus = () => statusFn().then(setStatus).catch(e => setStatus({ connected: false, reason: String(e?.message ?? e) }));
   const loadConvs = async () => { const r = await supabase.from('whatsapp_conversations').select('phone,name,last_message,last_message_at,unread,last_inbound_at,attendance_status,assigned_name,automation_paused,awaiting_since').order('last_message_at', { ascending: false }).limit(200); if (!r.error) setConvs(r.data); };
-  const loadMsgs = async (phone: string) => { const r = await supabase.from('whatsapp_messages').select('id,direction,source,body,status,error,provider_at,order_id,sent_by_name').eq('phone', phone).order('provider_at').limit(500); if (!r.error) setMsgs(r.data); };
+  const loadMsgs = async (phone: string) => { const r = await supabase.from('whatsapp_messages').select('id,direction,source,kind,body,status,error,provider_at,order_id,sent_by_name').eq('phone', phone).order('provider_at').limit(500); if (!r.error) setMsgs(r.data); };
   const loadCfg = async () => { const r = await supabase.from('whatsapp_settings').select('auto_reply_enabled,auto_reply_text,quick_replies,account_state,account_event,business').eq('id', 1).single(); if (!r.error) setCfg({ ...r.data,business:businessSchema.parse(r.data.business), quick_replies: Array.isArray(r.data.quick_replies) ? r.data.quick_replies as string[] : [] }); };
 
   useEffect(() => { void checkStatus(); void loadConvs(); void loadCfg();void loadRequests();void staffFn().then(setStaff).catch(()=>{}); const t = setInterval(() => {void loadConvs();void loadRequests();}, 5000); return () => clearInterval(t); }, []);
@@ -77,6 +78,23 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
     try { const r = await syncFn(); toast.message('Pedido de importação enviado', { description: r.results.join(' · ') }); } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha'); } finally { setBusy(false); }
   }
   const orderMsg = (o: Order) => `Olá${o.customer ? `, ${o.customer}` : ''}! Pedido #${o.number}: ${STATUS_LABEL[o.status] ?? o.status}.`;
+
+  const [linkingMsg,setLinkingMsg]=useState<string|null>(null);
+  const linkableOrders=(o:Order)=>o.status!=='cancelado'&&o.paymentStatus!=='pago'&&!o.payments.length;
+  async function linkReceipt(messageId:string,order:Order){
+    setBusy(true);
+    try{
+      const r=await supabase.rpc('register_staff_receipt',{_message:messageId,_order:order.id,_path:null} as never);
+      if(r.error)throw r.error;
+      toast.success(`Comprovante vinculado ao pedido #${order.number} — conferência pendente no caixa`);
+      setLinkingMsg(null);
+    }catch(e){
+      const msg=e instanceof Error?e.message:'Falha ao vincular';
+      if(msg.includes('ainda não baixado')){
+        try{await retryFn({data:{messageId}});toast.message('Arquivo recuperado — tente vincular de novo');}catch(re){toast.error(re instanceof Error?re.message:'Não foi possível processar o arquivo');}
+      }else toast.error(msg);
+    }finally{setBusy(false);}
+  }
 
   return <section className="mx-auto flex h-full max-w-7xl flex-col gap-3">
     <div className="flex flex-wrap items-center gap-3 border-b pb-3">
@@ -120,6 +138,11 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
                 {m.direction === 'out' && (m.status === 'read' ? <CheckCheck size={12} className="text-success"/> : m.status === 'delivered' ? <CheckCheck size={12}/> : m.status === 'failed' ? <AlertTriangle size={12} className="text-destructive"/> : <Check size={12}/>)}
               </div>
               {m.status === 'failed' && m.error && <div className="mt-1 text-[10px] text-destructive">{m.error.slice(0, 160)}</div>}
+              {m.direction==='in'&&['image','document'].includes(m.kind)&&<div className="mt-2 space-y-1">
+                {linkingMsg===m.id
+                  ? <div className="space-y-1 rounded border bg-background p-2"><p className="text-[11px] font-semibold">Vincular a qual pedido?</p>{linked.filter(linkableOrders).map(o=><Button key={o.id} size="sm" variant="outline" className="mr-1" disabled={busy} onClick={()=>void linkReceipt(m.id,o)}>#{o.number} · {brl(o.items.reduce((a,i)=>a+i.price*i.qty,0))}</Button>)}{!linked.filter(linkableOrders).length&&<p className="text-[11px] text-muted-foreground">Nenhum pedido ativo deste cliente aguardando pagamento.</p>}<Button size="sm" variant="ghost" onClick={()=>setLinkingMsg(null)}>Cancelar</Button></div>
+                  : <Button size="sm" variant="outline" disabled={busy} onClick={()=>{const options=linked.filter(linkableOrders);if(options.length===1&&options[0])void linkReceipt(m.id,options[0]);else setLinkingMsg(m.id);}}>Vincular ao pedido / Comprovante recebido</Button>}
+              </div>}
             </div>)}
           </div>
           {cfg && cfg.quick_replies.length > 0 && <div className="flex gap-1 overflow-x-auto border-t p-2">{cfg.quick_replies.map((q, i) => <Button key={i} variant="outline" size="sm" className="shrink-0" onClick={() => write(q)}>{q.slice(0, 30)}</Button>)}</div>}

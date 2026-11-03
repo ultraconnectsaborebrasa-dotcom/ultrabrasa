@@ -1,58 +1,9 @@
-# PDV: histórico e administração
-- [x] Corrigir reconhecimento/vínculo de anexos, status provisório e registro manual auditado; falhas ficam visíveis sem pausar o robô.
-- [x] Integrar saída manual, entregador, horário, abas de delivery e aviso WhatsApp deduplicado com reenvio seguro.
-- [x] Teste autenticado com pedido temporário: anexo salvo, baixa provisória, confirmação, divergência, saída/horário e entregue persistidos; 56 testes aprovados.
-- [ ] Validar imagem/PDF recebidos e aviso de saída na conexão real após publicação; aguarda mensagem de teste do usuário, nenhum envio real nesta revisão.
-- [x] Fotos novas dos nove hambúrgueres do cardápio digital, conferidas uma a uma pelo nome dos ingredientes e no cardápio publicado; nada foi apagado.
-- [x] Alerta de pedido confirmado com detalhes (itens, total, entrega, pagamento), botões Ver/Aceitar/Silenciar, som repetido em intervalo configurável até reconhecer; reconhecer não aceita o pedido.
-- [x] Terceiro som e aviso "Comprovante recebido — conferir" para comprovantes novos; teste individual dos três sons; mensagens de comprovante naturais sem frases burocráticas.
-- [x] Cancelamento de pedido com pagamento informado avisa o caixa para verificar eventual devolução.
-- [ ] Validar alerta de pedido e de comprovante com eventos reais após publicação; aviso de comprovante já conferido na prévia com dado real.
-- [x] Logo Ultraconnect no ícone do navegador e edição de nome no editor do cardápio usando o produto original.
-- [x] Ajustar mensagens de aceite e Pix separado; bloquear cobranças com recibo ou pagamento existente.
-- [x] Baixa opcional por comprovante, auditoria e conferência no Caixa/Admin; valores não verificados separados e preparo/entrega preservados.
-- [x] Investigar pendentes: pedido WhatsApp recusado e pedido catálogo C1002/comanda 371 já cancelada; somente vínculo comprovado reconciliado, sem presumir duplicação.
-- [x] 69 testes direcionados aprovados; filtro autenticado conferido sem registros de comprovante reais.
-- [ ] Validar comprovante real, abertura do arquivo, baixa/correção persistida e recusa/cancelamento pela tela: aguarda arquivo/pedido de teste autorizado e publicação; confirmação bancária não existe.
-- [x] WhatsApp no Caixa: filas, alertas, respostas, PDF, assumir/transferir/finalizar, montar pedido vinculado; permissões no banco. Conta Caixa testada sem envio real.
-- [x] WhatsApp: filtros, responsabilidade/pausa humana, notas, rascunhos e alertas implementados sem reconectar; assumir, nota e finalização conferidos na conta admin, rascunho preservado ao alternar para balcão. Conversa de teste removida; nenhum WhatsApp enviado.
-- [x] WhatsApp: configurações comerciais, horários, PDF protegido, extração de texto livre e aceite atômico antes da cozinha implementados; 31 testes direcionados aprovados, IA real extraiu quantidade e manteve Pix pendente. Automação permanece desligada.
-- [x] WhatsApp: fila durável com exclusividade, confirmação deduplicada, bloqueios de envio e callbacks preservados; recuperação gerenciada criada a cada minuto. Prévia admin sem erros; produtos/pedidos não foram alterados. Nenhuma publicação.
-- [ ] WhatsApp: ativar atendimento real — aguarda horários completos, chave Pix, seleção do produto da marmita e PDF do usuário.
-- [ ] WhatsApp: validar mensagens/PDF, aceite completo, eventos de saída, reconexão e recuperação no serviço publicado — aguarda autorização para publicação e telefone de teste autorizado; envio/entrega real e notificações nativas com app fechado não verificados.
-- [x] Impressão Delivery inclui endereço completo em vendas, cozinha e recebimentos, com busca pela consulta autorizada quando a lista do perfil omite endereço; 19 testes aprovados e cupom conferido com entrega salva na conta admin, sem alterar dados. Compilação OK; publicação e impressão física pendentes.
-- [x] Vendas administrativas abrem no dia atual, com unidades por produto, ordenação, recebimentos e resumo por dia; corrigidos rankings por nome e exclusão de vendas legadas no turno. 70 testes aprovados; conta admin conferida com 76 vendas pagas/238 unidades, filtros e detalhes, sem alterar pedidos. Publicação pendente.
-- [x] Cancelar/concluir rotas sem iniciar e taxa de entrega opcional: 32 testes aprovados; dois envios reais admin (8 sem taxa / 13 com taxa), rotas concluída e cancelada com releitura; pedidos/clientes/rotas temporários removidos. Publicação pendente.
-- [x] Edição desktop conectada entregue em ZIP v4: carrega site publicado ao abrir, recarga manual confirmada (F5/menu e botão após publicação); nove testes passaram e botão invocado na conta admin com bridge simulada, sem alterar pedidos. Executável PE x64 e ASAR/ZIP verificados; Windows real e impressão física não testados. Sem alterações em workflows ou dependências. Publicação do novo botão pendente; atualizações nativas ainda exigem novo pacote.
-- [x] Aviso animado persistente e som de chegada no Admin/Caixa, silenciar/testar áudio e acesso direto à cozinha; 12 testes aprovados. Conta admin conferida com simulação local sem gravar pedidos: som gerado e cozinha aberta, sem erros. Publicação e novo pacote Windows ainda necessários para esta alteração.
-- [x] Rotas exclusivas de Delivery, abertura automática após envio e catálogo municipal por oito zonas urbanas + localidades rurais; lotes de até dez entregas, mais antigas primeiro. 52 testes aprovados; catálogo e campos conferidos na conta admin sem criar pedidos. Cobertura completa de bairros e envio real nesta alteração não confirmados.
-- [x] Rotas de entrega: endereços reutilizáveis e obrigatórios no Delivery, lista/filtros/bairros, montagem/ordenação por bairro/endereço, links Google Maps, entregadores com acesso restrito e histórico. 44 testes aprovados; envio Caixa → rota → entrega verificado no banco com rollback; 47 produtos/78 pedidos preservados.
-- [x] Envio real → montagem → conclusão/cancelamento na tela conferido como admin, sem iniciar rota; temporários removidos. Distância/tempo dependem de integração de mapas ainda não configurada; site não publicado nesta alteração.
-- [x] Perfil Caixa ativado no banco: valor `cashier` criado no tipo de função (as três funções de caixa já existiam); leitura de caixa, recebimento e produtos verificados no servidor, sem acesso a faturamento/custos/configurações; remoção de acesso já cobre Caixa e protege administradores.
-- [x] Impressão automática sem janela: QZ Tray assinado com a chave enviada e certificado "Ultrabrasa PDV" (válido até 2036); assinatura RSA validada, 37 testes aprovados, compilação OK. Na primeira conexão, marcar "Lembrar esta decisão" uma única vez.
-- [x] Revisão econômica: site público e preview com HTTP 200 nas três rotas, sem erros no navegador; teste de rotas aprovado e compilação automática OK após corrigir seleção de impressora. Workflow Windows usa configuração Electron, binário Lightning CSS da mesma versão e pacote sem servidor/segredos; YAML validado e logo acessível. ZIP v2 anterior confirmado com executável PE x64, HTML cliente e logo no ASAR.
-- [ ] Executar e confirmar novo pacote Windows no GitHub Actions: URL e estado do repositório não disponíveis às ferramentas; conferir conexão existente em Configurações → Git e executar Build Ultrabrasa Desktop (Windows). Nenhum novo ZIP gerado nesta revisão.
-- [x] Adicionar nome e WhatsApp opcionais, autorização promocional e cadastro compartilhado sem duplicação por telefone.
-- [x] Lista de clientes exclusiva do dono, busca, seleção, exportação e mensagem individual no WhatsApp; exportação verificada sem enviar mensagens.
-- [x] Histórico próprio do atendente com pessoas, datas e itens, sem valores de pedidos encerrados; projeção protegida no servidor.
-- [x] Testar cadastro e histórico com conta real e lista do dono; 35 testes aprovados, atendimento fictício removido e checksum original preservado com 45 produtos/3 pedidos.
-- [x] Mostrar preços unitários, subtotais e totais no atendimento; carrinho verificado na conta real, pedido com ajustes coberto por teste automatizado.
-- [x] Excluir atendente com confirmação, revogar acesso sem apagar histórico e proteger administradores; cancelamento e confirmação testados, chamadas sem permissão rejeitadas.
-- [x] Preparar projeto Android com logo, mesmo site/login/dados, Gradle wrapper e instruções exatas; APK v1 compilado em ambiente temporário com Java 17/SDK 35, assinatura v2 e integridade verificadas, entregue em Files. É uma versão de teste instalável; instalação, login e sincronização no aparelho real ainda não verificados.
-- [x] Testar as correções: 26 testes aprovados, contas reais verificadas, 45 produtos/3 pedidos/revisão 9 e checksum idênticos antes/depois; publicação solicitada para ultrabrasa.lovable.app, conclusão da implantação não confirmada.
-- [x] Restringir atendentes à projeção com preços e contagem própria, sem caixa/custos/admin; valores enviados pelo cliente não são aceitos, snapshot completo permanece bloqueado.
-- [x] Organizar exatamente cinco mesas, pedidos em preparação e especificações na cozinha; pedido real testado e cancelado para restaurar estoque.
-- [x] Adicionar opção de avisos de pedidos do celular e aprimorar feedback visual da marca; Mesa 4 enviada no celular e recebida automaticamente na cozinha do computador.
-- [x] Atualizar pacote Windows com as novas funções e logo local; executável PE Windows confirmado. Abertura nativa no Windows não disponível neste ambiente.
-- [x] Alternar tela cheia e modo janela no código desktop; F11/Escape e botão testados com Electron simulado, executável anterior não reempacotado.
-- [x] Melhorar uso no celular e animações de feedback; PDV autenticado e envio à cozinha verificados em tela de 390 px, sem transbordamento horizontal.
-- [x] Sincronizar pedidos entre celular, computador e cozinha automaticamente; eventos e preservação de rascunho testados.
-- [x] Aplicar logo enviada, preto neutro, vermelho e dourado; entrada e login conferidos no navegador sem erros.
-- [x] Ampliar configurações por área com salvar/descartar, preferências de vendas, alertas da cozinha, aparência, backup e acesso da equipe; 6 testes aprovados, salvamento na conta real aguarda cadastro.
-- [ ] Conectar pedidos iFood: aguarda cadastro no portal oficial, credenciais de teste, homologação e autorização da loja; sem conexão ativa.
-- [x] Histórico completo: datas, filtros, detalhes e quantidades por produto; 7 testes aprovados.
-- [x] Login individual e nomes dos atendentes; entrada, cadastro e recuperação verificados publicamente.
-- [x] Administração com acesso total e equipe com permissões protegidas na base de dados.
-- [x] Persistência compartilhada com revisão e cópia dos dados locais antes da importação.
-- [x] Verificar administração e pedido salvo em conta real; cozinha, mesa, especificações, status pronto e cancelamento confirmados. Histórico coberto por 7 testes.
-- [x] Verificar conta real de atendente: 45 produtos, preço/subtotal/total do carrinho, ausência de dados completos e rejeição de alterações de acesso; nenhum pedido foi criado ou alterado nesta correção.- [ ] Conectar Google Contacts: conector udc_google_contacts sem client_id/secret; aguarda usuário criar OAuth no Google Cloud e preencher a configuração do conector.
+# Correções PDV UltraBrasa (horário de pico)
+
+- [x] 1. Receber sem "Falha no pagamento": admin+caixa, duplicado bloqueado, registro manual, total/recebido/saldo, dados mantidos em erro — testado no navegador (dinheiro, duplicado, admin)
+- [x] 2. Comprovante direto da mensagem do WhatsApp: botão "Vincular ao pedido" na imagem/PDF com escolha de pedido — pendente: teste com arquivo real recebido
+- [x] 3. Etapa única: Novo → Em preparo → Pronto → Saiu para entrega → Entregue / Retirado — testado (transições, guards, saída e baixa de entrega)
+- [x] 4. Pagamento separado da etapa — testado (pago permanece "Em entrega")
+- [x] 5. Abas com contadores no Caixa (Novos, Cozinha, Prontos, Em entrega, Finalizados) + cartões com tempo, cliente, itens e pagamento
+- [x] 6. Pedidos inconsistentes: nenhum encontrado (filas vazias, entregas consistentes); guards novos impedem recorrência
+- [x] 7. Testes: 159 testes + fluxo real balcão e delivery no navegador; build OK
