@@ -121,7 +121,12 @@ export async function processJobs(db:Admin,limit=2){
           }
         }
       }
-      const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at').eq('phone',j.phone).single());
+      const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at,attendance_status,assigned_to').eq('phone',j.phone).single());
+      // Pausa órfã: pedido já recusado/cancelado e ninguém atendendo — o robô volta a responder.
+      if(p.automatic&&c.automation_paused&&c.attendance_status==='new'&&!c.assigned_to){
+        const open=checkEmpty(await db.from('whatsapp_order_requests').select('id').eq('phone',j.phone).eq('status','awaiting_acceptance').limit(1));
+        if(!open?.length){checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:false}).eq('phone',j.phone));c.automation_paused=false;}
+      }
       if(p.automatic&&(c.automation_paused||!cfg.auto_reply_enabled)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
       if(j.kind==='receipt'){const {processReceipt}=await import('./payment-receipts.server');await processReceipt(db,p.inboundId??'');}
       else if(j.kind==='interpret')await interpret(db,j);
@@ -135,7 +140,7 @@ export async function processJobs(db:Admin,limit=2){
           const text=p.text??'';
           if(p.automatic){
             await sendTyping(j.phone,String(j.dedup_key??'').split(':').slice(1).join(':'));
-            await new Promise(r=>setTimeout(r,3000+Math.min(2000,text.length*10)));
+            await new Promise(r=>setTimeout(r,1500+Math.min(1500,text.length*8)));
           }
           providerId=await sendText(db,j.phone,text,{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
         }
