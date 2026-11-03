@@ -1,6 +1,6 @@
 import { generateResponse, GatewayError } from '@lovable.dev/ai-gateway';
 import { z } from 'zod';
-import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,inEunapolis,initialLunchMessage,closedMessage } from './whatsapp-business';
+import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,inEunapolis,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo } from './whatsapp-business';
 import { gateway,sendText,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
@@ -53,7 +53,7 @@ async function interpret(db:Admin,j:Job){
     const gone=allProducts.find(p=>p.id===parsed.unavailableId);
     if(gone){
       let msg:string;
-      if(gone.id===b.lunchProductId){const day=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).getDay();const night=b.hours.find(h=>h.day===day)?.nightStart;msg=`As marmitas de hoje já acabaram, poxa! Mas amanhã tem mais 😊${night?` Mais tarde, a partir das ${night}, temos hambúrgueres e espetinhos também!`:''}`;}
+      if(gone.id===b.lunchProductId){const day=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).getDay();const night=b.hours.find(h=>h.day===day)?.nightStart;const next=nextLunchInfo(b);msg=`Poxa, as marmitas de hoje já acabaram. Obrigado pela paciência!${next?` A próxima leva sai ${next}.`:''}${night?` Hoje, a partir das ${night}, tem hambúrguer e espetinho.`:''}`;}
       else{const alt=catalog.filter(p=>p.category===gone.category).slice(0,2).map(p=>p.name);msg=alt.length?`Esse acabou por hoje! Mas temos ${alt.join(' e ')}. Quer dar uma olhada?`:'Esse acabou por hoje! Quer que eu te mande o cardápio pra ver as outras opções?';}
       await queueJob(db,`soldout:${payload.inboundId}`,j.phone,'text',{text:msg,automatic:true});return;
     }
@@ -73,15 +73,20 @@ async function interpret(db:Admin,j:Job){
     if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Pode deixar, recebemos! 😊 Agora a equipe confere seu pedido e já te confirma por aqui. O pagamento também é conferido por eles.',automatic:false});return;
   }
   let reply='';
-  if(missing.length) reply=`Show! Pra seguir, só falta: ${missing.join(', ')}.`;
+  if(missing.length) reply=followUpMessage(missing);
   else {d.quotedTotal=total;reply=`Pode deixar! Confere se ficou tudo certo:\n${d.items.map(i=>`${i.qty} × ${catalog.find(p=>p.id===i.productId)?.name}${i.note?` (${i.note})`:''}`).join('\n')}\n${d.type}${d.type==='Delivery'?`: ${d.address.street}, ${d.address.number} — ${d.address.neighborhood}, ${d.address.city}`:''}\nPagamento: ${d.payment} (pendente)${d.payment==='Dinheiro'?` · ${d.cashFor?`troco para R$ ${d.cashFor.toFixed(2)}`:'sem troco'}`:''}${d.payment==='Cartão'&&d.type==='Delivery'?' · Levar maquininha':''}\nTaxa: R$ 0,00\nTotal: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}${d.payment==='Pix'?`\nChave Pix: ${b.pixKey}`:''}\nConfirma este pedido?`;}
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
   const hadAuto=messages.some(m=>m.direction==='out');
-  if(period==='lunch'&&!hadAuto&&!d.items.length&&!d.address.street&&!d.address.neighborhood)reply=initialLunchMessage(b)+(missing.includes('nome')?'\nQual seu nome?':'');
+  const answer=parsed.answer.trim();
+  const lunchP=allProducts.find(p=>p.id===b.lunchProductId);
+  const lunchAvailable=!!lunchP&&(lunchP.stock===null||lunchP.stock>0);
+  if(period==='lunch'&&!hadAuto&&!answer&&lunchAvailable&&!d.items.length&&!d.address.street&&!d.address.neighborhood)reply=initialLunchMessage(b,new Date(),lunchP.price);
   if(period==='night'&&!hadAuto&&!d.items.length)reply=`Oi! Que bom te ver por aqui 😊 Hoje à noite temos:\n${catalog.filter(p=>/hamb|espet|acomp/i.test(p.name+' '+p.category)).map(p=>`${p.name} — ${p.price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`).join('\n')}\n${reply}`;
-  if(parsed.wantsPdf||period==='night'&&!hadAuto){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não está por aqui, mas pode perguntar que a gente te conta o que tem 😊';}
-  if(parsed.answer.trim())reply=`${parsed.answer.trim()}\n\n${reply}`.trim();
+  // No horário das marmitas, PDF só vai quando o cliente pede.
+  if(parsed.wantsPdf||period==='night'&&!hadAuto){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não está por aqui, mas pode perguntar que a gente te conta o que tem.';}
+  // Pergunta específica: responde direto e só depois pede o que falta, sem repetir a apresentação.
+  if(answer)reply=`${answer}${missing.length&&!d.items.length?'':`\n\n${reply}`}`.trim();
   await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,...(!missing.length?{summaryVersion:c.draft_version+1,summaryTotal:total}:{})});
 }
 export async function processJobs(db:Admin,limit=2){
