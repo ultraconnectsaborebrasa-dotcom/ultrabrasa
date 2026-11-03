@@ -18,6 +18,7 @@ type Cfg = { auto_reply_enabled: boolean; auto_reply_text: string; quick_replies
 type Status = Awaited<ReturnType<typeof whatsappStatus>>;
 
 const STATUS_LABEL: Record<string, string> = { aberta: 'Aberta', cozinha: 'Em preparo', pronto: 'Pronto', pago: 'Pago', cancelado: 'Cancelado', entregue: 'Entregue' };
+const queueOf=(c:Conv)=>c.attendance_status==='new'||(c.attendance_status==='needs_reply'&&!c.assigned_name)?'new':c.attendance_status==='needs_reply'?'in_service':c.attendance_status;
 
 export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
   const statusFn = useServerFn(whatsappStatus);
@@ -34,7 +35,7 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [showCfg, setShowCfg] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [filter,setFilter]=useState('all');const[search,setSearch]=useState('');const[note,setNote]=useState('');
+  const [filter,setFilter]=useState('new');const[search,setSearch]=useState('');const[note,setNote]=useState('');
   const[jobErrors,setJobErrors]=useState<{id:string;phone:string;processing_error:string|null;state:string}[]>([]);
   const[notes,setNotes]=useState<{id:string;body:string;author_name:string|null}[]>([]);
   const[requests,setRequests]=useState<{id:string;phone:string;quoted_total:number;request:unknown;created_at:string}[]>([]);
@@ -90,15 +91,16 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
     {showCfg&&cfg&&<WhatsAppBusinessSettings initial={cfg.business} enabled={cfg.auto_reply_enabled} quick={cfg.quick_replies} onSaved={()=>{void loadCfg();setShowCfg(false);}}/>}
     {jobErrors.length>0&&<details className="border-l-2 border-destructive p-2 text-sm"><summary>Envios ou automação precisam de revisão · {jobErrors.length}</summary>{jobErrors.map(j=><div key={j.id} className="py-1"><Button variant="ghost" size="sm" onClick={()=>setActive(j.phone)}>+{j.phone}</Button> · {j.state==='unknown'?'Resultado desconhecido; confira antes de reenviar':'Falha'} · {j.processing_error}</div>)}</details>}
     {requests.length>0&&<div className="space-y-2 border-l-2 border-warning p-3"><h2 className="font-semibold text-warning">Aguardando aceite da loja · {requests.length}</h2>{requests.map(r=><div key={r.id} className="flex flex-wrap items-center gap-2 text-sm"><Button variant="ghost" onClick={()=>setActive(r.phone)}>{convs.find(c=>c.phone===r.phone)?.name||`+${r.phone}`} · {brl(r.quoted_total)}</Button><span className="text-muted-foreground">{Math.floor((Date.now()-Date.parse(r.created_at))/60000)} min</span><Button size="sm" disabled={busy} onClick={()=>void accept(r.id,true)}>Aceitar e enviar à cozinha</Button><Button size="sm" variant="outline" disabled={busy} onClick={()=>void accept(r.id,false)}>Recusar</Button><details className="w-full"><summary>Resumo</summary><pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(r.request,null,2)}</pre></details></div>)}</div>}
-    <div className="flex flex-wrap gap-1"><Button size="sm" variant={filter==='all'?'default':'outline'} onClick={()=>setFilter('all')}>Todos · {convs.length}</Button>{Object.entries(attendanceLabels).map(([key,label])=><Button key={key} size="sm" variant={filter===key?'default':'outline'} onClick={()=>setFilter(key)}>{label} · {convs.filter(c=>c.attendance_status===key).length}</Button>)}</div>
+    <div className="grid grid-cols-2 gap-2">{(['new','in_service'] as const).map(key=><Button key={key} variant={filter===key?'default':'outline'} className={`h-auto justify-between py-3 text-base ${key==='new'&&convs.some(c=>queueOf(c)==='new')?'border-success':''}`} onClick={()=>setFilter(key)}><span>{key==='new'?'Novos':'Em atendimento'}</span><span className="rounded-full bg-elevated px-2 font-bold">{convs.filter(c=>queueOf(c)===key).length}</span></Button>)}</div>
+    <div className="flex flex-wrap gap-1"><Button size="sm" variant={filter==='all'?'default':'outline'} onClick={()=>setFilter('all')}>Todos · {convs.length}</Button>{(['waiting_customer','finished'] as const).map(key=><Button key={key} size="sm" variant={filter===key?'default':'outline'} onClick={()=>setFilter(key)}>{attendanceLabels[key]} · {convs.filter(c=>queueOf(c)===key).length}</Button>)}</div>
     <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_240px]">
       <ul className="min-h-0 overflow-y-auto rounded-lg border">
         <li className="p-2"><input aria-label="Buscar conversa" className="field" placeholder="Nome ou WhatsApp" value={search} onChange={e=>setSearch(e.target.value)}/></li>
         {convs.length === 0 && <li className="p-4 text-sm text-muted-foreground">Nenhuma conversa ainda.</li>}
-        {convs.filter(c=>(filter==='all'||c.attendance_status===filter)&&`${c.name} ${c.phone}`.toLowerCase().includes(search.toLowerCase())).map(c => <li key={c.phone}><Button variant="ghost" onClick={() => setActive(c.phone)} className={`h-auto w-full flex-col items-stretch border-b p-3 text-left ${active === c.phone ? 'bg-primary/10' : 'hover:bg-elevated'}`}>
+        {[...convs].sort((a,b)=>(a.awaiting_since?Date.parse(a.awaiting_since):Infinity)-(b.awaiting_since?Date.parse(b.awaiting_since):Infinity)).filter(c=>(filter==='all'||queueOf(c)===filter)&&`${c.name} ${c.phone}`.toLowerCase().includes(search.toLowerCase())).map(c => <li key={c.phone}><Button variant="ghost" onClick={() => setActive(c.phone)} className={`h-auto w-full flex-col items-stretch border-b p-3 text-left ${active === c.phone ? 'bg-primary/10' : 'hover:bg-elevated'}`}>
           <div className="flex justify-between gap-2"><span className="truncate font-semibold">{c.name || `+${c.phone}`}</span>{c.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-success px-1 text-[10px] text-background">{c.unread}</span>}</div>
           <div className="truncate text-xs text-muted-foreground">{c.last_message}</div>
-          <div className="flex flex-wrap justify-between gap-1 text-[10px] text-muted-foreground"><span>{c.assigned_name||'Sem responsável'}</span>{c.awaiting_since&&<span className={Date.now()-Date.parse(c.awaiting_since)>(cfg?.business.reminderMinutes??5)*60000?'text-warning':''}>{Math.floor((Date.now()-Date.parse(c.awaiting_since))/60000)} min aguardando</span>}</div>
+          <div className="flex flex-wrap justify-between gap-1 text-[10px] text-muted-foreground"><span className={c.assigned_name?'font-semibold text-foreground':''}>{c.assigned_name?`Responsável: ${c.assigned_name}`:'Sem responsável'}</span>{c.attendance_status==='needs_reply'&&c.assigned_name&&<span className="rounded bg-warning/20 px-1 font-semibold text-warning">Precisa de resposta</span>}{c.awaiting_since&&<span className={Date.now()-Date.parse(c.awaiting_since)>(cfg?.business.reminderMinutes??5)*60000?'text-warning':''}>{Math.floor((Date.now()-Date.parse(c.awaiting_since))/60000)} min aguardando</span>}</div>
         </Button></li>)}
       </ul>
       <div className="flex min-h-[360px] flex-col rounded-lg border">

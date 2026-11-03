@@ -1,0 +1,11 @@
+CREATE OR REPLACE FUNCTION public.wa_touch_inbound(_phone text,_body text,_name text,_at timestamptz) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN
+INSERT INTO public.whatsapp_conversations(phone,name,last_message,last_message_at,unread,last_inbound_at,attendance_status,awaiting_since) VALUES(_phone,_name,left(_body,200),_at,1,_at,'new',now()) ON CONFLICT(phone) DO UPDATE SET name=coalesce(EXCLUDED.name,whatsapp_conversations.name),last_message=CASE WHEN EXCLUDED.last_message_at>=whatsapp_conversations.last_message_at THEN EXCLUDED.last_message ELSE whatsapp_conversations.last_message END,last_message_at=greatest(EXCLUDED.last_message_at,whatsapp_conversations.last_message_at),unread=whatsapp_conversations.unread+1,last_inbound_at=greatest(EXCLUDED.last_inbound_at,whatsapp_conversations.last_inbound_at),
+attendance_status=CASE WHEN whatsapp_conversations.attendance_status IN ('new','finished') OR whatsapp_conversations.assigned_to IS NULL THEN 'new' ELSE 'needs_reply' END,
+assigned_to=CASE WHEN whatsapp_conversations.attendance_status='finished' THEN NULL ELSE whatsapp_conversations.assigned_to END,
+assigned_name=CASE WHEN whatsapp_conversations.attendance_status='finished' THEN NULL ELSE whatsapp_conversations.assigned_name END,
+automation_paused=CASE WHEN whatsapp_conversations.attendance_status='finished' THEN false ELSE whatsapp_conversations.automation_paused END,
+awaiting_since=coalesce(whatsapp_conversations.awaiting_since,now()); END $$;
+CREATE OR REPLACE FUNCTION public.wa_human_replied() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN
+UPDATE public.whatsapp_conversations SET attendance_status='in_service',awaiting_since=NULL WHERE phone=NEW.phone AND attendance_status='needs_reply' AND assigned_to IS NOT NULL; RETURN NEW; END $$;
+REVOKE ALL ON FUNCTION public.wa_human_replied() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER wa_human_replied AFTER INSERT ON public.whatsapp_messages FOR EACH ROW WHEN (NEW.direction='out' AND NEW.source IN ('pdv','phone')) EXECUTE FUNCTION public.wa_human_replied();
