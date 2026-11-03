@@ -22,7 +22,7 @@ export const Route = createFileRoute('/cardapio')({
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(catalogQuery),
   component: CardapioPage,
-  errorComponent: ({ error }: { error: Error }) => <div role="alert" className="p-8 text-center text-foreground">{error.message}</div>,
+  errorComponent: ({ error }) => <div role="alert" className="p-8 text-center text-foreground">{error instanceof Error ? error.message : "Não foi possível carregar o cardápio"}</div>,
   notFoundComponent: () => <div className="p-8 text-center">Cardápio indisponível.</div>,
 });
 
