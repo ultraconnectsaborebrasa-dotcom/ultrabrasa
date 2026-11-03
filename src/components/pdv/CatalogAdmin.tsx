@@ -25,11 +25,24 @@ export function CatalogAdmin() {
   const get = (id: string): Row => rows[id] ?? { product_id: id, description: "", image_url: null, illustrative: false, published: true, featured: false, sort: 0 };
   const set = (id: string, patch: Partial<Row>) => setRows((r) => ({ ...r, [id]: { ...get(id), ...patch } }));
 
-  async function save(id: string) {
-    const r = get(id); setSaving(id);
+  async function save(id: string, override?: Partial<Row>) {
+    const r = { ...get(id), ...override }; setSaving(id);
     const { error } = await supabase.rpc("save_catalog_product", { _product_id: id, _description: r.description, _image_url: (r.image_url?.trim() || null) as string, _illustrative: false, _published: r.published, _featured: r.featured, _sort: r.sort });
     setSaving(null);
     error ? toast.error(error.message) : toast.success("Cardápio atualizado");
+  }
+
+  async function upload(id: string, file: File) {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { toast.error("Use foto JPG, PNG ou WEBP"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("A foto precisa ter até 5 MB"); return; }
+    setSaving(id);
+    const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const name = `${id.replace(/[^A-Za-z0-9-]/g, "")}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("catalog-photos").upload(name, file, { contentType: file.type });
+    if (error) { setSaving(null); toast.error("Não foi possível enviar a foto"); return; }
+    const url = `/api/public/catalog-photo/${name}`;
+    set(id, { image_url: url });
+    await save(id, { image_url: url });
   }
 
   return (
@@ -53,7 +66,14 @@ export function CatalogAdmin() {
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex items-center justify-between gap-2"><b className="truncate">{p.name}</b><span className="text-sm text-muted-foreground">{brl(p.price)}</span></div>
               <Textarea rows={2} maxLength={400} placeholder="Descrição" value={r.description} onChange={(e) => set(p.id, { description: e.target.value })} />
-              <Input placeholder="Link da foto (https://...)" value={r.image_url ?? ""} onChange={(e) => set(p.id, { image_url: e.target.value })} />
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="outline" asChild disabled={saving === p.id}>
+                  <label className="cursor-pointer">{saving === p.id ? "Enviando..." : "Enviar foto do computador"}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) upload(p.id, f); }} />
+                  </label>
+                </Button>
+              </div>
+              <Input placeholder="ou cole o link da foto (https://...)" value={r.image_url ?? ""} onChange={(e) => set(p.id, { image_url: e.target.value })} />
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <label className="flex items-center gap-1"><input type="checkbox" checked={r.published} onChange={(e) => set(p.id, { published: e.target.checked })} />Mostrar</label>
                 <label className="flex items-center gap-1"><input type="checkbox" checked={r.featured} onChange={(e) => set(p.id, { featured: e.target.checked })} />Destaque</label>
