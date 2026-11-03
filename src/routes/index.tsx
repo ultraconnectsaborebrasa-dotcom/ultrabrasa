@@ -63,7 +63,6 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const whatsappConvs=useWhatsAppConversations();const whatsappUnread=whatsappConvs.reduce((n,c)=>n+c.unread,0);
   const whatsappPending=useWhatsAppPendingOrders();
   const requestFn=useServerFn(whatsappRequestAction);
-  const products=useStore(s=>s.products);
   const acceptWhatsAppOrder=async(id:string)=>{try{await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
   const saving = useSaving();
   const sync = useSyncStatus();
