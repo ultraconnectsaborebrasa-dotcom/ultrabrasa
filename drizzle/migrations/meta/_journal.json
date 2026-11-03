@@ -274,6 +274,13 @@
       "when": 1793690021615,
       "tag": "0038_catalog_photo_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793690552603,
+      "tag": "0039_whatsapp_claim_per_phone",
+      "breakpoints": true
     }
   ]
 }
