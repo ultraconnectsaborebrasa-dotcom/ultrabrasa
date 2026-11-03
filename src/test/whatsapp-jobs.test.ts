@@ -1,6 +1,6 @@
 import {describe,it,expect,vi,beforeEach} from 'vitest';
 import {defaultBusiness} from '@/lib/whatsapp-business';
-vi.mock('@/lib/whatsapp.server',()=>({gateway:vi.fn(),sendText:vi.fn(),digits:(s:string)=>s.replace(/\D/g,'')}));
+vi.mock('@/lib/whatsapp.server',()=>({gateway:vi.fn(),sendText:vi.fn(),sendTyping:vi.fn(),digits:(s:string)=>s.replace(/\D/g,'')}));
 vi.mock('@lovable.dev/ai-gateway',()=>({generateResponse:vi.fn(),GatewayError:class GatewayError extends Error{}}));
 import {processJobs} from '@/lib/whatsapp-automation.server';
 import {sendText} from '@/lib/whatsapp.server';
