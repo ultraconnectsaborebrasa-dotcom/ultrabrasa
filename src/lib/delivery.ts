@@ -6,7 +6,7 @@ export const deliveryFeeFor = (type:string,input:DeliveryInput|undefined,configu
 export const canFinishDelivery = (status:DeliveryStatus) => !['Entregue','Cancelado'].includes(status);
 export const DELIVERY_STATUSES = ['Aguardando preparo','Pronto para entrega','Em rota','Entregue','Cancelado'] as const;
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number];
-export type Delivery = { id:string; order_id:string; number:number; customer:string; phone:string; address:DeliveryAddress; created_at:string; delivered_at:string|null; status:DeliveryStatus; route_id:string|null; position:number; courier_id:string|null; total:number|null; due:number|null; payment_method:string; change:number|null; problem:string|null; items:{name:string;qty:number;note?:string}[] };
+export type Delivery = { id:string; order_id:string; number:number; customer:string; phone:string; address:DeliveryAddress; created_at:string; delivered_at:string|null; departed_at?:string|null; order_status?:string; payment_status?:string; status:DeliveryStatus; route_id:string|null; position:number; courier_id:string|null; total:number|null; due:number|null; payment_method:string; change:number|null; problem:string|null; items:{name:string;qty:number;note?:string}[] };
 export type Courier = {id:string;name:string;phone:string;user_id:string|null;active:boolean};
 export type DeliveryRoute = {id:string;name:string;courier_id:string|null;created_at:string;origin:string;distance_meters:number|null;duration_seconds:number|null};
 export function validateDelivery(input:DeliveryInput|undefined):string|null {

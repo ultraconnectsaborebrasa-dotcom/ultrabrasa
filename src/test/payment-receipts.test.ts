@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {assessReceipt,type ReceiptEvidence,type ReceiptCandidate} from '@/lib/payment-receipts';
+import {assessReceipt,canRecordProvisional,receiptLinkCandidate,type ReceiptEvidence,type ReceiptCandidate} from '@/lib/payment-receipts';
 import {summarizeSales} from '@/lib/sales-history';
 import {getState,replaceState,setOrderStatus,type Order} from '@/lib/pdv-store';
 const now=new Date('2026-11-03T15:00:00Z');
@@ -7,6 +7,12 @@ const evidence:ReceiptEvidence={isPixReceipt:true,state:'completed',amount:19.9,
 const candidate:ReceiptCandidate={id:'request-1',total:19.9,createdAt:'2026-11-03T13:00:00Z',status:'accepted',payment:'Pix',paid:false};
 const check=(e=evidence,c=[candidate],used=false)=>assessReceipt(e,c,used,'Ultraconnect LTDA','73982423404',now);
 describe('receipt payment rules',()=>{
+ it('links unreadable evidence only when exactly one active unpaid order exists',()=>expect(check({...evidence,state:'unknown'}).requestId).toBe('request-1'));
+ it('keeps multiple active orders unlinked even when one has the matching amount',()=>expect(receiptLinkCandidate([candidate,{...candidate,id:'other',total:39.8}])).toBe(null));
+ it('does not link a cancelled request for an unreadable file',()=>expect(receiptLinkCandidate([{...candidate,status:'cancelled'}])).toBe(null));
+ it('recognizes a Pix document without claiming bank confirmation',()=>expect(canRecordProvisional({...evidence,state:'unknown'})).toBe(true));
+ it('never assigns provisional payment to an arbitrary PDF',()=>expect(canRecordProvisional({...evidence,isPixReceipt:false})).toBe(false));
+ it('keeps scheduled receipts pending instead of provisional paid',()=>expect(canRecordProvisional({...evidence,state:'scheduled'})).toBe(false));
  it('accepts completed matching receipt with exact R$19.90 amount',()=>expect(check().compatible).toBe(true));
  it('does not accept an arbitrary image',()=>expect(check({...evidence,isPixReceipt:false}).compatible).toBe(false));
  it('keeps unreadable value pending',()=>expect(check({...evidence,amount:null}).compatible).toBe(false));
