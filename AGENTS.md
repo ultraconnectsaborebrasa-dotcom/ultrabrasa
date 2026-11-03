@@ -42,3 +42,4 @@ Subdirectories may have their own AGENTS.md (desktop rules: electron/AGENTS.md);
 - Receipts use private media, atomic deduplication and audited provisional payments; unknown files stay reviewable without pausing automation, while bank confirmation stays manual and delivery-independent.
 - Delivery departure uses an authorized RPC and deduplicated job; only known failed sends allow explicit retry.
 - Locked closure RPCs and terminal guards close linked requests/jobs, preserving history without assuming refunds.
+- PDV orders keep operational stage (`status`: aberta→cozinha→pronto→entrega→entregue/retirado) separate from payment (`paymentStatus` + `payments`); `pay_pdv_cashier` never changes `status`, and stage RPCs never touch payments — sales history reads both `status='pago'` (legacy) and `paymentStatus='pago'`.
