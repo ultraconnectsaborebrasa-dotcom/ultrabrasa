@@ -1,6 +1,6 @@
 import { generateResponse, GatewayError } from '@lovable.dev/ai-gateway';
 import { z } from 'zod';
-import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo,menuOutsideNightMessage,isMenuAsk,isPriceAsk,lunchPriceMessage,closedMenuMessage,lunchPresented,lunchQtyAck,summaryReady,isNightMenuAsk,nightMenuOffHours } from './whatsapp-business';
+import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo,menuOutsideNightMessage,isMenuAsk,isPriceAsk,lunchPriceMessage,closedMenuMessage,lunchPresented,lunchQtyAck,summaryReady,paymentLabel,addressAck,orderSummary,isNightMenuAsk,nightMenuOffHours } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
@@ -75,7 +75,7 @@ async function interpret(db:Admin,j:Job){
   const changed=JSON.stringify({...d,summarySent:false,quotedTotal:0})!==JSON.stringify({...previous,summarySent:false,quotedTotal:0});
   const missing=missingOrderFields(d);
   if(parsed.confirms&&previous.summarySent&&!changed&&summaryReady(d,total,missing)&&previous.quotedTotal===total){
-    const confirmed=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:{customer:d.customer,type:d.type,items:d.items.map(i=>({...i,quotedPrice:catalog.find(p=>p.id===i.productId)?.price})),note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}}));
+    const confirmed=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:{customer:d.customer,type:d.type,items:d.items.map(i=>({...i,quotedPrice:catalog.find(p=>p.id===i.productId)?.price})),note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento: ${paymentLabel(d.payment!,d.type==='Delivery')}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}}));
     if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Pode deixar! Seu pedido chegou por aqui 😊 Já vamos te confirmar.',requestId:confirmed,automatic:false});return;
   }
   let reply='';
@@ -89,7 +89,9 @@ async function interpret(db:Admin,j:Job){
   if(newlyAdded&&missing.length)reply=`${lunchQtyAck(lunchItem.qty)} ${reply}`;
   // Resposta social sem pedido em andamento: não avança etapa nem pede quantidade.
   if(!d.items.length&&!previous.items.length&&!parsed.wantsMenu&&!parsed.genericPrice&&!parsed.wantsPdf&&!parsed.answer.trim()&&messages.some(m=>m.direction==='out')&&!presented)reply='Que bom! 😊 Como posso te ajudar hoje?';
-  if(ready){d.quotedTotal=total;reply=`Pode deixar! Confere se ficou tudo certo:\n${d.items.map(i=>`${i.qty} × ${catalog.find(p=>p.id===i.productId)?.name}${i.note?` (${i.note})`:''}`).join('\n')}\n${d.type}${d.type==='Delivery'?`: ${d.address.street}, ${d.address.number} — ${d.address.neighborhood}, ${d.address.city}`:''}\nPagamento: ${d.payment} (pendente)${d.payment==='Dinheiro'?` · ${d.cashFor?`troco para R$ ${d.cashFor.toFixed(2)}`:'sem troco'}`:''}${d.payment==='Cartão'&&d.type==='Delivery'?' · Levar maquininha':''}\nTaxa: R$ 0,00\nTotal: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}${d.payment==='Pix'?`\nChave Pix: ${b.pixKey}`:''}\nConfirma este pedido?`;}
+  const addrDone=(a:typeof d.address)=>!!(a.street&&a.number&&a.neighborhood);
+  if(!ready&&d.type==='Delivery'&&addrDone(d.address)&&!addrDone(previous.address)&&missing.length)reply=`${addressAck(d.address)} ${followUpMessage(missing)}`;
+  if(ready){d.quotedTotal=total;reply=orderSummary(d,d.items.map(i=>{const p=catalog.find(p=>p.id===i.productId)!;return{name:i.productId===b.lunchProductId?(i.qty>1?'marmitas completas':'marmita completa'):p.name,qty:i.qty,price:p.price,note:i.note};}),total,b.pixKey);}
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
   const hadAuto=messages.some(m=>m.direction==='out');

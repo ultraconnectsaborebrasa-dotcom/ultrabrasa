@@ -73,7 +73,7 @@ export function followUpMessage(missing: string[]) {
   if(addr.length===1&&addr[0]==='número')return 'Me passa só o número da casa.';
   if(addr.length===1&&addr[0]==='bairro')return 'Me passa só o bairro.';
   if(addr.length)return `Me passa ${addr.length===1?'só ':''}${addr.map(a=>a==='número'?'o número da casa':`o ${a}`).join(', ').replace(/, ([^,]*)$/,' e $1')}.`;
-  if(has('forma de pagamento'))return 'Vai pagar no Pix, cartão ou dinheiro?';
+  if(has('forma de pagamento'))return 'Vai pagar no Pix, cartão ou dinheiro? 😊';
   if(has('troco (ou sem troco)'))return 'Precisa de troco? Se sim, pra quanto?';
   if(has('nome'))return 'E qual seu nome?';
   return 'Certo!';
@@ -166,4 +166,19 @@ export function closedMessage(b: Business, now = new Date()) {
   if(n.offset===0)return `Oi! Que bom receber sua mensagem 😊 Agora estamos com uma pausa, mas às ${n.time} a gente volta.${offer?' Se quiser, pode deixar seu pedido por aqui que a gente confirma quando abrir!':''}`;
   const when=n.offset===1?'amanhã':`${/^(sábado|domingo)/.test(n.weekday)?'no':'na'} ${n.weekday}`;
   return `Oi! Que bom receber sua mensagem 😊 Por hoje já encerramos, mas ${when}, a partir das ${n.time}, estamos de volta.${offer?' Se quiser, pode deixar seu pedido por aqui que a gente confirma quando abrir!':''}`;
+}
+
+const small=new Set(['de','da','das','do','dos','e']);
+export const titleAddr=(t:string)=>t.trim().toLowerCase().split(/\s+/).map((w,i)=>i>0&&small.has(w)?w:w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+/** Confirma o endereço recém-completado antes de seguir para o próximo dado. */
+export const addressAck=(a:{street:string;number:string;neighborhood:string})=>`Entrega na ${titleAddr(a.street)}, ${a.number.trim()}, ${titleAddr(a.neighborhood)}, combinado!`;
+export const paymentLabel=(p:'Pix'|'Dinheiro'|'Cartão',delivery:boolean)=>p==='Pix'?'Pix — aguardando pagamento':p==='Cartão'?`Cartão${delivery?' na entrega':''} — a receber`:`Dinheiro${delivery?' na entrega':''} — a receber`;
+/** Resumo final; só chamar quando summaryReady for verdadeiro. */
+export function orderSummary(d: ConversationDraft, lines: {name:string;qty:number;price:number;note?:string}[], total: number, pixKey='') {
+  const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const delivery=d.type==='Delivery';
+  const items=lines.map(l=>`${l.qty} ${l.name}${l.note?` (${l.note})`:''} — ${brl(l.price*l.qty)}`).join('\n');
+  const where=delivery?`Entrega: ${titleAddr(d.address.street)}, ${d.address.number.trim()} — ${titleAddr(d.address.neighborhood)}`:'Retirada no local';
+  const troco=d.payment==='Dinheiro'?(d.cashFor?` · troco para ${brl(d.cashFor)}`:' · sem troco'):'';
+  return `Confere pra mim 😊\n\n${items}\n${where}\nPagamento: ${paymentLabel(d.payment!,delivery)}${troco}${delivery?'\nEntrega grátis':''}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}\nTotal: ${brl(total)}${d.payment==='Pix'&&pixKey?`\nChave Pix: ${pixKey}`:''}\n\nPosso confirmar seu pedido?`;
 }
