@@ -8,10 +8,17 @@ async function requireAdmin(context: { supabase: any; userId: string }) {
   return supabaseAdmin;
 }
 
+async function requireStaff(context: { supabase: any; userId: string }) {
+  const { data, error } = await context.supabase.rpc('wa_staff');
+  if (error || !data) throw new Error('Sem permissão para o WhatsApp');
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  return supabaseAdmin;
+}
+
 export const whatsappStatus = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const db = await requireAdmin(context);
+    const db = await requireStaff(context);
     if (!process.env['WHATSAPP_API_KEY']) return { connected: false as const, reason: 'Não conectado' };
     const { gateway, recoverPending } = await import('@/lib/whatsapp.server');
     await recoverPending(db, 5);
@@ -30,11 +37,11 @@ export const whatsappSend = createServerFn({ method: 'POST' })
     return { phone: i.phone, text: i.text, orderId: typeof i.orderId === 'string' ? i.orderId.slice(0, 80) : null };
   })
   .handler(async ({ data, context }) => {
-    const db = await requireAdmin(context);
+    const db = await requireStaff(context);
     const take=await context.supabase.rpc('wa_conversation_action',{_phone:data.phone.replace(/\D/g,''),_action:'take'});
     if(take.error)throw new Error(take.error.message);
     const { sendText } = await import('@/lib/whatsapp.server');
-    const id = await sendText(db, data.phone, data.text, { orderId: data.orderId, sentBy: context.userId });
+    const id = await sendText(db, data.phone, data.text, { orderId: data.orderId, sentBy: context.userId, sentByName: (await context.supabase.from('profiles').select('display_name').eq('id', context.userId).maybeSingle()).data?.display_name ?? null });
     const waiting=await context.supabase.rpc('wa_conversation_action',{_phone:data.phone.replace(/\D/g,''),_action:'waiting'});
     if(waiting.error)throw new Error(waiting.error.message);
     return { id };
