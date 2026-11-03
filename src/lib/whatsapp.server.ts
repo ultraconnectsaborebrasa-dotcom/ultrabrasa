@@ -25,13 +25,13 @@ type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['su
 
 export const digits = (s: string) => s.replace(/\D/g, '');
 
-export async function downloadWhatsAppMedia(mediaId:string) {
+export async function downloadWhatsAppMedia(mediaId:string,opts:{audio?:boolean}={}) {
   if(!/^\d+$/.test(mediaId))throw new Error('Identificador de mídia inválido');
   const info=await gateway(`/media/${mediaId}`);
   const limit=5*1024*1024;
   if(!Number.isFinite(Number(info.file_size))||Number(info.file_size)<=0||Number(info.file_size)>limit)throw new Error('Arquivo excede 5 MB');
   const mime=String(info.mime_type??'');
-  if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)||typeof info.url!=='string')throw new Error('Formato não suportado');
+  if(!(opts.audio?/^audio\/(ogg|mpeg|mp4|aac|amr|webm)/.test(mime):['image/jpeg','image/png','image/webp','application/pdf'].includes(mime))||typeof info.url!=='string')throw new Error('Formato não suportado');
   const {lovable,wa}=keys();
   const res=await fetch(`${GATEWAY_URL}/media_download`,{headers:{Authorization:`Bearer ${lovable}`,'X-Connection-Api-Key':wa,'X-WhatsApp-Media-URL':info.url}});
   if(!res.ok||!res.body)throw new Error(`Download WhatsApp falhou [${res.status}]`);
