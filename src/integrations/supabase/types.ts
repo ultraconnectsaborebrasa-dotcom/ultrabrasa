@@ -290,6 +290,198 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_conversations: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          last_auto_reply_at: string | null
+          last_inbound_at: string | null
+          last_message: string | null
+          last_message_at: string
+          name: string | null
+          phone: string
+          unread: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          last_auto_reply_at?: string | null
+          last_inbound_at?: string | null
+          last_message?: string | null
+          last_message_at?: string
+          name?: string | null
+          phone: string
+          unread?: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          last_auto_reply_at?: string | null
+          last_inbound_at?: string | null
+          last_message?: string | null
+          last_message_at?: string
+          name?: string | null
+          phone?: string
+          unread?: number
+        }
+        Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          delivered_at: string | null
+          direction: string
+          error: string | null
+          failed_at: string | null
+          id: string
+          kind: string
+          media_id: string | null
+          order_id: string | null
+          phone: string
+          provider_at: string
+          read_at: string | null
+          reply_to: string | null
+          sent_at: string | null
+          sent_by: string | null
+          source: string
+          status: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          direction: string
+          error?: string | null
+          failed_at?: string | null
+          id?: string
+          kind?: string
+          media_id?: string | null
+          order_id?: string | null
+          phone: string
+          provider_at?: string
+          read_at?: string | null
+          reply_to?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          source?: string
+          status?: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          direction?: string
+          error?: string | null
+          failed_at?: string | null
+          id?: string
+          kind?: string
+          media_id?: string | null
+          order_id?: string | null
+          phone?: string
+          provider_at?: string
+          read_at?: string | null
+          reply_to?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          source?: string
+          status?: string
+          wa_message_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_pending_statuses: {
+        Row: {
+          errors: Json | null
+          id: string
+          provider_at: string
+          status: string
+          wa_message_id: string
+        }
+        Insert: {
+          errors?: Json | null
+          id?: string
+          provider_at: string
+          status: string
+          wa_message_id: string
+        }
+        Update: {
+          errors?: Json | null
+          id?: string
+          provider_at?: string
+          status?: string
+          wa_message_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_settings: {
+        Row: {
+          account_event: string | null
+          account_state: string
+          auto_reply_enabled: boolean
+          auto_reply_text: string
+          id: number
+          quick_replies: Json
+          updated_at: string
+        }
+        Insert: {
+          account_event?: string | null
+          account_state?: string
+          auto_reply_enabled?: boolean
+          auto_reply_text?: string
+          id?: number
+          quick_replies?: Json
+          updated_at?: string
+        }
+        Update: {
+          account_event?: string | null
+          account_state?: string
+          auto_reply_enabled?: boolean
+          auto_reply_text?: string
+          id?: number
+          quick_replies?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_webhook_events: {
+        Row: {
+          attempts: number
+          delivery_id: string
+          event: string
+          id: string
+          next_attempt_at: string
+          payload: Json
+          processed_at: string | null
+          processing_error: string | null
+          received_at: string
+        }
+        Insert: {
+          attempts?: number
+          delivery_id: string
+          event: string
+          id?: string
+          next_attempt_at?: string
+          payload: Json
+          processed_at?: string | null
+          processing_error?: string | null
+          received_at?: string
+        }
+        Update: {
+          attempts?: number
+          delivery_id?: string
+          event?: string
+          id?: string
+          next_attempt_at?: string
+          payload?: Json
+          processed_at?: string | null
+          processing_error?: string | null
+          received_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -402,6 +594,11 @@ export type Database = {
         Returns: undefined
       }
       validate_delivery_input: { Args: { input: Json }; Returns: undefined }
+      wa_apply_status: {
+        Args: { _at: string; _errors: Json; _id: string; _status: string }
+        Returns: boolean
+      }
+      wa_reconcile: { Args: { _id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "operator" | "cashier" | "courier"
