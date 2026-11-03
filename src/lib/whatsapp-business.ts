@@ -90,6 +90,28 @@ export function menuOutsideNightMessage(b: Business, opts: { price: number; avai
     : opts.available && next ? ` A próxima leva sai ${next}.` : '';
   return `${lead}${when}\n\nDá pra ver tudo e pedir pelo cardápio digital: ${opts.menuUrl}${opts.pdfOffer ? '\n\nSe preferir, te mando em PDF. É só pedir.' : ''}`;
 }
+/** Pergunta genérica por cardápio/menu, sem citar produto. */
+export const isMenuAsk = (t: string) => /card[aá]pio|menu|op[çc][õo]es|o que (?:vocês|vcs|vai|tem)|o que tem/i.test(t);
+/** Pergunta genérica por preço/faixa de preço, sem citar produto. */
+export const isPriceAsk = (t: string) => /faixa de pre[çc]o|quanto (?:custa|[eé]|sai|fica)|pre[çc]os?\b|valores?\b/i.test(t);
+/** Resposta curta de preço no almoço: só a marmita, sem listar a loja. */
+export function lunchPriceMessage(price: number, freeDelivery = true) {
+  const brl = price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return `A marmita completa sai por ${brl}!${freeDelivery ? ' E a entrega está grátis pra qualquer bairro de Eunápolis.' : ''}`;
+}
+/** Pedido de cardápio com a loja fechada: próxima abertura real; se for almoço, apresenta a marmita. */
+export function closedMenuMessage(b: Business, opts: { price: number; menuUrl: string; pdfOffer: boolean; now?: Date }) {
+  const now = opts.now ?? new Date();
+  const brl = opts.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const n = nextOpeningInfo(b, now);
+  const greet = n && n.current < '12:00' ? 'Bom dia!' : 'Oi!';
+  if (n && n.time === b.advanceFrom) {
+    const when = n.offset === 0 ? `Hoje começamos às ${n.time}` : `Começamos ${/^(sábado|domingo)/.test(n.weekday) ? 'no' : 'na'} ${n.weekday}, às ${n.time}`;
+    return `${greet} ${when}. Nossa marmita é ${brl} e vem com ${b.lunchMenu}.${b.acceptAdvanceOrders ? '\n\nQuer deixar seu pedido adiantado? Me passa a quantidade e o endereço com bairro e número.' : ''}`;
+  }
+  const back = n ? `\n\nVoltamos ${n.offset === 0 ? `hoje às ${n.time}` : `${/^(sábado|domingo)/.test(n.weekday) ? 'no' : 'na'} ${n.weekday}, às ${n.time}`}.` : '';
+  return `${greet} Dá pra ver tudo e pedir pelo cardápio digital: ${opts.menuUrl}${opts.pdfOffer ? '\n\nSe preferir, te mando em PDF. É só pedir.' : ''}${back}`;
+}
 export function nextOpening(b: Business, now = new Date()) {
   for(let offset=0;offset<8;offset++) {
     const date=new Date(now.getTime()+offset*86400000);

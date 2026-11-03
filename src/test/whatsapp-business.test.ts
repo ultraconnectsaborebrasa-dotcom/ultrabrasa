@@ -34,3 +34,27 @@ describe('menu request outside night',()=>{
   it('points to the next lunch after today is over',()=>{const t=mom(b,{...base,now:afternoon});expect(t).toContain('A próxima leva sai amanhã, a partir das 10:00.');expect(t).not.toContain('começam a sair');});
   it('says politely when marmitas are gone',()=>expect(mom(b,{...base,available:false,now:morning})).toBe('Nossas marmitas de hoje já acabaram, mas a próxima leva sai amanhã, a partir das 10:00.\n\nDá pra ver tudo e pedir pelo cardápio digital: https://ultraconnectbrasa.com.br/cardapio\n\nSe preferir, te mando em PDF. É só pedir.'));
 });
+import { isMenuAsk, isPriceAsk, lunchPriceMessage, closedMenuMessage } from '@/lib/whatsapp-business';
+describe('cardápio e preço por período',()=>{
+  const b={...defaultBusiness,hours:[{day:2,lunchEnd:'14:00',nightStart:'18:00',nightEnd:'23:00'},{day:3,lunchEnd:'14:00',nightStart:'18:00',nightEnd:'23:00'}]};
+  const url='https://ultraconnectbrasa.com.br/cardapio';
+  it('detecta "Cardápio" como pedido de cardápio',()=>expect(isMenuAsk('Cardápio')).toBe(true));
+  it('detecta "Qual a faixa de preço do seu cardápio?"',()=>{const t='Qual a faixa de preço do seu cardápio?';expect(isPriceAsk(t)).toBe(true);expect(isMenuAsk(t)).toBe(true);});
+  it('às 04:26 com almoço no dia: apresenta a marmita e a abertura, sem listar a loja',()=>{
+    const t=closedMenuMessage(b,{price:19.9,menuUrl:url,pdfOffer:true,now:new Date('2026-11-03T07:26:00Z')});
+    expect(t).toContain('Bom dia!');expect(t).toContain('Hoje começamos às 10:00');
+    expect(t).toContain('R$\u00a019,90');expect(t).toContain('carne assada');
+    expect(t).toContain('pedido adiantado');expect(t).not.toContain(url);
+  });
+  it('às 04:26 sem pedido antecipado: não oferece adiantamento',()=>{
+    const t=closedMenuMessage({...b,acceptAdvanceOrders:false},{price:19.9,menuUrl:url,pdfOffer:true,now:new Date('2026-11-03T07:26:00Z')});
+    expect(t).not.toContain('adiantado');
+  });
+  it('fechado com próxima abertura à noite: manda o cardápio digital, sem lista de produtos',()=>{
+    const t=closedMenuMessage({...b,hours:[{day:2,lunchEnd:'',nightStart:'18:00',nightEnd:'23:00'}]},{price:19.9,menuUrl:url,pdfOffer:true,now:new Date('2026-11-03T07:26:00Z')});
+    expect(t).toContain(url);expect(t).toContain('hoje às 18:00');expect(t).not.toContain('marmita é');
+  });
+  it('preço no almoço: só a marmita, com entrega grátis',()=>{
+    expect(lunchPriceMessage(19.9,true)).toBe('A marmita completa sai por R$\u00a019,90! E a entrega está grátis pra qualquer bairro de Eunápolis.');
+  });
+});
