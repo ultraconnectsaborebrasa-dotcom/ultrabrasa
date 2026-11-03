@@ -1,4 +1,8 @@
 # PDV: histórico e administração
+- [ ] Ajustar mensagens de aceite e Pix sem cobrança duplicada.
+- [ ] Baixa opcional por comprovante, auditoria e conferência no Caixa/Admin; separar valores não verificados.
+- [ ] Investigar dois pendentes e corrigir recusa/cancelamento sem recriar pedidos.
+- [ ] Testar comprovantes e cancelamentos; conferir telas autenticadas e informar limitações.
 - [x] WhatsApp no Caixa: filas, alertas, respostas, PDF, assumir/transferir/finalizar, montar pedido vinculado; permissões no banco. Conta Caixa testada sem envio real.
 - [x] WhatsApp: filtros, responsabilidade/pausa humana, notas, rascunhos e alertas implementados sem reconectar; assumir, nota e finalização conferidos na conta admin, rascunho preservado ao alternar para balcão. Conversa de teste removida; nenhum WhatsApp enviado.
 - [x] WhatsApp: configurações comerciais, horários, PDF protegido, extração de texto livre e aceite atômico antes da cozinha implementados; 31 testes direcionados aprovados, IA real extraiu quantidade e manteve Pix pendente. Automação permanece desligada.
