@@ -56,7 +56,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button className="btn btn-ghost text-xs" onClick={() => { loadOrderToDraft(o); goSell(); }}><Pencil size={13} />Editar</button>
                 <button className="btn btn-ghost text-xs" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={13} />Imprimir</button>
-                {admin && <Button variant="destructive" size="sm" onClick={() => {const reason=window.prompt(`Motivo para cancelar #${o.number}? Cancelar não estorna pagamentos.`);if(reason?.trim())void supabase.rpc('close_pdv_order',{_id:o.id,_reason:reason}).then(r=>r.error?toast.error(r.error.message):toast.success('Pedido cancelado'));}}>Cancelar</Button>}
+                {admin && <Button variant="destructive" size="sm" onClick={() => {const reason=window.prompt(`Motivo para cancelar #${o.number}? Cancelar não estorna pagamentos.`);if(reason?.trim())void supabase.rpc('close_pdv_order',{_id:o.id,_reason:reason}).then(r=>{if(r.error)toast.error(r.error.message);else{toast.success('Pedido cancelado');if(o.payments.length>0)toast.warning('Este pedido tinha pagamento informado — verifique eventual devolução.');}});}}>Cancelar</Button>}
                 <Button size="sm" disabled={o.paymentStatus==='pago'||o.payments.length>0||receiptOrders.includes(o.id)} onClick={() => cashOpen ? setPaying(o) : toast.error("Abra o caixa primeiro.")}>{o.paymentStatus==='pago'?'Pago':receiptOrders.includes(o.id)?'Em conferência':'Cobrar'}</Button>
               </div>
             </div>
