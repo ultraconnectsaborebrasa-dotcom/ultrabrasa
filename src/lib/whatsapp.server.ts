@@ -14,7 +14,7 @@ export async function gateway(path: string, init: { method?: string; body?: unkn
   const res = await fetch(`${GATEWAY_URL}${path}`, {
     method: init.method ?? 'GET',
     headers: { Authorization: `Bearer ${lovable}`, 'X-Connection-Api-Key': wa, 'Content-Type': 'application/json' },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    body: init.body === undefined ? null : JSON.stringify(init.body),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`WhatsApp [${res.status}]: ${text.slice(0, 500)}`);
