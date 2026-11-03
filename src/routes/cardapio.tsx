@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Clock, Truck } from 'lucide-react';
+import { Clock, Plus, Truck } from 'lucide-react';
+import { CatalogCheckout } from '@/components/catalog/CatalogCheckout';
 import { getPublicCatalog } from '@/lib/catalog.functions';
-import { currentPeriod, groupCatalog, HIGHLIGHT, type CatalogProduct, type Period } from '@/lib/catalog';
+import { currentPeriod, groupCatalog, HIGHLIGHT, type CartLine, type CatalogProduct, type Period } from '@/lib/catalog';
 import { Brand } from '@/components/pdv/Brand';
 import { brl } from '@/lib/pdv-store';
 
@@ -39,6 +40,10 @@ function CardapioPage() {
     return [...g].sort((a, b) => Number(hl.includes(b[0])) - Number(hl.includes(a[0])));
   }, [data.products, period]);
   const s = data.settings;
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [open, setOpen] = useState(false);
+  const add = (p: CatalogProduct) => setCart((c) => c.some((l) => l.productId === p.id) ? c.map((l) => l.productId === p.id ? { ...l, qty: Math.min(99, l.qty + 1) } : l) : [...c, { productId: p.id, name: p.name, price: p.price, qty: 1, note: '' }]);
+  const inCart = (id: string) => cart.find((l) => l.productId === id)?.qty ?? 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -57,7 +62,7 @@ function CardapioPage() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 pb-16">
+      <main className="mx-auto max-w-3xl px-4 pb-28">
         <section className="mt-4 grid gap-2 rounded-lg border border-border bg-card p-4 text-sm">
           {period === 'closed' && <p className="font-bold text-warning">Loja fechada agora. Você pode ver o cardápio; pedidos antecipados a partir das {s?.lunchStart ?? '10:00'}.</p>}
           {period === 'lunch' && <p className="font-bold text-primary">Almoço: marmitas em destaque.</p>}
@@ -70,16 +75,17 @@ function CardapioPage() {
           <section key={cat} id={slug(cat)} className="scroll-mt-32 pt-8">
             <h2 className="mb-3 font-display text-2xl font-bold">{cat}</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              {items.map((p) => <ProductCard key={p.id} p={p} />)}
+              {items.map((p) => <ProductCard key={p.id} p={p} qty={inCart(p.id)} onAdd={() => add(p)} />)}
             </div>
           </section>
         ))}
       </main>
+      <CatalogCheckout cart={cart} setCart={setCart} open={open} setOpen={setOpen} />
     </div>
   );
 }
 
-function ProductCard({ p }: { p: CatalogProduct }) {
+function ProductCard({ p, qty, onAdd }: { p: CatalogProduct; qty: number; onAdd: () => void }) {
   return (
     <article className={`flex gap-3 rounded-lg border border-border bg-card p-3 ${p.available ? '' : 'opacity-60'}`}>
       <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-md bg-muted">
@@ -93,7 +99,8 @@ function ProductCard({ p }: { p: CatalogProduct }) {
         {p.description && <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{p.description}</p>}
         <div className="mt-auto flex items-center justify-between pt-2">
           <span className="text-lg font-bold text-primary">{brl(p.price)}</span>
-          {!p.available && <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">Esgotado</span>}
+          {!p.available ? <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">Esgotado</span>
+            : <button onClick={onAdd} aria-label={`Adicionar ${p.name}`} className="flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4" />{qty ? qty : 'Adicionar'}</button>}
         </div>
       </div>
     </article>

@@ -50,3 +50,60 @@ export const HIGHLIGHT: Record<Exclude<Period, 'closed'>, string[]> = {
   lunch: ['Marmitas'],
   night: ['Hambúrgueres', 'Espetinhos'],
 };
+
+export const STORE_WHATSAPP = '5573982423404';
+export type CartLine = { productId: string; name: string; price: number; qty: number; note: string };
+export type PaymentChoice = 'Pix' | 'Crédito' | 'Débito' | 'Dinheiro';
+export type CheckoutForm = {
+  customer: string; phone: string; type: 'Delivery' | 'Retirada';
+  address: { street: string; number: string; neighborhood: string; complement: string; reference: string };
+  requestedTime: string; payment: PaymentChoice | null; needChange: boolean; cashFor: string; note: string;
+};
+
+const money = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** Returns the first validation problem, or null when the checkout can be submitted. */
+export function validateCheckout(f: CheckoutForm, cart: CartLine[]): string | null {
+  if (!cart.length) return 'Adicione itens ao carrinho';
+  if (f.customer.trim().length < 2) return 'Informe seu nome';
+  const d = f.phone.replace(/\D/g, '');
+  if (!(d.length === 10 || d.length === 11 || /^55\d{10,11}$/.test(d))) return 'Informe um WhatsApp válido com DDD';
+  if (f.type === 'Delivery' && (!f.address.street.trim() || !f.address.number.trim() || !f.address.neighborhood.trim())) return 'Informe rua, número e bairro';
+  if (!f.payment) return 'Escolha a forma de pagamento';
+  if (f.payment === 'Dinheiro' && f.needChange) {
+    const c = Number(f.cashFor.replace(',', '.'));
+    if (!(c > cartTotal(cart))) return 'Troco: informe um valor maior que o total';
+  }
+  return null;
+}
+
+export const cartTotal = (cart: CartLine[]) => cart.reduce((s, l) => s + l.price * l.qty, 0);
+
+/** WhatsApp summary text. Payment is always reported as pending: choosing a method is not paying. */
+export function buildOrderMessage(code: string, f: CheckoutForm, cart: CartLine[]) {
+  const total = cartTotal(cart);
+  const when = f.type === 'Delivery' ? 'na entrega' : 'na retirada';
+  const lines = [
+    `*Pedido ${code}* — Catálogo digital`,
+    `Cliente: ${f.customer.trim()}`,
+    `WhatsApp: ${f.phone.trim()}`,
+    '',
+    ...cart.map((l) => `${l.qty}x ${l.name} — ${money(l.price * l.qty)}${l.note ? `\n   Obs.: ${l.note}` : ''}`),
+    '',
+    f.type === 'Delivery' ? 'Entrega' : 'Retirada no local',
+  ];
+  if (f.type === 'Delivery') {
+    const a = f.address;
+    lines.push(`Endereço: ${a.street.trim()}, ${a.number.trim()}${a.complement.trim() ? ` — ${a.complement.trim()}` : ''}`, `Bairro: ${a.neighborhood.trim()} — Eunápolis`);
+    if (a.reference.trim()) lines.push(`Referência: ${a.reference.trim()}`);
+  }
+  if (f.requestedTime.trim()) lines.push(`Horário solicitado: ${f.requestedTime.trim()}`);
+  if (f.note.trim()) lines.push(`Observação: ${f.note.trim()}`);
+  lines.push('', `Subtotal: ${money(total)}`, `Taxa de entrega: ${money(0)}`, `Desconto: ${money(0)}`, `*Total: ${money(total)}*`, '',
+    `Pagamento: ${f.payment} — ${when}`, 'Situação do pagamento: pendente');
+  if (f.payment === 'Dinheiro') lines.push(f.needChange ? `Troco para ${money(Number(f.cashFor.replace(',', '.')))}` : 'Sem troco');
+  if ((f.payment === 'Crédito' || f.payment === 'Débito') && f.type === 'Delivery') lines.push('Levar maquininha');
+  return lines.join('\n');
+}
+
+export const whatsappLink = (text: string) => `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(text)}`;
