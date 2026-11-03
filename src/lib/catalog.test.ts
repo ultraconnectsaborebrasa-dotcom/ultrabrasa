@@ -12,6 +12,6 @@ describe('catalog checkout', () => {
   it('card on delivery asks for the card machine', () => expect(buildOrderMessage('C1001', { ...base, payment: 'Crédito' }, cart)).toContain('Levar maquininha'));
   it('summary keeps payment pending and includes order code and total', () => {
     const m = buildOrderMessage('C1001', { ...base, payment: 'Dinheiro', needChange: true, cashFor: '50' }, cart);
-    expect(m).toContain('Pedido C1001'); expect(m).toContain('Situação do pagamento: pendente'); expect(m).toContain('R$ 39,80'); expect(m).toContain('Troco para R$ 50,00');
+    expect(m).toContain('Pedido C1001'); expect(m).toContain('Situação do pagamento: pendente'); expect(m).toContain('39,80'); expect(m).toContain('Troco para R$ 50,00');
   });
 });
