@@ -292,37 +292,109 @@ export type Database = {
       }
       whatsapp_conversations: {
         Row: {
+          assigned_name: string | null
+          assigned_to: string | null
+          attendance_status: string
+          automation_paused: boolean
+          awaiting_since: string | null
           created_at: string
           customer_id: string | null
+          draft: Json
+          draft_version: number
           last_auto_reply_at: string | null
           last_inbound_at: string | null
           last_message: string | null
           last_message_at: string
+          last_read_at: string | null
           name: string | null
           phone: string
           unread: number
         }
         Insert: {
+          assigned_name?: string | null
+          assigned_to?: string | null
+          attendance_status?: string
+          automation_paused?: boolean
+          awaiting_since?: string | null
           created_at?: string
           customer_id?: string | null
+          draft?: Json
+          draft_version?: number
           last_auto_reply_at?: string | null
           last_inbound_at?: string | null
           last_message?: string | null
           last_message_at?: string
+          last_read_at?: string | null
           name?: string | null
           phone: string
           unread?: number
         }
         Update: {
+          assigned_name?: string | null
+          assigned_to?: string | null
+          attendance_status?: string
+          automation_paused?: boolean
+          awaiting_since?: string | null
           created_at?: string
           customer_id?: string | null
+          draft?: Json
+          draft_version?: number
           last_auto_reply_at?: string | null
           last_inbound_at?: string | null
           last_message?: string | null
           last_message_at?: string
+          last_read_at?: string | null
           name?: string | null
           phone?: string
           unread?: number
+        }
+        Relationships: []
+      }
+      whatsapp_jobs: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          dedup_key: string
+          id: string
+          kind: string
+          lease_until: string | null
+          next_attempt_at: string
+          payload: Json
+          phone: string
+          processing_error: string | null
+          provider_id: string | null
+          state: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          dedup_key: string
+          id?: string
+          kind: string
+          lease_until?: string | null
+          next_attempt_at?: string
+          payload: Json
+          phone: string
+          processing_error?: string | null
+          provider_id?: string | null
+          state?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          dedup_key?: string
+          id?: string
+          kind?: string
+          lease_until?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          phone?: string
+          processing_error?: string | null
+          provider_id?: string | null
+          state?: string
         }
         Relationships: []
       }
@@ -392,6 +464,91 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_notes: {
+        Row: {
+          author_id: string
+          author_name: string | null
+          body: string
+          created_at: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          author_id: string
+          author_name?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          phone: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_notes_phone_fkey"
+            columns: ["phone"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["phone"]
+          },
+        ]
+      }
+      whatsapp_order_requests: {
+        Row: {
+          accepted_by: string | null
+          created_at: string
+          id: string
+          inbound_id: string
+          order_id: string | null
+          order_number: number | null
+          phone: string
+          quoted_total: number
+          request: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_by?: string | null
+          created_at?: string
+          id?: string
+          inbound_id: string
+          order_id?: string | null
+          order_number?: number | null
+          phone: string
+          quoted_total: number
+          request: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_by?: string | null
+          created_at?: string
+          id?: string
+          inbound_id?: string
+          order_id?: string | null
+          order_number?: number | null
+          phone?: string
+          quoted_total?: number
+          request?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_order_requests_phone_fkey"
+            columns: ["phone"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["phone"]
+          },
+        ]
+      }
       whatsapp_pending_statuses: {
         Row: {
           errors: Json | null
@@ -422,6 +579,7 @@ export type Database = {
           account_state: string
           auto_reply_enabled: boolean
           auto_reply_text: string
+          business: Json
           id: number
           quick_replies: Json
           updated_at: string
@@ -431,6 +589,7 @@ export type Database = {
           account_state?: string
           auto_reply_enabled?: boolean
           auto_reply_text?: string
+          business?: Json
           id?: number
           quick_replies?: Json
           updated_at?: string
@@ -440,6 +599,7 @@ export type Database = {
           account_state?: string
           auto_reply_enabled?: boolean
           auto_reply_text?: string
+          business?: Json
           id?: number
           quick_replies?: Json
           updated_at?: string
@@ -452,6 +612,7 @@ export type Database = {
           delivery_id: string
           event: string
           id: string
+          lease_until: string | null
           next_attempt_at: string
           payload: Json
           processed_at: string | null
@@ -463,6 +624,7 @@ export type Database = {
           delivery_id: string
           event: string
           id?: string
+          lease_until?: string | null
           next_attempt_at?: string
           payload: Json
           processed_at?: string | null
@@ -474,6 +636,7 @@ export type Database = {
           delivery_id?: string
           event?: string
           id?: string
+          lease_until?: string | null
           next_attempt_at?: string
           payload?: Json
           processed_at?: string | null
@@ -594,11 +757,45 @@ export type Database = {
         Returns: undefined
       }
       validate_delivery_input: { Args: { input: Json }; Returns: undefined }
+      wa_accept_request: { Args: { _id: string }; Returns: Json }
       wa_apply_status: {
         Args: { _at: string; _errors: Json; _id: string; _status: string }
         Returns: boolean
       }
+      wa_claim_job: {
+        Args: never
+        Returns: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          dedup_key: string
+          id: string
+          kind: string
+          lease_until: string | null
+          next_attempt_at: string
+          payload: Json
+          phone: string
+          processing_error: string | null
+          provider_id: string | null
+          state: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "whatsapp_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      wa_conversation_action: {
+        Args: { _action: string; _body?: string; _phone: string }
+        Returns: undefined
+      }
       wa_reconcile: { Args: { _id: string }; Returns: undefined }
+      wa_reject_request: { Args: { _id: string }; Returns: undefined }
+      wa_touch_inbound: {
+        Args: { _at: string; _body: string; _name: string; _phone: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "operator" | "cashier" | "courier"
