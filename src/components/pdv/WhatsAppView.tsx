@@ -29,7 +29,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
   const statusFn = useServerFn(whatsappStatus);
   const sendFn = useServerFn(whatsappSend);
   const syncFn = useServerFn(whatsappSyncHistory);
-  const actionFn=useServerFn(whatsappAction);const requestFn=useServerFn(whatsappRequestAction);const pdfFn=useServerFn(whatsappSendPdf);
+  const actionFn=useServerFn(whatsappAction);const requestFn=useServerFn(whatsappRequestAction);const pdfFn=useServerFn(whatsappSendPdf);const retryFn=useServerFn(retryReceiptAnalysis);
   const storeOrders = useStore(s => s.orders);const orders=externalOrders??storeOrders;
   const [status, setStatus] = useState<Status | null>(null);
   const [convs, setConvs] = useState<Conv[]>([]);
@@ -138,6 +138,11 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
                 {m.direction === 'out' && (m.status === 'read' ? <CheckCheck size={12} className="text-success"/> : m.status === 'delivered' ? <CheckCheck size={12}/> : m.status === 'failed' ? <AlertTriangle size={12} className="text-destructive"/> : <Check size={12}/>)}
               </div>
               {m.status === 'failed' && m.error && <div className="mt-1 text-[10px] text-destructive">{m.error.slice(0, 160)}</div>}
+              {m.direction==='in'&&['image','document'].includes(m.kind)&&<div className="mt-2 space-y-1">
+                {linkingMsg===m.id
+                  ? <div className="space-y-1 rounded border bg-background p-2"><p className="text-[11px] font-semibold">Vincular a qual pedido?</p>{linked.filter(linkableOrders).map(o=><Button key={o.id} size="sm" variant="outline" className="mr-1" disabled={busy} onClick={()=>void linkReceipt(m.id,o)}>#{o.number} · {brl(o.items.reduce((a,i)=>a+i.price*i.qty,0))}</Button>)}{!linked.filter(linkableOrders).length&&<p className="text-[11px] text-muted-foreground">Nenhum pedido ativo deste cliente aguardando pagamento.</p>}<Button size="sm" variant="ghost" onClick={()=>setLinkingMsg(null)}>Cancelar</Button></div>
+                  : <Button size="sm" variant="outline" disabled={busy} onClick={()=>{const options=linked.filter(linkableOrders);if(options.length===1&&options[0])void linkReceipt(m.id,options[0]);else setLinkingMsg(m.id);}}>Vincular ao pedido / Comprovante recebido</Button>}
+              </div>}
             </div>)}
           </div>
           {cfg && cfg.quick_replies.length > 0 && <div className="flex gap-1 overflow-x-auto border-t p-2">{cfg.quick_replies.map((q, i) => <Button key={i} variant="outline" size="sm" className="shrink-0" onClick={() => write(q)}>{q.slice(0, 30)}</Button>)}</div>}
