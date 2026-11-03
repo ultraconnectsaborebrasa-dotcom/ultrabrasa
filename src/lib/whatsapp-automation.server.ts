@@ -115,7 +115,10 @@ export async function processJobs(db:Admin,limit=2){
           const receipts=checkEmpty(await db.from('payment_receipts').select('id').eq('phone',j.phone).in('state',['review','unverified','confirmed']).limit(1));
           const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
           const orders=z.object({orders:z.array(z.object({id:z.string(),payments:z.array(z.unknown()).default([])}))}).parse(snapshot.data).orders;
-          if(receipts?.length||orders.find(o=>o.id===p.orderId)?.payments.length){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+          if(receipts?.length||orders.find(o=>o.id===p.orderId)?.payments.length){
+            if(j.dedup_key.endsWith(':pix-key')){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+            p.text='Seu pedido está confirmado! 😊';
+          }
         }
       }
       const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at').eq('phone',j.phone).single());
