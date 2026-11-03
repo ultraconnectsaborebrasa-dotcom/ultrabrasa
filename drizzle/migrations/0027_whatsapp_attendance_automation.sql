@@ -1,0 +1,64 @@
+ALTER TABLE public.whatsapp_conversations ADD COLUMN attendance_status text NOT NULL DEFAULT 'new' CHECK(attendance_status IN ('new','needs_reply','in_service','waiting_customer','finished')), ADD COLUMN assigned_to uuid, ADD COLUMN assigned_name text, ADD COLUMN automation_paused boolean NOT NULL DEFAULT false, ADD COLUMN awaiting_since timestamptz, ADD COLUMN last_read_at timestamptz, ADD COLUMN draft jsonb NOT NULL DEFAULT '{}', ADD COLUMN draft_version integer NOT NULL DEFAULT 0;
+ALTER TABLE public.whatsapp_settings ADD COLUMN business jsonb NOT NULL DEFAULT '{}';
+ALTER TABLE public.whatsapp_webhook_events ADD COLUMN lease_until timestamptz;
+CREATE TABLE public.whatsapp_notes(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),phone text NOT NULL REFERENCES public.whatsapp_conversations(phone),body text NOT NULL CHECK(length(body) BETWEEN 1 AND 2000),author_id uuid NOT NULL,author_name text,created_at timestamptz NOT NULL DEFAULT now());
+GRANT SELECT ON public.whatsapp_notes TO authenticated; GRANT ALL ON public.whatsapp_notes TO service_role;
+ALTER TABLE public.whatsapp_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "admin notes" ON public.whatsapp_notes FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+CREATE TABLE public.whatsapp_order_requests(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),phone text NOT NULL REFERENCES public.whatsapp_conversations(phone),inbound_id text NOT NULL UNIQUE,request jsonb NOT NULL,quoted_total numeric NOT NULL CHECK(quoted_total>0),status text NOT NULL DEFAULT 'awaiting_acceptance' CHECK(status IN ('awaiting_acceptance','accepted','rejected')),order_id text UNIQUE,order_number integer,accepted_by uuid,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+GRANT SELECT ON public.whatsapp_order_requests TO authenticated; GRANT ALL ON public.whatsapp_order_requests TO service_role;
+ALTER TABLE public.whatsapp_order_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "admin wa requests" ON public.whatsapp_order_requests FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+CREATE TABLE public.whatsapp_jobs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),dedup_key text NOT NULL UNIQUE,phone text NOT NULL,kind text NOT NULL CHECK(kind IN ('interpret','text','document')),payload jsonb NOT NULL,state text NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','running','completed','failed','unknown','cancelled')),provider_id text,processing_error text,attempts integer NOT NULL DEFAULT 0,next_attempt_at timestamptz NOT NULL DEFAULT now(),lease_until timestamptz,created_at timestamptz NOT NULL DEFAULT now(),completed_at timestamptz);
+GRANT SELECT ON public.whatsapp_jobs TO authenticated; GRANT ALL ON public.whatsapp_jobs TO service_role;
+ALTER TABLE public.whatsapp_jobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "admin wa jobs" ON public.whatsapp_jobs FOR SELECT TO authenticated USING(public.has_role(auth.uid(),'admin'));
+CREATE INDEX wa_jobs_pending ON public.whatsapp_jobs(next_attempt_at) WHERE state='pending';
+CREATE OR REPLACE FUNCTION public.wa_touch_inbound(_phone text,_body text,_name text,_at timestamptz) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN
+INSERT INTO public.whatsapp_conversations(phone,name,last_message,last_message_at,unread,last_inbound_at,attendance_status,awaiting_since) VALUES(_phone,_name,left(_body,200),_at,1,_at,'new',now()) ON CONFLICT(phone) DO UPDATE SET name=coalesce(EXCLUDED.name,whatsapp_conversations.name),last_message=CASE WHEN EXCLUDED.last_message_at>=whatsapp_conversations.last_message_at THEN EXCLUDED.last_message ELSE whatsapp_conversations.last_message END,last_message_at=greatest(EXCLUDED.last_message_at,whatsapp_conversations.last_message_at),unread=whatsapp_conversations.unread+1,last_inbound_at=greatest(EXCLUDED.last_inbound_at,whatsapp_conversations.last_inbound_at),attendance_status=CASE WHEN whatsapp_conversations.attendance_status='new' THEN 'new' ELSE 'needs_reply' END,awaiting_since=coalesce(whatsapp_conversations.awaiting_since,now()); END $$;
+CREATE OR REPLACE FUNCTION public.wa_conversation_action(_phone text,_action text,_body text DEFAULT NULL) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE c public.whatsapp_conversations; actor text; BEGIN
+IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Sem permissão'; END IF;
+SELECT * INTO c FROM public.whatsapp_conversations WHERE phone=_phone FOR UPDATE; IF c.phone IS NULL THEN RAISE EXCEPTION 'Conversa não encontrada'; END IF;
+SELECT display_name INTO actor FROM public.profiles WHERE id=auth.uid();
+IF _action IN ('take','resume','waiting','finish','note') AND c.assigned_to IS NOT NULL AND c.assigned_to<>auth.uid() THEN RAISE EXCEPTION 'Esta conversa já tem responsável'; END IF;
+IF _action='take' THEN UPDATE public.whatsapp_conversations SET assigned_to=auth.uid(),assigned_name=actor,automation_paused=true,attendance_status='in_service' WHERE phone=_phone;
+UPDATE public.whatsapp_jobs SET state='cancelled' WHERE phone=_phone AND state='pending' AND coalesce(payload->>'automatic','false')='true';
+ELSIF _action='resume' THEN UPDATE public.whatsapp_conversations SET automation_paused=false,assigned_to=NULL,assigned_name=NULL,attendance_status='needs_reply' WHERE phone=_phone;
+ELSIF _action='read' THEN UPDATE public.whatsapp_conversations SET unread=0,last_read_at=now() WHERE phone=_phone;
+ELSIF _action='waiting' THEN UPDATE public.whatsapp_conversations SET attendance_status='waiting_customer',awaiting_since=NULL WHERE phone=_phone;
+ELSIF _action='finish' THEN IF EXISTS(SELECT 1 FROM public.whatsapp_order_requests WHERE phone=_phone AND status='awaiting_acceptance') THEN RAISE EXCEPTION 'Existe pedido aguardando aceite'; END IF; UPDATE public.whatsapp_conversations SET attendance_status='finished',automation_paused=true,awaiting_since=NULL WHERE phone=_phone;
+ELSIF _action='note' THEN IF length(trim(coalesce(_body,''))) NOT BETWEEN 1 AND 2000 THEN RAISE EXCEPTION 'Nota inválida'; END IF; INSERT INTO public.whatsapp_notes(phone,body,author_id,author_name) VALUES(_phone,trim(_body),auth.uid(),actor);
+ELSE RAISE EXCEPTION 'Ação inválida'; END IF; END $$;
+CREATE OR REPLACE FUNCTION public.wa_claim_job() RETURNS SETOF public.whatsapp_jobs LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE j public.whatsapp_jobs; BEGIN
+UPDATE public.whatsapp_jobs SET state='unknown',processing_error='Processamento interrompido; conferir antes de tentar novamente' WHERE state='running' AND lease_until<now();
+SELECT * INTO j FROM public.whatsapp_jobs WHERE state='pending' AND next_attempt_at<=now() AND NOT EXISTS(SELECT 1 FROM public.whatsapp_jobs x WHERE x.phone=whatsapp_jobs.phone AND x.state='running') ORDER BY next_attempt_at,created_at FOR UPDATE SKIP LOCKED LIMIT 1;
+IF j.id IS NOT NULL THEN UPDATE public.whatsapp_jobs SET state='running',lease_until=now()+interval '2 minutes',attempts=attempts+1 WHERE id=j.id RETURNING * INTO j; RETURN NEXT j; END IF; END $$;
+CREATE OR REPLACE FUNCTION public.wa_accept_request(_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE r public.whatsapp_order_requests; result jsonb; snapshot jsonb; line jsonb; p jsonb; total numeric=0; req jsonb; oid text; BEGIN
+IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Sem permissão'; END IF;
+PERFORM pg_advisory_xact_lock(742019); SELECT * INTO r FROM public.whatsapp_order_requests WHERE id=_id FOR UPDATE;
+IF r.id IS NULL THEN RAISE EXCEPTION 'Pedido não encontrado'; END IF;
+IF r.status='accepted' THEN RETURN jsonb_build_object('number',r.order_number,'id',r.order_id); END IF;
+IF r.status<>'awaiting_acceptance' THEN RAISE EXCEPTION 'Pedido encerrado'; END IF;
+SELECT data INTO snapshot FROM public.pdv_state WHERE id=1 FOR UPDATE;
+FOR line IN SELECT value FROM jsonb_array_elements(r.request->'items') LOOP
+SELECT value INTO p FROM jsonb_array_elements(snapshot->'products') WHERE value->>'id'=line->>'productId';
+IF p IS NULL OR NOT coalesce((p->>'active')::boolean,false) THEN RAISE EXCEPTION 'Produto indisponível; peça nova confirmação'; END IF;
+total=total+(p->>'price')::numeric*(line->>'qty')::integer; END LOOP;
+IF total<>r.quoted_total THEN RAISE EXCEPTION 'Preço alterado; peça nova confirmação ao cliente'; END IF;
+IF r.request->>'type'='Delivery' AND lower(coalesce(r.request->'delivery'->'address'->>'city','')) NOT IN ('eunápolis','eunapolis') THEN RAISE EXCEPTION 'Entrega fora de Eunápolis precisa de atendimento manual'; END IF;
+oid='wa-'||r.id::text; req=r.request||jsonb_build_object('id',oid,'customerPhone',r.phone,'source','desktop'); req=jsonb_set(req,'{delivery,chargeDeliveryFee}','false',true);
+result=public.submit_pdv_operator(req);
+UPDATE public.whatsapp_order_requests SET status='accepted',order_id=oid,order_number=(result->>'number')::int,accepted_by=auth.uid(),updated_at=now() WHERE id=r.id;
+UPDATE public.whatsapp_conversations SET automation_paused=true,assigned_to=auth.uid(),attendance_status='in_service',draft='{}',draft_version=draft_version+1 WHERE phone=r.phone;
+INSERT INTO public.whatsapp_jobs(dedup_key,phone,kind,payload) VALUES('accepted:'||oid,r.phone,'text',jsonb_build_object('text','Seu pedido #'||(result->>'number')||' foi aceito pela loja e encaminhado à cozinha. Pagamento sujeito à confirmação da loja.','orderId',oid,'automatic',false)) ON CONFLICT(dedup_key) DO NOTHING;
+RETURN result||jsonb_build_object('id',oid); END $$;
+CREATE OR REPLACE FUNCTION public.wa_reject_request(_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION 'Sem permissão'; END IF; UPDATE public.whatsapp_order_requests SET status='rejected',updated_at=now() WHERE id=_id AND status='awaiting_acceptance'; END $$;
+CREATE OR REPLACE FUNCTION public.wa_delivery_departure() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN IF NEW.status='Em rota' AND OLD.status IS DISTINCT FROM NEW.status AND EXISTS(SELECT 1 FROM public.whatsapp_order_requests WHERE order_id=NEW.order_id AND status='accepted') THEN INSERT INTO public.whatsapp_jobs(dedup_key,phone,kind,payload) VALUES('departed:'||NEW.order_id,NEW.phone,'text',jsonb_build_object('text','Seu pedido saiu para entrega.','orderId',NEW.order_id,'automatic',false)) ON CONFLICT(dedup_key) DO NOTHING; END IF; RETURN NEW; END $$;
+CREATE TRIGGER wa_delivery_departure AFTER UPDATE OF status ON public.delivery_orders FOR EACH ROW EXECUTE FUNCTION public.wa_delivery_departure();
+REVOKE ALL ON FUNCTION public.wa_touch_inbound(text,text,text,timestamptz),public.wa_claim_job() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.wa_touch_inbound(text,text,text,timestamptz),public.wa_claim_job() TO service_role;
+REVOKE ALL ON FUNCTION public.wa_conversation_action(text,text,text),public.wa_accept_request(uuid),public.wa_reject_request(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.wa_conversation_action(text,text,text),public.wa_accept_request(uuid),public.wa_reject_request(uuid) TO authenticated;
+CREATE POLICY "admin wa pdf read" ON storage.objects FOR SELECT TO authenticated USING(bucket_id='whatsapp-menu' AND public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admin wa pdf upload" ON storage.objects FOR INSERT TO authenticated WITH CHECK(bucket_id='whatsapp-menu' AND public.has_role(auth.uid(),'admin'));
+CREATE POLICY "admin wa pdf update" ON storage.objects FOR UPDATE TO authenticated USING(bucket_id='whatsapp-menu' AND public.has_role(auth.uid(),'admin')) WITH CHECK(bucket_id='whatsapp-menu' AND public.has_role(auth.uid(),'admin'));

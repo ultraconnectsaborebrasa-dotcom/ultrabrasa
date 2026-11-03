@@ -31,9 +31,12 @@ export const whatsappSend = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data, context }) => {
     const db = await requireAdmin(context);
+    const take=await context.supabase.rpc('wa_conversation_action',{_phone:data.phone.replace(/\D/g,''),_action:'take'});
+    if(take.error)throw new Error(take.error.message);
     const { sendText } = await import('@/lib/whatsapp.server');
     const id = await sendText(db, data.phone, data.text, { orderId: data.orderId, sentBy: context.userId });
-    await db.from('whatsapp_conversations').update({ unread: 0 }).eq('phone', data.phone.replace(/\D/g, ''));
+    const waiting=await context.supabase.rpc('wa_conversation_action',{_phone:data.phone.replace(/\D/g,''),_action:'waiting'});
+    if(waiting.error)throw new Error(waiting.error.message);
     return { id };
   });
 
