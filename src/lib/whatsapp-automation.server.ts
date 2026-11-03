@@ -74,14 +74,14 @@ async function interpret(db:Admin,j:Job){
   }
   let reply='';
   if(missing.length) reply=`Show! Pra seguir, só falta: ${missing.join(', ')}.`;
-  else {d.quotedTotal=total;reply=`Resumo do pedido:\n${d.items.map(i=>`${i.qty} × ${catalog.find(p=>p.id===i.productId)?.name}${i.note?` (${i.note})`:''}`).join('\n')}\n${d.type}${d.type==='Delivery'?`: ${d.address.street}, ${d.address.number} — ${d.address.neighborhood}, ${d.address.city}`:''}\nPagamento: ${d.payment} (pendente)${d.payment==='Dinheiro'?` · ${d.cashFor?`troco para R$ ${d.cashFor.toFixed(2)}`:'sem troco'}`:''}${d.payment==='Cartão'&&d.type==='Delivery'?' · Levar maquininha':''}\nTaxa: R$ 0,00\nTotal: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}${d.payment==='Pix'?`\nChave Pix: ${b.pixKey}`:''}\nConfirma este pedido?`;}
+  else {d.quotedTotal=total;reply=`Pode deixar! Confere se ficou tudo certo:\n${d.items.map(i=>`${i.qty} × ${catalog.find(p=>p.id===i.productId)?.name}${i.note?` (${i.note})`:''}`).join('\n')}\n${d.type}${d.type==='Delivery'?`: ${d.address.street}, ${d.address.number} — ${d.address.neighborhood}, ${d.address.city}`:''}\nPagamento: ${d.payment} (pendente)${d.payment==='Dinheiro'?` · ${d.cashFor?`troco para R$ ${d.cashFor.toFixed(2)}`:'sem troco'}`:''}${d.payment==='Cartão'&&d.type==='Delivery'?' · Levar maquininha':''}\nTaxa: R$ 0,00\nTotal: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}${d.payment==='Pix'?`\nChave Pix: ${b.pixKey}`:''}\nConfirma este pedido?`;}
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
   const hadAuto=messages.some(m=>m.direction==='out');
   if(period==='lunch'&&!hadAuto&&!d.items.length&&!d.address.street&&!d.address.neighborhood)reply=initialLunchMessage(b)+(missing.includes('nome')?'\nQual seu nome?':'');
   if(period==='night'&&!hadAuto&&!d.items.length)reply=`Oi! Que bom te ver por aqui 😊 Hoje à noite temos:\n${catalog.filter(p=>/hamb|espet|acomp/i.test(p.name+' '+p.category)).map(p=>`${p.name} — ${p.price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`).join('\n')}\n${reply}`;
   if(parsed.wantsPdf||period==='night'&&!hadAuto){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não está por aqui, mas pode perguntar que a gente te conta o que tem 😊';}
-  if(parsed.answer.trim()&&!missing.length===false||parsed.answer.trim()&&!reply.startsWith('Resumo'))reply=`${parsed.answer.trim()}\n\n${reply}`.trim();
+  if(parsed.answer.trim())reply=`${parsed.answer.trim()}\n\n${reply}`.trim();
   await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,...(!missing.length?{summaryVersion:c.draft_version+1,summaryTotal:total}:{})});
 }
 export async function processJobs(db:Admin,limit=2){
