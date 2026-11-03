@@ -229,7 +229,7 @@ export function CashView() {
           <input className="field w-48 font-mono" placeholder="Dinheiro contado" inputMode="decimal" value={counted} onChange={(e) => setCounted(e.target.value)} />
           {counted && <span className={`font-mono text-sm ${Math.abs(n(counted) - expectedCash) < 0.01 ? "text-success" : "text-warning"}`}>Diferença: {brl(n(counted) - expectedCash)}</span>}
           <button className="btn btn-ghost ml-auto" onClick={() => {
-            const open = orders.filter((o) => ["aberta", "cozinha", "pronto"].includes(o.status)).length;
+            const open = orders.filter((o) => ["aberta", "cozinha", "pronto", "entrega"].includes(o.status)).length;
             if (open && !confirm(`Há ${open} comanda(s) aberta(s). Fechar mesmo assim?`)) return;
             setState((s) => ({ ...s, cash: { open: false, initial: 0, moves: [] } })); setCounted(""); toast.success(`Caixa fechado · ${brl(revenue)}`);
           }}>Fechar caixa</button>
