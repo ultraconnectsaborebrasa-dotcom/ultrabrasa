@@ -105,7 +105,7 @@ async function interpret(db:Admin,j:Job){
   if(/prazo|demora|quanto tempo|que horas (chega|sai|entrega)|hor[aá]rio de entrega|tempo de entrega/i.test(lastIn)){
     const dep=b.departureFrom.replace(/^0?(\d+):00$/,'$1h');
     const pre=spTimeNow()<b.departureFrom?`As entregas de marmita começam a sair às ${dep}, e`:'As marmitas saem para entrega ao longo do almoço e';
-    answer=`${pre} costumam chegar em até 40 minutos, dependendo do bairro 😊`;
+    answer=`${pre} o tempo até chegar depende do bairro e da ordem da rota 😊`;
     if(!d.items.length){reply=`Quer deixar seu pedido adiantado? Me fala quantas marmitas e o bairro da entrega 😊`;}
   }
   if(period==='closed'&&!hadAuto&&d.items.length)reply=`Anotado! Seu pedido fica adiantado e a loja confirma quando abrir 😊\n\n${reply}`;
