@@ -4,7 +4,7 @@ import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderField
 import { gateway,sendText,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
-const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
+const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
 const check = <T>(r:{data:T;error:{message:string}|null}):NonNullable<T> => {if(r.error) throw new Error(r.error.message);if(r.data===null||r.data===undefined)throw new Error('Dados não encontrados');return r.data;};
 const checkEmpty = <T>(r:{data:T;error:{message:string}|null}):T => {if(r.error)throw new Error(r.error.message);return r.data;};
 export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'|'text'|'document'|'receipt',payload:Record<string,unknown>) {
@@ -107,6 +107,17 @@ export async function processJobs(db:Admin,limit=2){
     const claimed=check(await db.rpc('wa_claim_job'));const j=claimed?.[0];if(!j)return;
     try{
       const p=jobPayload.parse(j.payload);
+      if(p.orderId||p.requestId){
+        const q=db.from('whatsapp_order_requests').select('status,id').eq(p.requestId?'id':'order_id',p.requestId??p.orderId??'');
+        const target=checkEmpty(await q.maybeSingle());
+        if(target&&['rejected','cancelled'].includes(target.status)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+        if(p.pixPrompt){
+          const receipts=checkEmpty(await db.from('payment_receipts').select('id').eq('phone',j.phone).in('state',['review','unverified','confirmed']).limit(1));
+          const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
+          const orders=z.object({orders:z.array(z.object({id:z.string(),payments:z.array(z.unknown()).default([])}))}).parse(snapshot.data).orders;
+          if(receipts?.length||orders.find(o=>o.id===p.orderId)?.payments.length){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+        }
+      }
       const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at').eq('phone',j.phone).single());
       if(p.automatic&&(c.automation_paused||!cfg.auto_reply_enabled)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
       if(j.kind==='receipt'){const {processReceipt}=await import('./payment-receipts.server');await processReceipt(db,p.inboundId??'');}
