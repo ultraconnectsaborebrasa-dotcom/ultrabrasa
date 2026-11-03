@@ -7,7 +7,8 @@ export async function processReceipt(db: Admin, messageId: string) {
   const m=await db.from('whatsapp_messages').select('*').eq('wa_message_id',messageId).eq('direction','in').single();
   if(m.error)throw new Error(m.error.message);
   const exists=await db.from('payment_receipts').select('id').eq('message_id',m.data.id).maybeSingle();
-  if(exists.error)throw new Error(exists.error.message); if(exists.data)return;
+  if(exists.error)throw new Error(exists.error.message);
+  if(exists.data){const {queueJob}=await import('./whatsapp-automation.server');await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:'Recebi seu comprovante, obrigado! 😊',automatic:false});return;}
   const config=await db.from('whatsapp_settings').select('business').eq('id',1).single();
   if(config.error)throw new Error(config.error.message);const b=businessSchema.parse(config.data.business);
   let path:string|null=null,hash:string|null=null;

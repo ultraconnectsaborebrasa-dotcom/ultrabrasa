@@ -3,7 +3,7 @@ import {assessReceipt,type ReceiptEvidence,type ReceiptCandidate} from '@/lib/pa
 import {summarizeSales} from '@/lib/sales-history';
 import {getState,replaceState,setOrderStatus,type Order} from '@/lib/pdv-store';
 const now=new Date('2026-11-03T15:00:00Z');
-const evidence:ReceiptEvidence={isPixReceipt:true,state:'completed',amount:19.9,recipient:'Ultraconnect LTDA',pixKey:'73982423404',paidDate:'2026-11-03',transactionId:'E12345678202611031200abcdefghijklm'};
+const evidence:ReceiptEvidence={isPixReceipt:true,state:'completed',amount:19.9,recipient:'Ultraconnect LTDA',pixKey:'73982423404',paidDate:'2026-11-03',transactionId:'E12345678202611031200abcdefghijk'};
 const candidate:ReceiptCandidate={id:'request-1',total:19.9,createdAt:'2026-11-03T13:00:00Z',status:'accepted',payment:'Pix',paid:false};
 const check=(e=evidence,c=[candidate],used=false)=>assessReceipt(e,c,used,'Ultraconnect LTDA','73982423404',now);
 describe('receipt payment rules',()=>{
