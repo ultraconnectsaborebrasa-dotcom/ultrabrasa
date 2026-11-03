@@ -337,6 +337,27 @@
       "when": 1793695024123,
       "tag": "0047_fix_pix_key_job_recursion",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793698709295,
+      "tag": "0048_receipt_manual_registration_and_delivery_departure",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1793698790956,
+      "tag": "0049_receipt_order_projection_and_departure_trigger",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793699059308,
+      "tag": "0050_receipt_provisional_before_acceptance_and_staff_delivery_history",
+      "breakpoints": true
     }
   ]
 }

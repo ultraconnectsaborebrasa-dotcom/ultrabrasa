@@ -39,5 +39,6 @@ Subdirectories may have their own AGENTS.md (desktop rules: electron/AGENTS.md);
 - Automated replies start the moment an inbound event is stored: server routes hand post-response work to the platform background context (src/lib/background.ts) and job claiming serializes per conversation, so a reply never waits for the minute scheduler or for another customer's job.
 - Digital catalog metadata (photos, descriptions, publish/sort) lives in catalog tables keyed by PDV product id and is read publicly only through an allowlisted security-definer RPC; prices, stock and availability always come from the shared PDV snapshot so the menu never diverges from the PDV.
 - WhatsApp contacts deduplicate normalized phones; provisional names never overwrite confirmed names; corrections are audited and external sync requires admin authorization.
-- Receipts use private official-gateway media, strict matching and atomic deduplication; separate paymentStatus preserves preparation/delivery and excludes unverified amounts from confirmed summaries.
+- Receipts use private media, atomic deduplication and audited provisional payments; unknown files stay reviewable without pausing automation, while bank confirmation stays manual and delivery-independent.
+- Delivery departure uses an authorized RPC and deduplicated job; only known failed sends allow explicit retry.
 - Locked closure RPCs and terminal guards close linked requests/jobs, preserving history without assuming refunds.

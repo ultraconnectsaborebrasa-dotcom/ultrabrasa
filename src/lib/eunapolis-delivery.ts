@@ -14,11 +14,11 @@ export const DELIVERY_ZONES = [
   { id: 'rural', name: 'Rural · Localidades', neighborhoods: ['Colônia', 'Mundo Novo', 'Gabiarra', 'Roça do Povo', 'Projeto Maravilha Km 12', 'Delta Parque I', 'Delta Parque II', 'Loteamento América', 'Green Gold'] },
 ];
 export const EUNAPOLIS_NEIGHBORHOODS = DELIVERY_ZONES.flatMap(z => z.neighborhoods).sort((a,b) => a.localeCompare(b,'pt-BR'));
-const normalize = (name: string) => name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
+const normalize = (name: string | undefined) => (name??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
 const aliases: Record<string,string> = { 'estela reis':'stela reis', 'santa isabel':'santa izabel', 'dina borges':'dinah borges i', 'dinah borges':'dinah borges i', 'niteroi':'niteroi i', 'renovacao':'renovacao i', 'encanto das aguas':'encanto das aguas i', 'recanto das arvores':'recantos das arvores i', 'recanto das arvores i':'recantos das arvores i', 'recanto das arvores ii':'recantos das arvores ii' };
 export function deliveryZone(address: Pick<DeliveryAddress,'neighborhood'|'city'|'state'>) {
-  if (address.city.trim() && normalize(address.city) !== 'eunapolis') return undefined;
-  if (address.state.trim() && normalize(address.state) !== 'ba') return undefined;
+  if (address.city?.trim() && normalize(address.city) !== 'eunapolis') return undefined;
+  if (address.state?.trim() && normalize(address.state) !== 'ba') return undefined;
   const name = normalize(address.neighborhood);
   return DELIVERY_ZONES.find(z => z.neighborhoods.some(n => normalize(n) === (aliases[name] ?? name)));
 }

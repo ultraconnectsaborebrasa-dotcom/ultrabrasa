@@ -108,10 +108,13 @@ async function interpret(db:Admin,j:Job){
 export async function processJobs(db:Admin,limit=2){
   for(let n=0;n<limit;n++){
     const cfg=check(await db.from('whatsapp_settings').select('business,account_state,auto_reply_enabled').eq('id',1).single());
-    if(businessSchema.parse(cfg.business).circuitPaused||cfg.account_state!=='ok')return;
+    // Receive attachments even when automatic replies are paused. Sending stays gated separately.
     const claimed=check(await db.rpc('wa_claim_job'));const j=claimed?.[0];if(!j)return;
     try{
       const p=jobPayload.parse(j.payload);
+      if(j.kind!=='receipt'&&(businessSchema.parse(cfg.business).circuitPaused||cfg.account_state!=='ok')){
+        checkEmpty(await db.from('whatsapp_jobs').update({state:'pending',lease_until:null,next_attempt_at:new Date(Date.now()+60000).toISOString()}).eq('id',j.id));continue;
+      }
       if(p.orderId||p.requestId){
         const q=db.from('whatsapp_order_requests').select('status,id').eq(p.requestId?'id':'order_id',p.requestId??p.orderId??'');
         const target=checkEmpty(await q.maybeSingle());
@@ -163,9 +166,9 @@ export async function processJobs(db:Admin,limit=2){
       checkEmpty(await db.from('whatsapp_jobs').update({state:'completed',completed_at:new Date().toISOString(),lease_until:null}).eq('id',j.id));
     }catch(e){
       const reason=e instanceof Error?e.message:String(e);
-      const ambiguous=j.kind!=='interpret'||e instanceof GatewayError&&(e.outcome==='unknown'||['NetworkError','TimeoutError'].includes(e.name));
+      const ambiguous=!['interpret','receipt'].includes(j.kind)||e instanceof GatewayError&&(e.outcome==='unknown'||['NetworkError','TimeoutError'].includes(e.name));
       checkEmpty(await db.from('whatsapp_jobs').update({state:ambiguous?'unknown':'failed',processing_error:reason.slice(0,1000),lease_until:null}).eq('id',j.id));
-      await handoff(db,j.phone,reason);
+      if(j.kind!=='receipt')await handoff(db,j.phone,reason);
       if(e instanceof GatewayError&&[402,403,429].includes(e.httpStatus??0)){
         const b=businessSchema.parse(cfg.business);checkEmpty(await db.from('whatsapp_settings').update({business:{...b,circuitPaused:true,circuitReason:reason.slice(0,500)}}).eq('id',1));return;
       }

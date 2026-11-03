@@ -13,6 +13,7 @@ import {WhatsAppBusinessSettings} from './WhatsAppBusinessSettings';
 import {WhatsAppCustomerCard} from './WhatsAppCustomerCard';
 import {refreshWhatsAppConversations} from '@/lib/whatsapp-alerts';
 import {ReceiptReview} from './ReceiptReview';
+import {ReceiptRegistration} from './ReceiptRegistration';
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status:string; assigned_name:string|null; automation_paused:boolean; awaiting_since:string|null };
 type Msg = { id: string; direction: string; source: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
@@ -133,10 +134,11 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
         {active&&<WhatsAppCustomerCard phone={active}/>}
         <div className="font-semibold">Notas internas</div>{notes.map(n=><div key={n.id} className="border-l-2 border-warning pl-2 text-xs">{n.body}<span className="block text-muted-foreground">{n.author_name}</span></div>)}<textarea aria-label="Nota interna" className="field" value={note} onChange={e=>setNote(e.target.value)} placeholder="Somente para a equipe"/><Button size="sm" variant="outline" disabled={!note.trim()||!active} onClick={()=>void action('note')}>Salvar nota interna</Button>
         <div className="font-semibold">Pedidos deste cliente</div>
+        {active&&<ReceiptRegistration phone={active} onSaved={()=>void loadMsgs(active)}/>}
         {!active ? <p className="text-muted-foreground">—</p> : linked.length === 0 ? <p className="text-muted-foreground">Nenhum pedido com este WhatsApp.</p> : linked.map(o => <div key={o.id} className={`rounded border p-2 ${orderId === o.id ? 'border-primary' : ''}`}>
           <div className="flex justify-between"><span>#{o.number} · {o.type}</span><span>{STATUS_LABEL[o.status] ?? o.status}</span></div>
           <div className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · {brl(o.items.reduce((a, i) => a + i.price * i.qty, 0))}</div>
-          <div className="mt-1 flex gap-1"><Button size="sm" variant="ghost" onClick={() => setOrderId(orderId === o.id ? '' : o.id)}>{orderId === o.id ? 'Vinculado' : 'Vincular'}</Button><Button size="sm" variant="ghost" onClick={() => { setOrderId(o.id); write(orderMsg(o)); }}>Avisar status</Button></div>
+          <div className="mt-1 flex flex-wrap gap-1"><Button size="sm" variant="ghost" onClick={() => setOrderId(orderId === o.id ? '' : o.id)}>{orderId === o.id ? 'Vinculado' : 'Vincular'}</Button><Button size="sm" variant="ghost" onClick={() => { setOrderId(o.id); write(orderMsg(o)); }}>Avisar status</Button>{o.status!=='cancelado'&&<ReceiptRegistration phone={active??undefined} orderId={o.id}/>}</div>
         </div>)}
       </aside>
     </div>
