@@ -1,6 +1,6 @@
 import { generateResponse, GatewayError } from '@lovable.dev/ai-gateway';
 import { z } from 'zod';
-import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,inEunapolis,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo } from './whatsapp-business';
+import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,inEunapolis,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo,menuOutsideNightMessage } from './whatsapp-business';
 import { gateway,sendText,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
@@ -85,10 +85,11 @@ async function interpret(db:Admin,j:Job){
   if(period==='night'&&!hadAuto&&!d.items.length)reply=`Oi! Que bom te ver por aqui 😊 Hoje à noite temos:\n${catalog.filter(p=>/hamb|espet|acomp/i.test(p.name+' '+p.category)).map(p=>`${p.name} — ${p.price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`).join('\n')}\n${reply}`;
   const MENU_URL='https://ultraconnectbrasa.com.br/cardapio';
   if(period==='night'&&!hadAuto&&!parsed.wantsMenu)reply=`${reply}\n\nCardápio completo: ${MENU_URL}`;
-  // Pedido de cardápio: no almoço manda a marmita; fora do almoço, cardápio digital e PDF se preferir.
+  // Pedido de cardápio: no almoço a marmita; à noite o digital; fora da noite a marmita e o digital.
+  const digitalMenu=`Claro! Aqui está nosso cardápio digital, dá pra ver tudo e pedir por lá: ${MENU_URL}${b.pdfPath?'\n\nSe preferir, te mando em PDF. É só pedir.':''}`;
   if(parsed.wantsMenu&&!answer&&!d.items.length){
     if(period==='lunch')reply=lunchAvailable?initialLunchMessage(b,new Date(),lunchP.price):`Poxa, as marmitas de hoje já acabaram.${nextLunchInfo(b)?` A próxima leva sai ${nextLunchInfo(b)}.`:''}`;
-    else if(!parsed.wantsPdf)reply=`Claro! Aqui está nosso cardápio digital, dá pra ver tudo e pedir por lá: ${MENU_URL}${b.pdfPath?'\n\nSe preferir, te mando em PDF. É só pedir.':''}`;
+    else if(!parsed.wantsPdf)reply=period==='night'||!lunchP?digitalMenu:menuOutsideNightMessage(b,{price:lunchP.price,available:lunchAvailable,menuUrl:MENU_URL,pdfOffer:!!b.pdfPath});
   }
   // PDF só vai quando o cliente pede.
   if(parsed.wantsPdf){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não está por aqui, mas pode perguntar que a gente te conta o que tem.';}
