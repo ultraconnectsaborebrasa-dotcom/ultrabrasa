@@ -3,8 +3,9 @@ import {supabase} from '@/integrations/supabase/client';
 export type AlertConversation={phone:string;name:string|null;unread:number;last_message:string|null;last_inbound_at:string|null;attendance_status:string;awaiting_since:string|null};
 let conversations:AlertConversation[]=[];let listeners=new Set<()=>void>();let timer:ReturnType<typeof setInterval>|undefined;let refs=0;let baseline=false;let loading=false;
 let audio:AudioContext|undefined;let enabled=false;let volume=0.5;const lastSound=new Map<string,number>();
+const empty:AlertConversation[]=[];
 const emit=()=>listeners.forEach(l=>l());
-export function useWhatsAppConversations(){return useSyncExternalStore(l=>{listeners.add(l);return()=>{listeners.delete(l);};},()=>conversations,()=>[]);}
+export function useWhatsAppConversations(){return useSyncExternalStore(l=>{listeners.add(l);return()=>{listeners.delete(l);};},()=>conversations,()=>empty);}
 export function playWhatsAppSound(){if(!enabled||!audio)return;const osc=audio.createOscillator(),gain=audio.createGain();osc.connect(gain);gain.connect(audio.destination);osc.frequency.value=880;gain.gain.setValueAtTime(volume*.12,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.35);osc.start();osc.stop(audio.currentTime+.35);}
 export async function activateWhatsAppSound(v=0.5){volume=v;enabled=true;audio??=new AudioContext();await audio.resume();playWhatsAppSound();if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();}
 export function setWhatsAppSound(on:boolean,v:number){enabled=on;volume=v;}

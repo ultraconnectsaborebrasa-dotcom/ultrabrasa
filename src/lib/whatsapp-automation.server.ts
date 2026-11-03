@@ -4,7 +4,7 @@ import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderField
 import { gateway,sendText,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
-const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),automatic:z.boolean().optional()});
+const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
 const check = <T>(r:{data:T;error:{message:string}|null}):NonNullable<T> => {if(r.error) throw new Error(r.error.message);if(r.data===null||r.data===undefined)throw new Error('Dados não encontrados');return r.data;};
 const checkEmpty = <T>(r:{data:T;error:{message:string}|null}):T => {if(r.error)throw new Error(r.error.message);return r.data;};
 export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'|'text'|'document',payload:Record<string,unknown>) {
@@ -19,7 +19,8 @@ async function interpret(db:Admin,j:Job){
   if(!cfg.auto_reply_enabled||cfg.account_state!=='ok'||b.circuitPaused||c.automation_paused)return;
   if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>86400000)return;
   const messages=check(await db.from('whatsapp_messages').select('direction,body,kind,wa_message_id').eq('phone',j.phone).order('provider_at',{ascending:false}).limit(20)).reverse();
-  if(messages.some(m=>m.direction==='in'&&m.kind!=='text')) {await handoff(db,j.phone,'Mensagem com mídia requer atendimento humano');return;}
+  const current=messages.find(m=>m.wa_message_id===payload.inboundId);
+  if(current&&current.kind!=='text') {await handoff(db,j.phone,'Mensagem com mídia requer atendimento humano');return;}
   const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
   const catalogSchema=z.object({products:z.array(z.object({id:z.string(),name:z.string(),price:z.number(),stock:z.number().nullable(),active:z.boolean(),category:z.string()}))});
   const catalog=catalogSchema.parse(snapshot.data).products.filter(p=>p.active&&p.price>0&&(p.stock===null||p.stock>0));
@@ -43,28 +44,29 @@ async function interpret(db:Admin,j:Job){
   const changed=JSON.stringify({...d,summarySent:false,quotedTotal:0})!==JSON.stringify({...previous,summarySent:false,quotedTotal:0});
   const missing=missingOrderFields(d);
   if(parsed.confirms&&previous.summarySent&&!changed&&missing.length===0&&previous.quotedTotal===total){
-    checkEmpty(await db.from('whatsapp_order_requests').upsert({phone:j.phone,inbound_id:payload.inboundId??j.id,quoted_total:total,request:{customer:d.customer,type:d.type,items:d.items,note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}},{onConflict:'inbound_id',ignoreDuplicates:true}));
-    await handoff(db,j.phone,'Pedido aguardando aceite');await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Recebemos sua confirmação. Seu pedido aguarda o aceite da loja; o pagamento ainda será confirmado pela equipe.',automatic:false});return;
+    const confirmed=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:{customer:d.customer,type:d.type,items:d.items,note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}}));
+    if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Recebemos sua confirmação. Seu pedido aguarda o aceite da loja; o pagamento ainda será confirmado pela equipe.',automatic:false});return;
   }
   let reply='';
   if(missing.length) reply=`Para continuar, informe: ${missing.join(', ')}.`;
-  else {d.summarySent=true;d.quotedTotal=total;reply=`Resumo do pedido:\n${d.items.map(i=>`${i.qty} × ${catalog.find(p=>p.id===i.productId)?.name}${i.note?` (${i.note})`:''}`).join('\n')}\n${d.type}${d.type==='Delivery'?`: ${d.address.street}, ${d.address.number} — ${d.address.neighborhood}, ${d.address.city}`:''}\nPagamento: ${d.payment} (pendente)${d.payment==='Dinheiro'?` · ${d.cashFor?`troco para R$ ${d.cashFor.toFixed(2)}`:'sem troco'}`:''}${d.payment==='Cartão'&&d.type==='Delivery'?' · Levar maquininha':''}\nTaxa: R$ 0,00\nTotal: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}${d.payment==='Pix'?`\nChave Pix: ${b.pixKey}`:''}\nConfirma este pedido?`;}
+  else {d.quotedTotal=total;reply=`Resumo do pedido:\n${d.items.map(i=>`${i.qty} × ${catalog.find(p=>p.id===i.productId)?.name}${i.note?` (${i.note})`:''}`).join('\n')}\n${d.type}${d.type==='Delivery'?`: ${d.address.street}, ${d.address.number} — ${d.address.neighborhood}, ${d.address.city}`:''}\nPagamento: ${d.payment} (pendente)${d.payment==='Dinheiro'?` · ${d.cashFor?`troco para R$ ${d.cashFor.toFixed(2)}`:'sem troco'}`:''}${d.payment==='Cartão'&&d.type==='Delivery'?' · Levar maquininha':''}\nTaxa: R$ 0,00\nTotal: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}${d.payment==='Pix'?`\nChave Pix: ${b.pixKey}`:''}\nConfirma este pedido?`;}
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
   const hadAuto=messages.some(m=>m.direction==='out');
-  if(period==='lunch'&&!hadAuto&&!d.items.length)reply=initialLunchMessage(b)+(missing.includes('nome')?'\nQual seu nome?':'');
+  if(period==='lunch'&&!hadAuto&&!d.items.length&&!d.address.street&&!d.address.neighborhood)reply=initialLunchMessage(b)+(missing.includes('nome')?'\nQual seu nome?':'');
+  if(period==='night'&&!hadAuto&&!d.items.length)reply=`Olá! Nosso cardápio disponível:\n${catalog.filter(p=>/hamb|espet|acomp/i.test(p.name+' '+p.category)).map(p=>`${p.name} — ${p.price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`).join('\n')}\n${reply}`;
   if(parsed.wantsPdf||period==='night'&&!hadAuto){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não foi cadastrado. Nossa equipe pode ajudar.';}
-  await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true});
+  await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,...(!missing.length?{summaryVersion:c.draft_version+1,summaryTotal:total}:{})});
 }
 export async function processJobs(db:Admin,limit=2){
   for(let n=0;n<limit;n++){
-    const cfg=check(await db.from('whatsapp_settings').select('business,account_state').eq('id',1).single());
+    const cfg=check(await db.from('whatsapp_settings').select('business,account_state,auto_reply_enabled').eq('id',1).single());
     if(businessSchema.parse(cfg.business).circuitPaused||cfg.account_state!=='ok')return;
     const claimed=check(await db.rpc('wa_claim_job'));const j=claimed?.[0];if(!j)return;
     try{
       const p=jobPayload.parse(j.payload);
       const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at').eq('phone',j.phone).single());
-      if(p.automatic&&c.automation_paused){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
+      if(p.automatic&&(c.automation_paused||!cfg.auto_reply_enabled)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
       if(j.kind==='interpret')await interpret(db,j);
       else{
         if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>=86400000)throw new Error('Janela de 24h encerrada; modelo aprovado necessário');
@@ -76,16 +78,18 @@ export async function processJobs(db:Admin,limit=2){
         else{
           const b=businessSchema.parse(cfg.business);if(!b.pdfPath)throw new Error('Cadastre o PDF');
           const url=check(await db.storage.from('whatsapp-menu').createSignedUrl(b.pdfPath,300));
+          const reserved=check(await db.from('whatsapp_messages').insert({phone:j.phone,direction:'out',kind:'document',body:'Cardápio PDF',source:'pdv',status:'sending',reply_to:j.id}).select('id').single());
           const r=await gateway('/messages',{method:'POST',body:{messaging_product:'whatsapp',to:j.phone,type:'document',document:{link:url.signedUrl,filename:'Cardapio-Ultrabrasa.pdf'}}});
           providerId=r?.messages?.[0]?.id;if(!providerId)throw new Error('WhatsApp não retornou identificador');
-          checkEmpty(await db.from('whatsapp_messages').insert({wa_message_id:providerId,phone:j.phone,direction:'out',kind:'document',body:'Cardápio PDF',source:'pdv',status:'accepted',reply_to:j.id}));checkEmpty(await db.rpc('wa_reconcile',{_id:providerId}));
+          checkEmpty(await db.from('whatsapp_messages').update({wa_message_id:providerId,status:'accepted'}).eq('id',reserved.id));checkEmpty(await db.rpc('wa_reconcile',{_id:providerId}));
         }
         checkEmpty(await db.from('whatsapp_jobs').update({provider_id:providerId??null}).eq('id',j.id));
+        if(p.summaryVersion!==undefined){const draft=check(await db.from('whatsapp_conversations').select('draft').eq('phone',j.phone).single());checkEmpty(await db.from('whatsapp_conversations').update({draft:{...conversationDraftSchema.parse(draft.draft),summarySent:true,quotedTotal:p.summaryTotal??0}}).eq('phone',j.phone).eq('draft_version',p.summaryVersion).eq('automation_paused',false));}
       }
       checkEmpty(await db.from('whatsapp_jobs').update({state:'completed',completed_at:new Date().toISOString(),lease_until:null}).eq('id',j.id));
     }catch(e){
       const reason=e instanceof Error?e.message:String(e);
-      const ambiguous=e instanceof GatewayError&&(e.outcome==='unknown'||['NetworkError','TimeoutError'].includes(e.name));
+      const ambiguous=j.kind!=='interpret'||e instanceof GatewayError&&(e.outcome==='unknown'||['NetworkError','TimeoutError'].includes(e.name));
       checkEmpty(await db.from('whatsapp_jobs').update({state:ambiguous?'unknown':'failed',processing_error:reason.slice(0,1000),lease_until:null}).eq('id',j.id));
       await handoff(db,j.phone,reason);
       if(e instanceof GatewayError&&[402,403,429].includes(e.httpStatus??0)){
