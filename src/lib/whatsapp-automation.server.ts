@@ -1,6 +1,6 @@
 import { generateResponse, GatewayError } from '@lovable.dev/ai-gateway';
 import { z } from 'zod';
-import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo,menuOutsideNightMessage,isMenuAsk,isPriceAsk,lunchPriceMessage,closedMenuMessage,lunchPresented,lunchQtyAck,summaryReady,normalizeDraft,paymentLabel,addressAck,orderSummary,isNightMenuAsk,nightMenuOffHours } from './whatsapp-business';
+import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo,menuOutsideNightMessage,isMenuAsk,isPriceAsk,lunchPriceMessage,closedMenuMessage,lunchPresented,lunchQtyAck,summaryReady,normalizeDraft,paymentLabel,addressAck,orderSummary,isNightMenuAsk,nightMenuOffHours,spTime } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
@@ -98,13 +98,13 @@ async function interpret(db:Admin,j:Job){
   let answer=parsed.answer.trim();
   if(period==='lunch'&&!hadAuto&&!answer&&lunchAvailable&&!d.items.length&&!d.address.street&&!d.address.neighborhood)reply=initialLunchMessage(b,new Date(),lunchP.price);
   if(period==='night'&&!hadAuto&&!d.items.length)reply=`Oi! Que bom te ver por aqui 😊 Dá pra ver tudo e pedir pelo cardápio digital: ${MENU_URL}\n\n${reply}`;
-  const morning=spTimeNow()<'12:00';
+  const morning=spTime(new Date())<'12:00';
   if(period==='closed'&&!hadAuto&&!d.items.length){reply=morning&&lunchP?closedMenuMessage(b,{price:lunchP.price,menuUrl:MENU_URL,pdfOffer:false}):closedMessage(b);if(morning&&lunchP)answer='';}
   // Prazo de entrega: resposta fixa com o horário de saída cadastrado, nunca "não tenho prazo".
   const lastIn=(latestInbound?.body??'');
   if(/prazo|demora|quanto tempo|que horas (chega|sai|entrega)|hor[aá]rio de entrega|tempo de entrega/i.test(lastIn)){
     const dep=b.departureFrom.replace(/^0?(\d+):00$/,'$1h');
-    const pre=spTimeNow()<b.departureFrom?`As entregas de marmita começam a sair às ${dep}, e`:'As marmitas saem para entrega ao longo do almoço e';
+    const pre=spTime(new Date())<b.departureFrom?`As entregas de marmita começam a sair às ${dep}, e`:'As marmitas saem para entrega ao longo do almoço e';
     answer=`${pre} o tempo até chegar depende do bairro e da ordem da rota 😊`;
     if(!d.items.length){reply=`Quer deixar seu pedido adiantado? Me fala quantas marmitas e o bairro da entrega 😊`;}
   }
