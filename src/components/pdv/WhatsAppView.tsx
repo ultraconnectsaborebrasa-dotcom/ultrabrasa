@@ -80,7 +80,7 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
         ? <span className="text-sm text-success">● Conectado · {status.phone}{status.coexistence ? ' · também no celular' : ''}</span>
         : <span className="text-sm text-destructive">● Desconectado</span>}
       {cfg?.account_state === 'blocked' && <span className="flex items-center gap-1 text-sm text-destructive"><AlertTriangle size={14}/> Conta bloqueada pela Meta ({cfg.account_event}) — reconecte</span>}
-      <div className="ml-auto flex gap-2">
+      <div className="ml-auto flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={() => void checkStatus()}><RefreshCw/> Verificar</Button>
         {status?.connected && <Button variant="outline" size="sm" disabled={busy} onClick={() => void syncHistory()}><History/> Importar conversas</Button>}
         <Button variant="outline" size="sm" onClick={() => setShowCfg(v => !v)}><Settings2/> Configurações</Button>
@@ -91,7 +91,7 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
     {jobErrors.length>0&&<details className="border-l-2 border-destructive p-2 text-sm"><summary>Envios ou automação precisam de revisão · {jobErrors.length}</summary>{jobErrors.map(j=><div key={j.id} className="py-1"><Button variant="ghost" size="sm" onClick={()=>setActive(j.phone)}>+{j.phone}</Button> · {j.state==='unknown'?'Resultado desconhecido; confira antes de reenviar':'Falha'} · {j.processing_error}</div>)}</details>}
     {requests.length>0&&<div className="space-y-2 border-l-2 border-warning p-3"><h2 className="font-semibold text-warning">Aguardando aceite da loja · {requests.length}</h2>{requests.map(r=><div key={r.id} className="flex flex-wrap items-center gap-2 text-sm"><Button variant="ghost" onClick={()=>setActive(r.phone)}>{convs.find(c=>c.phone===r.phone)?.name||`+${r.phone}`} · {brl(r.quoted_total)}</Button><span className="text-muted-foreground">{Math.floor((Date.now()-Date.parse(r.created_at))/60000)} min</span><Button size="sm" disabled={busy} onClick={()=>void accept(r.id,true)}>Aceitar e enviar à cozinha</Button><Button size="sm" variant="outline" disabled={busy} onClick={()=>void accept(r.id,false)}>Recusar</Button><details className="w-full"><summary>Resumo</summary><pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(r.request,null,2)}</pre></details></div>)}</div>}
     <div className="flex flex-wrap gap-1"><Button size="sm" variant={filter==='all'?'default':'outline'} onClick={()=>setFilter('all')}>Todos · {convs.length}</Button>{Object.entries(attendanceLabels).map(([key,label])=><Button key={key} size="sm" variant={filter===key?'default':'outline'} onClick={()=>setFilter(key)}>{label} · {convs.filter(c=>c.attendance_status===key).length}</Button>)}</div>
-    <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[280px_minmax(0,1fr)_240px]">
+    <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_240px]">
       <ul className="min-h-0 overflow-y-auto rounded-lg border">
         <li className="p-2"><input aria-label="Buscar conversa" className="field" placeholder="Nome ou WhatsApp" value={search} onChange={e=>setSearch(e.target.value)}/></li>
         {convs.length === 0 && <li className="p-4 text-sm text-muted-foreground">Nenhuma conversa ainda.</li>}
@@ -123,7 +123,7 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
           </div>
         </>}
       </div>
-      <aside className="space-y-2 rounded-lg border p-3 text-sm">
+      <aside className="space-y-2 rounded-lg border p-3 text-sm md:col-span-2 xl:col-span-1">
         <div className="font-semibold">Notas internas</div>{notes.map(n=><div key={n.id} className="border-l-2 border-warning pl-2 text-xs">{n.body}<span className="block text-muted-foreground">{n.author_name}</span></div>)}<textarea aria-label="Nota interna" className="field" value={note} onChange={e=>setNote(e.target.value)} placeholder="Somente para a equipe"/><Button size="sm" variant="outline" disabled={!note.trim()||!active} onClick={()=>void action('note')}>Salvar nota interna</Button>
         <div className="font-semibold">Pedidos deste cliente</div>
         {!active ? <p className="text-muted-foreground">—</p> : linked.length === 0 ? <p className="text-muted-foreground">Nenhum pedido com este WhatsApp.</p> : linked.map(o => <div key={o.id} className={`rounded border p-2 ${orderId === o.id ? 'border-primary' : ''}`}>

@@ -1,7 +1,9 @@
 # PDV: histórico e administração
-- [ ] WhatsApp: organizar atendimentos, responsabilidade humana, rascunhos e alertas reais sem trocar a conexão existente.
-- [ ] WhatsApp: configurações comerciais, horários, PDF, coleta de pedido e aceite antes da cozinha, com pagamento independente.
-- [ ] WhatsApp: recuperação durável, eventos reais, testes de concorrência/reconexão e prévia antes de publicar.
+- [x] WhatsApp: filtros, responsabilidade/pausa humana, notas, rascunhos e alertas implementados sem reconectar; assumir, nota e finalização conferidos na conta admin, rascunho preservado ao alternar para balcão. Conversa de teste removida; nenhum WhatsApp enviado.
+- [x] WhatsApp: configurações comerciais, horários, PDF protegido, extração de texto livre e aceite atômico antes da cozinha implementados; 31 testes direcionados aprovados, IA real extraiu quantidade e manteve Pix pendente. Automação permanece desligada.
+- [x] WhatsApp: fila durável com exclusividade, confirmação deduplicada, bloqueios de envio e callbacks preservados; recuperação gerenciada criada a cada minuto. Prévia admin sem erros; produtos/pedidos não foram alterados. Nenhuma publicação.
+- [ ] WhatsApp: ativar atendimento real — aguarda horários completos, chave Pix, seleção do produto da marmita e PDF do usuário.
+- [ ] WhatsApp: validar mensagens/PDF, aceite completo, eventos de saída, reconexão e recuperação no serviço publicado — aguarda autorização para publicação e telefone de teste autorizado; envio/entrega real e notificações nativas com app fechado não verificados.
 - [x] Impressão Delivery inclui endereço completo em vendas, cozinha e recebimentos, com busca pela consulta autorizada quando a lista do perfil omite endereço; 19 testes aprovados e cupom conferido com entrega salva na conta admin, sem alterar dados. Compilação OK; publicação e impressão física pendentes.
 - [x] Vendas administrativas abrem no dia atual, com unidades por produto, ordenação, recebimentos e resumo por dia; corrigidos rankings por nome e exclusão de vendas legadas no turno. 70 testes aprovados; conta admin conferida com 76 vendas pagas/238 unidades, filtros e detalhes, sem alterar pedidos. Publicação pendente.
 - [x] Cancelar/concluir rotas sem iniciar e taxa de entrega opcional: 32 testes aprovados; dois envios reais admin (8 sem taxa / 13 com taxa), rotas concluída e cancelada com releitura; pedidos/clientes/rotas temporários removidos. Publicação pendente.

@@ -16,6 +16,8 @@ export const whatsappRequestAction=createServerFn({method:'POST'}).middleware([r
 });
 export const whatsappSaveBusiness=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator((input:unknown)=>z.object({business:businessSchema,enabled:z.boolean(),quickReplies:z.array(z.string().min(1).max(1000)).max(20)}).parse(input)).handler(async({data,context})=>{
   await admin(context);if(data.enabled&&(!data.business.pixKey||data.business.hours.length!==7||data.business.hours.some(h=>!h.lunchEnd||!h.nightStart||!h.nightEnd)))throw new Error('Preencha a chave Pix e horários de todos os dias antes de ativar');
+  if(data.enabled&&!data.business.lunchProductId)throw new Error('Escolha o produto da marmita no PDV antes de ativar');
+  if(new Set(data.business.hours.map(h=>h.day)).size!==data.business.hours.length)throw new Error('Dias da semana repetidos');
   if(data.business.hours.some(h=>h.lunchEnd&&h.lunchEnd<=data.business.advanceFrom))throw new Error('O almoço precisa terminar depois de abrir');
   const r=await context.supabase.from('whatsapp_settings').update({business:data.business,auto_reply_enabled:data.enabled,quick_replies:data.quickReplies,updated_at:new Date().toISOString()}).eq('id',1);if(r.error)throw new Error(r.error.message);return {ok:true};
 });
