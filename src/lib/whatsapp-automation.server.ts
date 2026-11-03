@@ -44,7 +44,7 @@ async function interpret(db:Admin,j:Job){
   const changed=JSON.stringify({...d,summarySent:false,quotedTotal:0})!==JSON.stringify({...previous,summarySent:false,quotedTotal:0});
   const missing=missingOrderFields(d);
   if(parsed.confirms&&previous.summarySent&&!changed&&missing.length===0&&previous.quotedTotal===total){
-    const confirmed=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:{customer:d.customer,type:d.type,items:d.items,note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}}));
+    const confirmed=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:{customer:d.customer,type:d.type,items:d.items.map(i=>({...i,quotedPrice:catalog.find(p=>p.id===i.productId)?.price})),note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}}));
     if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Recebemos sua confirmação. Seu pedido aguarda o aceite da loja; o pagamento ainda será confirmado pela equipe.',automatic:false});return;
   }
   let reply='';

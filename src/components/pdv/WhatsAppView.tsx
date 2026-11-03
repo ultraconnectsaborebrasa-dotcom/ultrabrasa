@@ -35,6 +35,7 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
   const [showCfg, setShowCfg] = useState(false);
   const [busy, setBusy] = useState(false);
   const [filter,setFilter]=useState('all');const[search,setSearch]=useState('');const[note,setNote]=useState('');
+  const[jobErrors,setJobErrors]=useState<{id:string;phone:string;processing_error:string|null;state:string}[]>([]);
   const[notes,setNotes]=useState<{id:string;body:string;author_name:string|null}[]>([]);
   const[requests,setRequests]=useState<{id:string;phone:string;quoted_total:number;request:unknown;created_at:string}[]>([]);
   const[drafts,setDrafts]=useState<Record<string,string>>({});
@@ -44,7 +45,7 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
   const write=(value:string)=>{setText(value);if(active){setDrafts(prev=>{const next={...prev,[active]:value};localStorage.setItem('ultrabrasa-wa-drafts',JSON.stringify(next));return next;});}};
   async function action(kind:'take'|'resume'|'read'|'waiting'|'finish'|'note'){if(!active)return;try{await actionFn({data:{phone:active,action:kind,body:kind==='note'?note:undefined}});if(kind==='note')setNote('');await loadConvs();await loadNotes(active);void refreshWhatsAppConversations();}catch(e){toast.error(e instanceof Error?e.message:'Falha');}}
   async function loadNotes(phone:string){const r=await supabase.from('whatsapp_notes').select('id,body,author_name').eq('phone',phone).order('created_at');if(!r.error)setNotes(r.data);}
-  async function loadRequests(){const r=await supabase.from('whatsapp_order_requests').select('id,phone,quoted_total,request,created_at').eq('status','awaiting_acceptance').order('created_at');if(!r.error)setRequests(r.data);}
+  async function loadRequests(){const r=await supabase.from('whatsapp_order_requests').select('id,phone,quoted_total,request,created_at').eq('status','awaiting_acceptance').order('created_at');if(!r.error)setRequests(r.data);const jobs=await supabase.from('whatsapp_jobs').select('id,phone,processing_error,state').in('state',['failed','unknown']).order('created_at',{ascending:false}).limit(10);if(!jobs.error)setJobErrors(jobs.data);}
   async function accept(id:string,yes:boolean){setBusy(true);try{await requestFn({data:{id,accept:yes}});toast.success(yes?'Pedido aceito e enviado à cozinha':'Pedido recusado');await loadRequests();await loadConvs();}catch(e){toast.error(e instanceof Error?e.message:'Falha');}finally{setBusy(false);}}
 
   const checkStatus = () => statusFn().then(setStatus).catch(e => setStatus({ connected: false, reason: String(e?.message ?? e) }));
@@ -87,6 +88,7 @@ export function WhatsAppView({openPhone}:{openPhone?:string|null}) {
     </div>
     {status && !status.connected && <p className="border-l-2 border-warning bg-warning/10 p-3 text-sm">O WhatsApp da loja ainda não está conectado. A conexão é feita uma vez pela conta da Meta; depois fica salva. {status.reason}</p>}
     {showCfg&&cfg&&<WhatsAppBusinessSettings initial={cfg.business} enabled={cfg.auto_reply_enabled} quick={cfg.quick_replies} onSaved={()=>{void loadCfg();setShowCfg(false);}}/>}
+    {jobErrors.length>0&&<details className="border-l-2 border-destructive p-2 text-sm"><summary>Envios ou automação precisam de revisão · {jobErrors.length}</summary>{jobErrors.map(j=><div key={j.id} className="py-1"><Button variant="ghost" size="sm" onClick={()=>setActive(j.phone)}>+{j.phone}</Button> · {j.state==='unknown'?'Resultado desconhecido; confira antes de reenviar':'Falha'} · {j.processing_error}</div>)}</details>}
     {requests.length>0&&<div className="space-y-2 border-l-2 border-warning p-3"><h2 className="font-semibold text-warning">Aguardando aceite da loja · {requests.length}</h2>{requests.map(r=><div key={r.id} className="flex flex-wrap items-center gap-2 text-sm"><Button variant="ghost" onClick={()=>setActive(r.phone)}>{convs.find(c=>c.phone===r.phone)?.name||`+${r.phone}`} · {brl(r.quoted_total)}</Button><span className="text-muted-foreground">{Math.floor((Date.now()-Date.parse(r.created_at))/60000)} min</span><Button size="sm" disabled={busy} onClick={()=>void accept(r.id,true)}>Aceitar e enviar à cozinha</Button><Button size="sm" variant="outline" disabled={busy} onClick={()=>void accept(r.id,false)}>Recusar</Button><details className="w-full"><summary>Resumo</summary><pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(r.request,null,2)}</pre></details></div>)}</div>}
     <div className="flex flex-wrap gap-1"><Button size="sm" variant={filter==='all'?'default':'outline'} onClick={()=>setFilter('all')}>Todos · {convs.length}</Button>{Object.entries(attendanceLabels).map(([key,label])=><Button key={key} size="sm" variant={filter===key?'default':'outline'} onClick={()=>setFilter(key)}>{label} · {convs.filter(c=>c.attendance_status===key).length}</Button>)}</div>
     <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[280px_minmax(0,1fr)_240px]">

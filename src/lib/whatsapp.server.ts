@@ -133,7 +133,9 @@ export async function processEvent(db: Admin, event: string, payload: any) {
   } else if (event === 'whatsapp.account_update') {
     const ev = value.event as string | undefined;
     const blocked = ['PARTNER_REMOVED', 'PARTNER_APP_UNINSTALLED', 'ACCOUNT_OFFBOARDED'].includes(ev ?? '') || (ev === 'DISABLED_UPDATE' && value.ban_info?.waba_ban_state === 'DISABLE');
-    const state = blocked ? 'blocked' : ev === 'ACCOUNT_RECONNECTED' ? 'ok' : undefined;
+    let accountDeleted=false;
+    if(ev==='ACCOUNT_DELETED'){const number=await gateway('/phone_number?fields=display_phone_number');accountDeleted=digits(value.phone_number??'')===digits(number.display_phone_number??'');}
+    const state = blocked||accountDeleted ? 'blocked' : ev === 'ACCOUNT_RECONNECTED' ? 'ok' : undefined;
     const r = await db.from('whatsapp_settings').update({ account_event: ev ?? null, ...(state ? { account_state: state } : {}), updated_at: new Date().toISOString() }).eq('id', 1);
     if (r.error) throw new Error(r.error.message);
   }
