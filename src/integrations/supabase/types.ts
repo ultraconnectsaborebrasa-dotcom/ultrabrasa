@@ -65,6 +65,47 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_identity_changes: {
+        Row: {
+          changed_by: string | null
+          changed_by_name: string | null
+          created_at: string
+          customer_id: string
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          customer_id: string
+          field: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          customer_id?: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_identity_changes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_addresses: {
         Row: {
           address: Json
@@ -260,30 +301,54 @@ export type Database = {
       pdv_customers: {
         Row: {
           consent_at: string | null
+          contact_external_id: string | null
+          contact_sync_attempts: number
+          contact_sync_error: string | null
+          contact_sync_status: string
           created_at: string
           id: string
           name: string
+          name_status: string
           phone: string | null
+          profile_name: string | null
           promotion_consent: boolean
           updated_at: string
+          updated_by: string | null
+          updated_by_name: string | null
         }
         Insert: {
           consent_at?: string | null
+          contact_external_id?: string | null
+          contact_sync_attempts?: number
+          contact_sync_error?: string | null
+          contact_sync_status?: string
           created_at?: string
           id?: string
           name?: string
+          name_status?: string
           phone?: string | null
+          profile_name?: string | null
           promotion_consent?: boolean
           updated_at?: string
+          updated_by?: string | null
+          updated_by_name?: string | null
         }
         Update: {
           consent_at?: string | null
+          contact_external_id?: string | null
+          contact_sync_attempts?: number
+          contact_sync_error?: string | null
+          contact_sync_status?: string
           created_at?: string
           id?: string
           name?: string
+          name_status?: string
           phone?: string | null
+          profile_name?: string | null
           promotion_consent?: boolean
           updated_at?: string
+          updated_by?: string | null
+          updated_by_name?: string | null
         }
         Relationships: []
       }
@@ -743,6 +808,7 @@ export type Database = {
         Args: { phone_query: string }
         Returns: Json
       }
+      normalize_phone: { Args: { _raw: string }; Returns: string }
       pay_pdv_cashier: {
         Args: { order_id: string; payment_method: string }
         Returns: undefined
@@ -825,6 +891,10 @@ export type Database = {
         Args: { request: Json }
         Returns: Json
       }
+      update_customer_identity: {
+        Args: { _id: string; _name: string; _phone: string }
+        Returns: undefined
+      }
       update_delivery_address: {
         Args: { delivery_id: string; input: Json }
         Returns: undefined
@@ -833,6 +903,7 @@ export type Database = {
         Args: { delivery_id: string; issue?: string; new_status: string }
         Returns: undefined
       }
+      valid_person_name: { Args: { _n: string }; Returns: boolean }
       validate_delivery_input: { Args: { input: Json }; Returns: undefined }
       wa_accept_request: { Args: { _id: string }; Returns: Json }
       wa_apply_status: {
@@ -877,6 +948,7 @@ export type Database = {
         Args: { _action: string; _body?: string; _phone: string }
         Returns: undefined
       }
+      wa_customer_card: { Args: { _phone: string }; Returns: Json }
       wa_reconcile: { Args: { _id: string }; Returns: undefined }
       wa_reject_request: { Args: { _id: string }; Returns: undefined }
       wa_staff: { Args: never; Returns: boolean }
