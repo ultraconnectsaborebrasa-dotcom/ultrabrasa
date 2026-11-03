@@ -1,4 +1,7 @@
 # PDV: histórico e administração
+- [ ] Corrigir reconhecimento/recuperação de anexos, status provisório e registro manual de comprovantes com auditoria.
+- [ ] Integrar saída manual, entregador, horário, abas de delivery e aviso WhatsApp deduplicado com reenvio.
+- [ ] Validar os fluxos de comprovante e saída sem alterar vendas reais.
 - [x] Fotos novas dos nove hambúrgueres do cardápio digital, conferidas uma a uma pelo nome dos ingredientes e no cardápio publicado; nada foi apagado.
 - [x] Alerta de pedido confirmado com detalhes (itens, total, entrega, pagamento), botões Ver/Aceitar/Silenciar, som repetido em intervalo configurável até reconhecer; reconhecer não aceita o pedido.
 - [x] Terceiro som e aviso "Comprovante recebido — conferir" para comprovantes novos; teste individual dos três sons; mensagens de comprovante naturais sem frases burocráticas.
