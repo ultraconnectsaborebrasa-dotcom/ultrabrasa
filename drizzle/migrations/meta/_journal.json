@@ -281,6 +281,13 @@
       "when": 1793690552603,
       "tag": "0039_whatsapp_claim_per_phone",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793693544332,
+      "tag": "0040_receipt_review_and_terminal_orders",
+      "breakpoints": true
     }
   ]
 }
