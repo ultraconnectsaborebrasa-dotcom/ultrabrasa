@@ -40,4 +40,4 @@
 - [x] Administração com acesso total e equipe com permissões protegidas na base de dados.
 - [x] Persistência compartilhada com revisão e cópia dos dados locais antes da importação.
 - [x] Verificar administração e pedido salvo em conta real; cozinha, mesa, especificações, status pronto e cancelamento confirmados. Histórico coberto por 7 testes.
-- [x] Verificar conta real de atendente: 45 produtos, preço/subtotal/total do carrinho, ausência de dados completos e rejeição de alterações de acesso; nenhum pedido foi criado ou alterado nesta correção.
+- [x] Verificar conta real de atendente: 45 produtos, preço/subtotal/total do carrinho, ausência de dados completos e rejeição de alterações de acesso; nenhum pedido foi criado ou alterado nesta correção.- [ ] Conectar Google Contacts: conector udc_google_contacts sem client_id/secret; aguarda usuário criar OAuth no Google Cloud e preencher a configuração do conector.
