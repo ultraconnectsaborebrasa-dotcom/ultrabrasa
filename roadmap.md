@@ -1,4 +1,8 @@
 # PDV: histórico e administração
+- [x] Alerta de pedido confirmado com detalhes (itens, total, entrega, pagamento), botões Ver/Aceitar/Silenciar, som repetido em intervalo configurável até reconhecer; reconhecer não aceita o pedido.
+- [x] Terceiro som e aviso "Comprovante recebido — conferir" para comprovantes novos; teste individual dos três sons; mensagens de comprovante naturais sem frases burocráticas.
+- [x] Cancelamento de pedido com pagamento informado avisa o caixa para verificar eventual devolução.
+- [ ] Validar alerta de pedido e de comprovante com eventos reais após publicação; aviso de comprovante já conferido na prévia com dado real.
 - [x] Logo Ultraconnect no ícone do navegador e edição de nome no editor do cardápio usando o produto original.
 - [x] Ajustar mensagens de aceite e Pix separado; bloquear cobranças com recibo ou pagamento existente.
 - [x] Baixa opcional por comprovante, auditoria e conferência no Caixa/Admin; valores não verificados separados e preparo/entrega preservados.
