@@ -25,3 +25,18 @@ describe('pagamento antes do resumo', () => {
   });
   it('nunca mostra null', () => expect(orderSummary({ ...withAddr, payment: 'Pix' }, line, 19.9)).not.toMatch(/null|undefined|NaN/));
 });
+import { normalizeDraft } from './whatsapp-business';
+describe('conversa real: 1marmita → Rua Lomanto junior, 629, Pequi → Pix', () => {
+  const after1 = { ...base, items: [{ productId: 'm', qty: 1, note: '' }] };
+  it('endereço completo sem tipo vira entrega e pergunta pagamento', () => {
+    const d = normalizeDraft({ ...after1, address: { ...base.address, street: 'Rua Lomanto junior', number: '629', neighborhood: 'Pequi' } });
+    expect(d.type).toBe('Delivery');
+    const m = missingOrderFields(d);
+    expect(m).not.toContain('rua'); expect(followUpMessage(m)).toBe('Vai pagar no Pix, cartão ou dinheiro? 😊');
+    expect(addressAck(d.address)).toBe('Entrega na Rua Lomanto Junior, 629, Pequi, combinado!');
+    const pix = { ...d, payment: 'Pix' as const, customer: 'João' };
+    expect(summaryReady(pix, 19.9)).toBe(true);
+    expect(orderSummary(pix, line, 19.9)).toContain('Pix — aguardando pagamento');
+  });
+  it('saudação com rascunho vazio não fica pronta', () => expect(summaryReady(normalizeDraft(base), 0)).toBe(false));
+});
