@@ -802,6 +802,7 @@ export type Database = {
       }
       wa_reconcile: { Args: { _id: string }; Returns: undefined }
       wa_reject_request: { Args: { _id: string }; Returns: undefined }
+      wa_store_inbound: { Args: { _message: Json }; Returns: boolean }
       wa_touch_inbound: {
         Args: { _at: string; _body: string; _name: string; _phone: string }
         Returns: undefined
