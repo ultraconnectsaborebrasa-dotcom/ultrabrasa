@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 type Card = {
   id: string; name: string; phone: string; nameStatus: 'missing' | 'provisional' | 'confirmed'; profileName: string | null;
   contactStatus: string | null; updatedByName: string | null;
-  addresses: { id: string; address: Record<string, string> }[];
+  addresses: { id: string; address: { label?: string; street?: string; number?: string; neighborhood?: string } }[];
   orders: { ref: string; status: string; at: string }[];
 };
 const NAME_LABEL = { missing: 'Sem nome — pergunte "Como você se chama?"', provisional: 'Nome do perfil (provisório)', confirmed: 'Nome confirmado' };
