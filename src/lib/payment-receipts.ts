@@ -7,10 +7,22 @@ export const receiptEvidenceSchema = z.object({
 });
 export type ReceiptEvidence = z.infer<typeof receiptEvidenceSchema>;
 export type ReceiptCandidate = { id: string; total: number; createdAt: string; status: string; payment: string; paid: boolean };
+export function receiptLinkCandidate(candidates: ReceiptCandidate[]) {
+  const active = candidates.filter(c => ['awaiting_acceptance','accepted'].includes(c.status) && !c.paid);
+  return active.length === 1 ? active[0]?.id ?? null : null;
+}
+export function canRecordProvisional(e: ReceiptEvidence) {
+  return e.isPixReceipt && ['completed','unknown'].includes(e.state);
+}
+export function receiptReply(linked: boolean, recognized: boolean, multiple = false) {
+  if (linked && recognized) return 'Obrigado pelo comprovante! 😊 Já deixei anotado no seu pedido.';
+  if (multiple) return 'Recebi seu arquivo! Qual é o número do pedido deste comprovante?';
+  return 'Recebi seu arquivo! Vamos verificar por aqui e te responder 😊';
+}
 const normalized = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/gi,'').toLowerCase();
 export function assessReceipt(e: ReceiptEvidence, candidates: ReceiptCandidate[], used: boolean, recipient: string, pixKey: string, now = new Date()) {
   if (used) return { compatible:false, requestId:null, reason:'Possível reutilização de comprovante' };
-  if (!e.isPixReceipt || e.state !== 'completed') return { compatible:false, requestId:null, reason:'Não é um comprovante legível de Pix concluído' };
+  if (!e.isPixReceipt || e.state !== 'completed') return { compatible:false, requestId:receiptLinkCandidate(candidates), reason:'Não é um comprovante legível de Pix concluído' };
   const options=candidates.filter(c=>c.payment==='Pix'&&!c.paid);
   // Never choose by amount alone when the customer has multiple unpaid orders.
   if(options.length!==1)return {compatible:false,requestId:null,reason:options.length>1?'Há mais de um pedido: informe o código do pedido':'Nenhum pedido Pix pendente identificado'};
