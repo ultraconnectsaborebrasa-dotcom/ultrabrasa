@@ -84,7 +84,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
   async function linkReceipt(messageId:string,order:Order){
     setBusy(true);
     try{
-      const r=await supabase.rpc('register_staff_receipt',{_message:messageId,_order:order.id,_path:null});
+      const r=await supabase.rpc('register_staff_receipt',{_message:messageId,_order:order.id,_path:null} as never);
       if(r.error)throw r.error;
       toast.success(`Comprovante vinculado ao pedido #${order.number} — conferência pendente no caixa`);
       setLinkingMsg(null);
