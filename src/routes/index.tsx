@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Armchair, Bell, BellOff, ShoppingCart, ClipboardList, ChefHat, Package, Wallet, Settings, History, ShieldCheck, LogOut, Wifi, WifiOff, LoaderCircle, Users } from "lucide-react";
+import { Armchair, Bell, BellOff, ShoppingCart, ClipboardList, ChefHat, Package, Wallet, Settings, History, ShieldCheck, LogOut, Wifi, WifiOff, LoaderCircle, Users, MessageCircle } from "lucide-react";
 import { brl, isToday, useStore, useSaving } from "@/lib/pdv-store";
 import { AccountGate, AdminTeam } from "@/components/pdv/AccountGate";
 import { SalesHistory } from "@/components/pdv/SalesHistory";
@@ -14,6 +14,7 @@ import { Brand } from "@/components/pdv/Brand";
 import { TablesView } from "@/components/pdv/TablesView";
 import { DeliveryBoard } from "@/components/pdv/DeliveryBoard";
 import { CustomersView } from "@/components/pdv/CustomersView";
+import { WhatsAppView } from "@/components/pdv/WhatsAppView";
 import { NewOrderAlerts } from "@/components/pdv/NewOrderAlerts";
 
 export const Route = createFileRoute("/")({
@@ -42,6 +43,7 @@ const TABS = [
   { id: "admin", label: "Admin", icon: ShieldCheck, key: "8" },
   { id: "rotas", label: "Rotas", icon: ShoppingCart, key: "r" },
   { id: "clientes", label: "Clientes", icon: Users, key: "0" },
+  { id: "whatsapp", label: "WhatsApp", icon: MessageCircle, key: "w" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -53,7 +55,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const saving = useSaving();
   const sync = useSyncStatus();
   const alerts = useOrderAlerts();
-  const tabs = TABS.filter(t=>admin || !['produtos','ajustes','admin','clientes'].includes(t.id));
+  const tabs = TABS.filter(t=>admin || !['produtos','ajustes','admin','clientes','whatsapp'].includes(t.id));
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.altKey) { const t = tabs.find((x) => x.key === e.key); if (t) { e.preventDefault(); setTab(t.id); } }
@@ -106,7 +108,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
       <NewOrderAlerts orders={orders} onOpen={() => setTab('cozinha')}/>
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
         {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin} onDelivery={()=>setTab('rotas')}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
-          : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
+          : tab === "whatsapp" && admin ? <WhatsAppView/> : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
       </main>
       {saving && <div role="status" className="fixed inset-0 z-50 flex items-center justify-center gap-3 bg-background/70 text-foreground"><LoaderCircle className="animate-spin"/>Salvando…</div>}
     </div>
