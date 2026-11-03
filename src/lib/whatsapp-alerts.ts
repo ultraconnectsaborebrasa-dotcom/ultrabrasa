@@ -9,7 +9,10 @@ export function useWhatsAppConversations(){return useSyncExternalStore(l=>{liste
 export function useWhatsAppPendingOrders(){return useSyncExternalStore(l=>{listeners.add(l);return()=>{listeners.delete(l);};},()=>pendingOrders,()=>0);}
 const tone=(f:number,start:number,len:number,level:number,type:OscillatorType='square')=>{if(!audio)return;const osc=audio.createOscillator(),gain=audio.createGain();osc.type=type;osc.connect(gain);gain.connect(audio.destination);const t=audio.currentTime+start;osc.frequency.value=f;gain.gain.setValueAtTime(volume*level,t);gain.gain.exponentialRampToValueAtTime(.001,t+len);osc.start(t);osc.stop(t+len);};
 export function playWhatsAppSound(kind:'new'|'message'='new'){if(!enabled||!audio||volume<=0)return;if(kind==='new'){[0,.18,.36,.7,.88,1.06].forEach((s,i)=>tone(i%3===2?1320:i%3===1?1100:880,s,.16,.25));}else tone(660,0,.25,.08,'sine');}
-export async function activateWhatsAppSound(v=0.5){volume=v;enabled=true;audio??=new AudioContext();await audio.resume();playWhatsAppSound();if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();}
+export async function activateWhatsAppSound(v=0.5):Promise<{sound:boolean;permission:string}>{volume=v;try{audio??=new AudioContext();await audio.resume();}catch{enabled=false;return {sound:false,permission:notifPermission()};}enabled=audio.state==='running';if(enabled)playWhatsAppSound('new');if('Notification' in window&&Notification.permission==='default'){try{await Notification.requestPermission();}catch{}}
+ if(enabled&&'Notification' in window&&Notification.permission==='granted'){try{new Notification('Ultrabrasa · teste',{body:'Notificações do WhatsApp ativas',tag:'wa-test'});}catch{}}
+ return {sound:enabled,permission:notifPermission()};}
+export function notifPermission(){return typeof window!=='undefined'&&'Notification' in window?Notification.permission:'unsupported';}
 export function setWhatsAppSound(on:boolean,v:number){enabled=on;volume=v;}
 export async function refreshWhatsAppConversations(){
  if(loading)return;loading=true;
