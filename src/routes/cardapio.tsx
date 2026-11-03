@@ -92,7 +92,6 @@ function ProductCard({ p, qty, onAdd }: { p: CatalogProduct; qty: number; onAdd:
         {p.image
           ? <img src={p.image} alt={p.name} loading="lazy" width={112} height={112} className="h-full w-full object-cover" />
           : <div className="flex h-full items-center justify-center p-2 text-center text-xs text-muted-foreground">Foto em breve</div>}
-        {p.image && p.illustrative && <span className="absolute bottom-1 left-1 rounded bg-background/80 px-1 text-[10px] text-muted-foreground">Imagem ilustrativa</span>}
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="font-bold leading-tight">{p.name}</h3>
