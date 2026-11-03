@@ -39,7 +39,7 @@ export async function processReceipt(db: Admin, messageId: string) {
     // Preserve the media and pending payment on unreadable/failed analysis. Never replay ambiguous inference.
     reason='Arquivo ilegível ou análise indisponível: comprovante precisa de conferência';
   }
-  const saved=await db.rpc('record_payment_receipt',{_message:m.data.id,_path:path??undefined,_hash:hash??undefined,_evidence:evidence,_request:requestId??undefined,_compatible:compatible,_reason:reason});
+  const saved=await db.rpc('record_payment_receipt',{_message:m.data.id,_path:path??'',_hash:hash??'',_evidence:evidence,_request:requestId??'00000000-0000-0000-0000-000000000000',_compatible:compatible,_reason:reason});
   if(saved.error)throw new Error(saved.error.message);
   const {queueJob}=await import('./whatsapp-automation.server');
   await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:compatible?'Recebi seu comprovante, obrigado! 😊':requestId?'Recebi seu arquivo. A equipe vai conferir por aqui.':'Recebi seu arquivo. Me fala o código do pedido para a equipe conferir?',automatic:false});
