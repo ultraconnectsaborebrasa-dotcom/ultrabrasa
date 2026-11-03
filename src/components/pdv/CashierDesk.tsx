@@ -15,6 +15,8 @@ import { ChefHat, ShoppingBag, CreditCard, Package, Printer } from 'lucide-react
 import { NewOrderAlerts } from './NewOrderAlerts';
 import { WhatsAppView } from './WhatsAppView';
 import { WhatsAppNotifications } from './WhatsAppNotifications';
+import { useWhatsAppConversations } from '@/lib/whatsapp-alerts';
+import { MessageCircle } from 'lucide-react';
 
 type Product = {id:string;name:string;category:string;price:number;stock:number|null;active:boolean};
 type Item = {name:string;productId?:string;qty:number;price:number;note?:string};
@@ -26,6 +28,8 @@ const empty:CashierData={products:[],orders:[],paymentMethods:[]};
 export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void>}) {
  const [data,setData]=useState<CashierData>(empty);
  const [tab,setTab]=useState<'sell'|'kitchen'|'payments'|'products'|'printer'|'routes'|'whatsapp'>('sell');const [waPhone,setWaPhone]=useState<string|null>(null);const [waLink,setWaLink]=useState<string|null>(null);
+ const waConvs=useWhatsAppConversations();
+ const waUnread=waConvs.reduce((sum,c)=>sum+(c.unread||0),0);
  const [busy,setBusy]=useState(false);
  const [method,setMethod]=useState('');
  const [selected,setSelected]=useState<string|null>(null);
