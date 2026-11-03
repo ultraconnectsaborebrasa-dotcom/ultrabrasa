@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Armchair, Bell, BellOff, ShoppingCart, ClipboardList, ChefHat, Package, Wallet, Settings, History, ShieldCheck, LogOut, Wifi, WifiOff, LoaderCircle, Users, MessageCircle, BookOpen } from "lucide-react";
-import { brl, isToday, useStore, useSaving } from "@/lib/pdv-store";
+import { brl, paid, useStore, useSaving } from "@/lib/pdv-store";
+import { paidSalesSince } from "@/lib/sales-history";
 import { AccountGate, AdminTeam } from "@/components/pdv/AccountGate";
 import { SalesHistory } from "@/components/pdv/SalesHistory";
 import { Button } from "@/components/ui/button";
@@ -80,8 +81,8 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const orders = useStore((s) => s.orders);
   const products = useStore((s) => s.products);
   const cashOpen = useStore((s) => s.cash.open);
-  const today = orders.filter((o) => o.status === "pago" && isToday(o.paidAt ?? o.createdAt));
-  const revenue = today.reduce((a, o) => a + o.payments.reduce((x, p) => x + p.amount, 0), 0);
+  const today = paidSalesSince(orders, new Date().setHours(0, 0, 0, 0));
+  const revenue = today.reduce((a, o) => a + paid(o), 0);
   const open = orders.filter((o) => ["aberta", "cozinha", "pronto"].includes(o.status));
   const kitchen = orders.filter((o) => o.status === "cozinha").length;
   const low = products.filter((p) => p.stock !== null && p.stock <= p.minStock).length;
