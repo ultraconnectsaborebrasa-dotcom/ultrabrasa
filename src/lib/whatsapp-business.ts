@@ -43,8 +43,36 @@ export function businessPeriod(b: Business, now = new Date()) {
   if (h?.nightStart && h.nightEnd && (h.nightEnd>h.nightStart ? time>=h.nightStart && time<h.nightEnd : time>=h.nightStart || time<h.nightEnd)) return 'night';
   return 'closed';
 }
-export function initialLunchMessage(b: Business) {
-  return `Olá! 😋 Nossa marmita custa ${b.lunchPrice.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} e vem com ${b.lunchMenu}.\n\n${b.freeDelivery ? '🛵 Entrega grátis para qualquer bairro de Eunápolis! ' : ''}As entregas começam a sair às ${b.departureFrom}.\n\n${b.highDemand ? b.demandText+' ' : ''}Me envie quantas marmitas você quer e seu endereço completo com bairro e número.`;
+const spTime=(now:Date)=>new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
+/** Apresentação da marmita; price deve vir do produto atual do PDV. */
+export function initialLunchMessage(b: Business, now = new Date(), price = b.lunchPrice) {
+  const brl=price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const early=spTime(now)<b.departureFrom?`\n\nAs entregas começam a sair às ${b.departureFrom.replace(/^0?(\d+):00$/,'$1h')}. Já pode deixar seu pedido adiantado!`:'';
+  return `Oi! Já vamos garantir seu almoço? 😊\n\nNossa marmita vem com ${b.lunchMenu}. É ${brl}${b.freeDelivery?', com entrega grátis pra qualquer bairro de Eunápolis!':'.'}${early}${b.highDemand?`\n\n${b.demandText}`:''}\n\nMe fala quantas você vai querer e o endereço com bairro e número.`;
+}
+/** Pergunta curta só pelo que falta, em ordem natural: itens/endereço, pagamento, nome. */
+export function followUpMessage(missing: string[]) {
+  const has=(k:string)=>missing.includes(k);
+  const addr=['rua','número','bairro','cidade'].filter(has);
+  if(has('itens e quantidades')&&addr.length)return 'Certo! Me fala quantas você vai querer e o endereço com bairro e número.';
+  if(has('itens e quantidades'))return 'Certo! Quantas você vai querer?';
+  if(has('entrega ou retirada'))return 'Certo! É pra entregar ou vai retirar aqui?';
+  if(addr.length===1&&addr[0]==='número')return 'Certo! Me passa só o número da casa.';
+  if(addr.length===1&&addr[0]==='bairro')return 'Certo! Me passa só o bairro.';
+  if(addr.length)return `Certo! Me passa ${addr.length===1?'só ':''}${addr.map(a=>a==='número'?'o número da casa':a==='cidade'?'a cidade':`o ${a}`).join(', ').replace(/, ([^,]*)$/,' e $1')}.`;
+  if(has('forma de pagamento'))return 'Vai pagar no Pix, cartão ou dinheiro?';
+  if(has('troco (ou sem troco)'))return 'Precisa de troco? Se sim, pra quanto?';
+  if(has('nome'))return 'Certo! E qual seu nome?';
+  return 'Certo!';
+}
+/** Próximo dia com almoço, para avisar quando a marmita esgota. */
+export function nextLunchInfo(b: Business, now = new Date()) {
+  for(let offset=1;offset<8;offset++){
+    const date=new Date(now.getTime()+offset*86400000);
+    const day=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short'}).format(date));
+    if(b.hours.find(h=>h.day===day)?.lunchEnd)return offset===1?`amanhã, a partir das ${b.advanceFrom}`:`${date.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',weekday:'long'})}, a partir das ${b.advanceFrom}`;
+  }
+  return null;
 }
 export function nextOpening(b: Business, now = new Date()) {
   for(let offset=0;offset<8;offset++) {
