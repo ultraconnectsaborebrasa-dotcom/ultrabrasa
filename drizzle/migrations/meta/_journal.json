@@ -253,6 +253,13 @@
       "when": 1793683462631,
       "tag": "0035_catalog_checkout_fix_ambiguous",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793683760427,
+      "tag": "0036_whatsapp_customer_identity",
+      "breakpoints": true
     }
   ]
 }
