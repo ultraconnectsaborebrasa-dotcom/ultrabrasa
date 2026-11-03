@@ -15,6 +15,8 @@ import { ChefHat, ShoppingBag, CreditCard, Package, Printer } from 'lucide-react
 import { NewOrderAlerts } from './NewOrderAlerts';
 import { WhatsAppView } from './WhatsAppView';
 import { WhatsAppNotifications } from './WhatsAppNotifications';
+import { useWhatsAppConversations } from '@/lib/whatsapp-alerts';
+import { MessageCircle } from 'lucide-react';
 
 type Product = {id:string;name:string;category:string;price:number;stock:number|null;active:boolean};
 type Item = {name:string;productId?:string;qty:number;price:number;note?:string};
@@ -26,6 +28,8 @@ const empty:CashierData={products:[],orders:[],paymentMethods:[]};
 export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void>}) {
  const [data,setData]=useState<CashierData>(empty);
  const [tab,setTab]=useState<'sell'|'kitchen'|'payments'|'products'|'printer'|'routes'|'whatsapp'>('sell');const [waPhone,setWaPhone]=useState<string|null>(null);const [waLink,setWaLink]=useState<string|null>(null);
+ const waConvs=useWhatsAppConversations();
+ const waUnread=waConvs.reduce((sum,c)=>sum+(c.unread||0),0);
  const [busy,setBusy]=useState(false);
  const [method,setMethod]=useState('');
  const [selected,setSelected]=useState<string|null>(null);
@@ -68,7 +72,7 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
    <Button variant={tab==='kitchen'?'default':'outline'} onClick={()=>setTab('kitchen')}><ChefHat className="mr-1 h-4 w-4"/>Cozinha ({kitchenOrders.length})</Button>
    <Button variant={tab==='payments'?'default':'outline'} onClick={()=>setTab('payments')}><CreditCard className="mr-1 h-4 w-4"/>Receber pagamentos</Button>
    <Button variant={tab==='products'?'default':'outline'} onClick={()=>setTab('products')}><Package className="mr-1 h-4 w-4"/>Estoque e produtos</Button><Button variant={tab==='printer'?'default':'outline'} onClick={()=>setTab('printer')}><Printer/>Impressora</Button>
-   <Button variant={tab==='routes'?'default':'outline'} onClick={()=>setTab('routes')}>Rotas</Button><Button variant={tab==='whatsapp'?'default':'outline'} onClick={()=>setTab('whatsapp')}>WhatsApp</Button><div className="ml-auto flex flex-wrap items-center gap-2 text-sm"><span className="text-muted-foreground">Impressora:</span><select className="field" value={printer} onChange={e=>{printerPreferences.selectedPrinter=e.target.value;setPrinter(e.target.value);}}><option value="">Selecione</option>{[...new Set([printer,...printers].filter(Boolean))].map(p=><option key={p} value={p}>{p}</option>)}</select><Button size="sm" variant="outline" onClick={()=>void findPrinters()}>Buscar impressoras</Button></div>
+   <Button variant={tab==='routes'?'default':'outline'} onClick={()=>setTab('routes')}>Rotas</Button><Button variant={tab==='whatsapp'?'default':'outline'} onClick={()=>setTab('whatsapp')} className={waUnread>0?'relative border-success text-success':''}><MessageCircle className="mr-1 h-4 w-4"/>WhatsApp{waUnread>0&&<span className="absolute -right-2 -top-2 grid h-6 min-w-6 animate-pulse place-items-center rounded-full bg-destructive px-1 text-xs font-bold text-destructive-foreground shadow-lg ring-2 ring-background">{waUnread>99?'99+':waUnread}</span>}</Button><div className="ml-auto flex flex-wrap items-center gap-2 text-sm"><span className="text-muted-foreground">Impressora:</span><select className="field" value={printer} onChange={e=>{printerPreferences.selectedPrinter=e.target.value;setPrinter(e.target.value);}}><option value="">Selecione</option>{[...new Set([printer,...printers].filter(Boolean))].map(p=><option key={p} value={p}>{p}</option>)}</select><Button size="sm" variant="outline" onClick={()=>void findPrinters()}>Buscar impressoras</Button></div>
   </nav>
   <div className={tab==='whatsapp'?'':'hidden'}><WhatsAppView isAdmin={false} openPhone={waPhone} onBuildOrder={(phone,n)=>{setAddTo(null);setCustomerPhone(phone);if(n&&!customer)setCustomer(n);setWaLink(phone);setTab('sell');toast.message('Monte o pedido; ele ficará vinculado a este WhatsApp');}}/></div>
   {tab==='sell'&&waLink&&customerPhone&&<p className="rounded-lg border border-success bg-success/10 p-2 text-sm">Pedido vinculado ao WhatsApp +{customerPhone} <Button size="sm" variant="ghost" onClick={()=>{setWaLink(null);setCustomerPhone('');}}>Desvincular</Button> <Button size="sm" variant="ghost" onClick={()=>setTab('whatsapp')}>Voltar à conversa</Button></p>}
