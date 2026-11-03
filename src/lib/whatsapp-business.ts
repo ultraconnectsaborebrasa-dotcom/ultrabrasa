@@ -14,6 +14,7 @@ export const businessSchema = z.object({
   advanceFrom: z.string().regex(/^\d{2}:\d{2}$/).default('10:00'),
   departureFrom: z.string().regex(/^\d{2}:\d{2}$/).default('11:00'),
   hours: z.array(z.object({ day: z.number().int().min(0).max(6), lunchEnd: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')), nightStart: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')), nightEnd: z.string().regex(/^\d{2}:\d{2}$/).or(z.literal('')) })).max(7).default([]),
+  acceptAdvanceOrders: z.boolean().default(true),
   circuitPaused: z.boolean().default(false),
   circuitReason: z.string().max(500).default(''),
 });
@@ -55,4 +56,26 @@ export function nextOpening(b: Business, now = new Date()) {
     if(start) return `${date.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',weekday:'long'})} às ${start}`;
   }
   return null;
+}
+const SP='America/Sao_Paulo';
+export function nextOpeningInfo(b: Business, now = new Date()) {
+  const current=new Intl.DateTimeFormat('en-GB',{timeZone:SP,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
+  for(let offset=0;offset<8;offset++){
+    const date=new Date(now.getTime()+offset*86400000);
+    const day=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(new Intl.DateTimeFormat('en-US',{timeZone:SP,weekday:'short'}).format(date));
+    const h=b.hours.find(h=>h.day===day);const starts=[h?.lunchEnd?b.advanceFrom:'',h?.nightStart??''].filter(Boolean).sort();
+    const start=starts.find(t=>offset>0||t>current);
+    if(start)return{offset,time:start,weekday:date.toLocaleDateString('pt-BR',{timeZone:SP,weekday:'long'}),current};
+  }
+  return null;
+}
+/** Mensagem acolhedora para loja fechada; usa horários reais e só oferece pedido antecipado se habilitado. */
+export function closedMessage(b: Business, now = new Date()) {
+  const n=nextOpeningInfo(b,now);
+  const offer=b.acceptAdvanceOrders;
+  if(!n)return 'Oi! Que bom receber sua mensagem 😊 No momento não estamos atendendo, mas assim que alguém da equipe estiver por aqui, a gente te responde.';
+  if(n.offset===0&&n.current<n.time&&n.current<'12:00')return `Bom dia! Daqui a pouco começamos por aqui 😊 Abrimos às ${n.time}.${offer?' Quer adiantar seu pedido?':''}`;
+  if(n.offset===0)return `Oi! Que bom receber sua mensagem 😊 Agora estamos com uma pausa, mas às ${n.time} a gente volta.${offer?' Se quiser, pode deixar seu pedido por aqui que a gente confirma quando abrir!':''}`;
+  const when=n.offset===1?'amanhã':`${/^(sábado|domingo)/.test(n.weekday)?'no':'na'} ${n.weekday}`;
+  return `Oi! Que bom receber sua mensagem 😊 Por hoje já encerramos, mas ${when}, a partir das ${n.time}, estamos de volta.${offer?' Se quiser, pode deixar seu pedido por aqui que a gente confirma quando abrir!':''}`;
 }
