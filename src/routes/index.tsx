@@ -17,7 +17,7 @@ import { CustomersView } from "@/components/pdv/CustomersView";
 import { WhatsAppView } from "@/components/pdv/WhatsAppView";
 import { NewOrderAlerts } from "@/components/pdv/NewOrderAlerts";
 import { WhatsAppNotifications } from '@/components/pdv/WhatsAppNotifications';
-import { useWhatsAppConversations } from '@/lib/whatsapp-alerts';
+import { useWhatsAppConversations,useWhatsAppPendingOrders } from '@/lib/whatsapp-alerts';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,6 +56,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const [tab, setTab] = useState<Tab>("pdv");
   const [whatsappPhone,setWhatsAppPhone]=useState<string|null>(null);
   const whatsappConvs=useWhatsAppConversations();const whatsappUnread=whatsappConvs.reduce((n,c)=>n+c.unread,0);
+  const whatsappPending=useWhatsAppPendingOrders();
   const saving = useSaving();
   const sync = useSyncStatus();
   const alerts = useOrderAlerts();
@@ -87,7 +88,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
         </div>
         <nav aria-label="Áreas do PDV" className="order-3 flex w-full gap-1 overflow-x-auto rounded-lg bg-background p-1 xl:order-none xl:w-auto">
           {tabs.map((t) => {
-            const badge = t.id === "whatsapp" ? whatsappUnread : t.id === "comandas" ? open.length : t.id === "cozinha" ? kitchen : t.id === "produtos" ? low : 0;
+            const badge = t.id === "whatsapp" ? whatsappUnread+whatsappPending : t.id === "comandas" ? open.length : t.id === "cozinha" ? kitchen : t.id === "produtos" ? low : 0;
             return (
               <Button variant="ghost" key={t.id} onClick={() => setTab(t.id)} aria-pressed={tab===t.id} title={t.label}
                 className={`relative shrink-0 gap-1.5 px-3 text-xs font-semibold sm:text-sm ${tab === t.id ? "bg-elevated text-foreground" : "text-muted-foreground hover:text-foreground"}`}>

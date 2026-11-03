@@ -20,6 +20,8 @@ async function interpret(db:Admin,j:Job){
   if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>86400000)return;
   const messages=check(await db.from('whatsapp_messages').select('direction,body,kind,wa_message_id').eq('phone',j.phone).order('provider_at',{ascending:false}).limit(20)).reverse();
   const current=messages.find(m=>m.wa_message_id===payload.inboundId);
+  const latestInbound=messages.filter(m=>m.direction==='in').at(-1);
+  if(latestInbound?.wa_message_id!==payload.inboundId)return;
   if(current&&current.kind!=='text') {await handoff(db,j.phone,'Mensagem com mídia requer atendimento humano');return;}
   const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
   const catalogSchema=z.object({products:z.array(z.object({id:z.string(),name:z.string(),price:z.number(),stock:z.number().nullable(),active:z.boolean(),category:z.string()}))});
@@ -34,6 +36,8 @@ async function interpret(db:Admin,j:Job){
   const outputs=response.output??[];
   const text=outputs.flatMap(o=>o.type==='message'?o.content??[]:[]).filter(p=>p.type==='output_text').map(p=>p.text).join('');
   const parsed=decision.parse(JSON.parse(text));
+  const newest=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id').eq('phone',j.phone).eq('direction','in').order('provider_at',{ascending:false}).limit(1));
+  if(newest?.[0]?.wa_message_id!==payload.inboundId)return;
   if(parsed.needsHuman){await handoff(db,j.phone,'Solicitação encaminhada à equipe');return;}
   const d=parsed.draft;d.summarySent=false;d.quotedTotal=0;
   let total=0;

@@ -1,11 +1,12 @@
 import {useSyncExternalStore} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 export type AlertConversation={phone:string;name:string|null;unread:number;last_message:string|null;last_inbound_at:string|null;attendance_status:string;awaiting_since:string|null};
-let conversations:AlertConversation[]=[];let listeners=new Set<()=>void>();let timer:ReturnType<typeof setInterval>|undefined;let refs=0;let baseline=false;let loading=false;
+let conversations:AlertConversation[]=[];let listeners=new Set<()=>void>();let timer:ReturnType<typeof setInterval>|undefined;let refs=0;let baseline=false;let loading=false;let pendingOrders=0;
 let audio:AudioContext|undefined;let enabled=false;let volume=0.5;const lastSound=new Map<string,number>();const reminded=new Set<string>();let reminderMinutes=5;
 const empty:AlertConversation[]=[];
 const emit=()=>listeners.forEach(l=>l());
 export function useWhatsAppConversations(){return useSyncExternalStore(l=>{listeners.add(l);return()=>{listeners.delete(l);};},()=>conversations,()=>empty);}
+export function useWhatsAppPendingOrders(){return useSyncExternalStore(l=>{listeners.add(l);return()=>{listeners.delete(l);};},()=>pendingOrders,()=>0);}
 export function playWhatsAppSound(){if(!enabled||!audio)return;const osc=audio.createOscillator(),gain=audio.createGain();osc.connect(gain);gain.connect(audio.destination);osc.frequency.value=880;gain.gain.setValueAtTime(volume*.12,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.35);osc.start();osc.stop(audio.currentTime+.35);}
 export async function activateWhatsAppSound(v=0.5){volume=v;enabled=true;audio??=new AudioContext();await audio.resume();playWhatsAppSound();if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();}
 export function setWhatsAppSound(on:boolean,v:number){enabled=on;volume=v;}
@@ -13,6 +14,9 @@ export async function refreshWhatsAppConversations(){
  if(loading)return;loading=true;
  try{const r=await supabase.from('whatsapp_conversations').select('phone,name,unread,last_message,last_inbound_at,attendance_status,awaiting_since').order('last_message_at',{ascending:false}).limit(200);if(r.error)throw r.error;
  const fresh=r.data;
+ const pending=await supabase.from('whatsapp_order_requests').select('id,phone,created_at').eq('status','awaiting_acceptance');
+ if(!pending.error){if(baseline&&pending.data.length>pendingOrders){playWhatsAppSound();const first=pending.data[0];if(first)window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:first.phone,name:fresh.find(c=>c.phone===first.phone)?.name??null,last_message:'Pedido aguardando aceite da loja'}}));}pendingOrders=pending.data.length;
+ for(const p of pending.data){const key='request:'+p.id;if(Date.now()-Date.parse(p.created_at)>reminderMinutes*60000&&!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:p.phone,name:fresh.find(c=>c.phone===p.phone)?.name??null,last_message:'Pedido aguardando aceite da loja'}}));}}}
  if(baseline){for(const c of fresh){const old=conversations.find(o=>o.phone===c.phone);if(c.last_inbound_at&&Date.parse(c.last_inbound_at)>(old?.last_inbound_at?Date.parse(old.last_inbound_at):0)&&Date.now()-Date.parse(c.last_inbound_at)<60000){
  if(Date.now()-(lastSound.get(c.phone)??0)>8000){playWhatsAppSound();lastSound.set(c.phone,Date.now());}
  window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:c}));
