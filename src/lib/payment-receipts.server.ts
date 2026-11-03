@@ -8,7 +8,13 @@ export async function processReceipt(db: Admin, messageId: string, retry = false
   if(m.error)throw new Error(m.error.message);
   const exists=await db.from('payment_receipts').select('*').eq('message_id',m.data.id).maybeSingle();
   if(exists.error)throw new Error(exists.error.message);
-  if(exists.data && (!retry || ['unverified','confirmed'].includes(exists.data.state))) return;
+  if(exists.data && (!retry || ['unverified','confirmed','corrected'].includes(exists.data.state))) {
+    // Recover acknowledgment after persistence succeeded but enqueue failed, without changing payment.
+    const {queueJob}=await import('./whatsapp-automation.server');
+    const recognized=(exists.data.evidence as {isPixReceipt?:boolean})?.isPixReceipt===true;
+    await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:receiptReply(!!exists.data.storage_path&&!!(exists.data.order_id||exists.data.request_id),recognized),automatic:false});
+    return;
+  }
   const config=await db.from('whatsapp_settings').select('business').eq('id',1).single();
   if(config.error)throw new Error(config.error.message);const b=businessSchema.parse(config.data.business);
   let path:string|null=exists.data?.storage_path??null,hash:string|null=exists.data?.file_hash??null;
