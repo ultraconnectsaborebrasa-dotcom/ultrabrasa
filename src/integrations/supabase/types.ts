@@ -960,6 +960,7 @@ export type Database = {
         }
         Returns: string
       }
+      record_payment_receipt_input: { Args: { _input: Json }; Returns: string }
       review_payment_receipt: {
         Args: { _confirm: boolean; _id: string; _reason: string }
         Returns: undefined

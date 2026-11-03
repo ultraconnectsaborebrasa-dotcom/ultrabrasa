@@ -316,6 +316,13 @@
       "when": 1793693940240,
       "tag": "0044_pending_receipt_payment_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793694048006,
+      "tag": "0045_nullable_receipt_input",
+      "breakpoints": true
     }
   ]
 }
