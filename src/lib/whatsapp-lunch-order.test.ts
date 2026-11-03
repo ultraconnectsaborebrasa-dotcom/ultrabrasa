@@ -6,7 +6,7 @@ describe('ordem do atendimento de marmitas', () => {
     const m = initialLunchMessage({ ...defaultBusiness, lunchMenu: 'carne assada' }, morning, 19.9);
     expect(m.startsWith('Hoje temos marmita com carne assada, por R$')).toBe(true);
     expect(m).toContain('19,90');
-    expect(m).toContain('as entregas começam a sair às 11h');
+    expect(m).toContain('As entregas começam a sair às 11h');
     expect(m).toContain('Me fala quantas marmitas e o bairro da entrega');
   });
   it('após "1" pede só rua, número e bairro', () => {
