@@ -379,6 +379,13 @@
       "when": 1793704211628,
       "tag": "0053_confirm_receipt_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793705568725,
+      "tag": "0054_receipts_attach_without_payment",
+      "breakpoints": true
     }
   ]
 }
