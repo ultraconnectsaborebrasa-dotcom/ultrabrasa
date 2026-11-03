@@ -50,7 +50,6 @@ export async function refreshWhatsAppConversations(){
    if(grew){const first=alerts[alerts.length-1]!;playWhatsAppSound('order');lastRepeatAt=Date.now();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:first.phone,name:first.name,kind:'order',last_message:'Pedido fechado pelo robô — aguardando aceite'}}));notify('🔔 Novo pedido confirmado: '+(first.name||`+${first.phone}`),`Total ${first.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} · aguardando aceite da loja`,`wa-order-${first.id}`,first.phone);}
    if(shouldRepeatOrderSound(Date.now(),lastRepeatAt,getRepeatSeconds(),alerts.length)){playWhatsAppSound('order');lastRepeatAt=Date.now();}
    for(const p of rows){const key='request:'+p.id;if(Date.now()-Date.parse(p.created_at)>reminderMinutes*60000&&!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:p.phone,name:nameOf(p.phone),kind:'order',last_message:'Pedido aguardando aceite da loja'}}));}}}
-  }
   const receipts=await supabase.from('payment_receipts').select('id,phone,received_at').is('reviewed_at',null).order('received_at',{ascending:false}).limit(20);
 
   if(!receipts.error){
