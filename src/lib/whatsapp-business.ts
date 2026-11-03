@@ -30,7 +30,7 @@ export function missingOrderFields(d: ConversationDraft) {
   if (!d.customer) missing.push('nome');
   if (!d.items.length) missing.push('itens e quantidades');
   if (!d.type) missing.push('entrega ou retirada');
-  if (d.type === 'Delivery') { for (const [field,label] of [['street','rua'],['number','número'],['neighborhood','bairro'],['city','cidade']] as const) if (!d.address[field]) missing.push(label); }
+  if (d.type === 'Delivery') { for (const [field,label] of [['street','rua'],['number','número'],['neighborhood','bairro']] as const) if (!d.address[field]) missing.push(label); }
   if (!d.payment) missing.push('forma de pagamento');
   if (d.payment === 'Dinheiro' && d.cashFor === null) missing.push('troco (ou sem troco)');
   return missing;
@@ -55,7 +55,7 @@ export function initialLunchMessage(b: Business, now = new Date(), price = b.lun
 /** Pergunta curta só pelo que falta, em ordem natural: itens/endereço, pagamento, nome. */
 export function followUpMessage(missing: string[]) {
   const has=(k:string)=>missing.includes(k);
-  const addr=['rua','número','bairro','cidade'].filter(has);
+  const addr=['rua','número','bairro'].filter(has);
   if(has('itens e quantidades')&&addr.length)return 'Certo! Me fala quantas você vai querer e o endereço com bairro e número.';
   if(has('itens e quantidades'))return 'Certo! Quantas você vai querer?';
   if(has('entrega ou retirada'))return 'Certo! É pra entregar ou vai retirar aqui?';
