@@ -16,6 +16,8 @@ import { DeliveryBoard } from "@/components/pdv/DeliveryBoard";
 import { CustomersView } from "@/components/pdv/CustomersView";
 import { WhatsAppView } from "@/components/pdv/WhatsAppView";
 import { NewOrderAlerts } from "@/components/pdv/NewOrderAlerts";
+import { WhatsAppNotifications } from '@/components/pdv/WhatsAppNotifications';
+import { useWhatsAppConversations } from '@/lib/whatsapp-alerts';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,6 +54,8 @@ function Index() {
 }
 function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promise<void>}) {
   const [tab, setTab] = useState<Tab>("pdv");
+  const [whatsappPhone,setWhatsAppPhone]=useState<string|null>(null);
+  const whatsappConvs=useWhatsAppConversations();const whatsappUnread=whatsappConvs.reduce((n,c)=>n+c.unread,0);
   const saving = useSaving();
   const sync = useSyncStatus();
   const alerts = useOrderAlerts();
@@ -83,7 +87,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
         </div>
         <nav aria-label="Áreas do PDV" className="order-3 flex w-full gap-1 overflow-x-auto rounded-lg bg-background p-1 xl:order-none xl:w-auto">
           {tabs.map((t) => {
-            const badge = t.id === "comandas" ? open.length : t.id === "cozinha" ? kitchen : t.id === "produtos" ? low : 0;
+            const badge = t.id === "whatsapp" ? whatsappUnread : t.id === "comandas" ? open.length : t.id === "cozinha" ? kitchen : t.id === "produtos" ? low : 0;
             return (
               <Button variant="ghost" key={t.id} onClick={() => setTab(t.id)} aria-pressed={tab===t.id} title={t.label}
                 className={`relative shrink-0 gap-1.5 px-3 text-xs font-semibold sm:text-sm ${tab === t.id ? "bg-elevated text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
@@ -106,9 +110,10 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
         </div>
       </header>
       <NewOrderAlerts orders={orders} onOpen={() => setTab('cozinha')}/>
+      {admin&&<WhatsAppNotifications onOpen={phone=>{setWhatsAppPhone(phone);setTab('whatsapp');}}/>}
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
         {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin} onDelivery={()=>setTab('rotas')}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
-          : tab === "whatsapp" && admin ? <WhatsAppView/> : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
+          : tab === "whatsapp" && admin ? <WhatsAppView openPhone={whatsappPhone}/> : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
       </main>
       {saving && <div role="status" className="fixed inset-0 z-50 flex items-center justify-center gap-3 bg-background/70 text-foreground"><LoaderCircle className="animate-spin"/>Salvando…</div>}
     </div>
