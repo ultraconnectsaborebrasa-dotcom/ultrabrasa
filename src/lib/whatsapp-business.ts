@@ -57,7 +57,7 @@ export function businessPeriod(b: Business, now = new Date()) {
   if (h?.nightStart && h.nightEnd && (h.nightEnd>h.nightStart ? time>=h.nightStart && time<h.nightEnd : time>=h.nightStart || time<h.nightEnd)) return 'night';
   return 'closed';
 }
-const spTime=(now:Date)=>new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
+export const spTime=(now:Date)=>new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
 /** Apresentação da marmita (composição e preço antes de pedir quantidade); price deve vir do produto atual do PDV. */
 export function initialLunchMessage(b: Business, now = new Date(), price = b.lunchPrice) {
   const brl=price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
