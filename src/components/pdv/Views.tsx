@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Clock, Pencil, Plus, Printer, Star } from "lucide-react";
 import {
-  brl, isToday, loadOrderToDraft, paid, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
+  brl, isToday, loadOrderToDraft, markPaid, paid, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
 } from "@/lib/pdv-store";
 import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
@@ -33,7 +33,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
   const [paying, setPaying] = useState<Order | null>(null);
   const [receiptOrders,setReceiptOrders]=useState<string[]>([]);
   useEffect(()=>{const load=async()=>{const r=await supabase.from('payment_receipts').select('order_id').eq('state','review');if(!r.error)setReceiptOrders(r.data.flatMap(x=>x.order_id?[x.order_id]:[]));};void load();const timer=setInterval(()=>void load(),4000);return()=>clearInterval(timer);},[]);
-  const open = orders.filter((o) => ["aberta", "cozinha", "pronto"].includes(o.status));
+  const open = orders.filter((o) => ["aberta", "cozinha", "pronto", "entrega"].includes(o.status));
 
   return (
     <div className="space-y-6">
@@ -72,7 +72,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
 
       <Checkout open={!!paying} onClose={() => setPaying(null)} methods={settings.paymentMethods}
         total={paying ? totals(paying, settings.serviceFeePct).total : 0} title={`Cobrar comanda #${paying?.number ?? ""}`}
-        onConfirm={(p) => { if (paying) { setOrderStatus(paying.id, "pago", p); toast.success(`Comanda #${paying.number} paga`); } setPaying(null); }} />
+        onConfirm={(p) => { if (paying) { markPaid(paying.id, p); toast.success(`Comanda #${paying.number} paga`); } setPaying(null); }} />
     </div>
   );
 }
@@ -101,7 +101,9 @@ export function KitchenView() {
               <Button variant="outline" className="mb-2 w-full" onClick={() => printManual(o, settings.serviceFeePct, 'kitchen')}><Printer size={14} />Imprimir</Button>
               {o.status === "cozinha"
                 ? <Button className="w-full" onClick={() => setOrderStatus(o.id, "pronto")}>Marcar pronto</Button>
-                : <Button variant="outline" className="w-full text-success" onClick={() => setOrderStatus(o.id, "aberta")}>Servido à mesa ✓</Button>}
+                : o.type === "Delivery"
+                  ? <Button variant="outline" className="w-full text-success" onClick={() => setOrderStatus(o.id, "entrega")}>Saiu para entrega 🛵</Button>
+                  : <Button variant="outline" className="w-full text-success" onClick={() => setOrderStatus(o.id, "retirado")}>Retirado / servido ✓</Button>}
             </div>
           );
         })}
@@ -245,6 +247,6 @@ const Box = ({ t, children }: { t: string; children: React.ReactNode }) => <div 
 const Line = ({ k, v }: { k: string; v: string }) => <div className="flex justify-between text-sm"><span className="text-muted-foreground">{k}</span><span className="font-mono">{v}</span></div>;
 const F = ({ t, children }: { t: string; children: React.ReactNode }) => <label className="block space-y-1"><span className="text-xs text-muted-foreground">{t}</span>{children}</label>;
 function StatusPill({ s }: { s: Order["status"] }) {
-  const map = { aberta: ["Aberta", "bg-secondary"], cozinha: ["Na cozinha", "bg-warning/20 text-warning"], pronto: ["Pronto", "bg-success/20 text-success"], pago: ["Pago", ""], cancelado: ["Cancelado", ""] } as const;
+  const map = { aberta: ["Aberta", "bg-secondary"], cozinha: ["Na cozinha", "bg-warning/20 text-warning"], pronto: ["Pronto", "bg-success/20 text-success"], entrega: ["Em entrega", "bg-primary/20 text-primary"], entregue: ["Entregue", ""], retirado: ["Retirado", ""], pago: ["Pago", ""], cancelado: ["Cancelado", ""] } as const;
   return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${map[s][1]}`}>{map[s][0]}</span>;
 }
