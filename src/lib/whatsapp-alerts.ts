@@ -52,6 +52,7 @@ export async function refreshWhatsAppConversations(){
    for(const p of rows){const key='request:'+p.id;if(Date.now()-Date.parse(p.created_at)>reminderMinutes*60000&&!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:p.phone,name:nameOf(p.phone),kind:'order',last_message:'Pedido aguardando aceite da loja'}}));}}}
   }
   const receipts=await supabase.from('payment_receipts').select('id,phone,received_at').is('reviewed_at',null).order('received_at',{ascending:false}).limit(20);
+
   if(!receipts.error){
    const rows=receipts.data as {id:string;phone:string;received_at:string}[];
    if(!baseline)seenReceipts=new Set(rows.map(x=>x.id));
