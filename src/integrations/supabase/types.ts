@@ -932,6 +932,10 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: undefined
       }
+      confirm_receipt_payment: {
+        Args: { _id: string; _method?: string }
+        Returns: Json
+      }
       delivery_staff: { Args: never; Returns: boolean }
       depart_delivery: {
         Args: { _courier?: string; _order: string }
@@ -965,6 +969,7 @@ export type Database = {
         Returns: undefined
       }
       normalize_phone: { Args: { _raw: string }; Returns: string }
+      open_pdv_cash: { Args: { _initial?: number }; Returns: undefined }
       pay_pdv_cashier: {
         Args: { order_id: string; payment_method: string }
         Returns: undefined
