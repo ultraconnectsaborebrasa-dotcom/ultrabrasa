@@ -42,7 +42,8 @@ async function interpret(db:Admin,j:Job){
     const lastText=(latestInbound?.body??'').trim();
     if(lastText&&(isMenuAsk(lastText)||isPriceAsk(lastText))){
       const price=lunchP?lunchP.price:b.lunchPrice;
-      await queueJob(db,`closedmenu:${payload.inboundId}`,j.phone,'text',{text:closedMenuMessage(b,{price,menuUrl:MENU_URL,pdfOffer:!!b.pdfPath}),automatic:true});return;
+      const text=isNightMenuAsk(lastText)?nightMenuOffHours(b,MENU_URL):closedMenuMessage(b,{price,menuUrl:MENU_URL,pdfOffer:false});
+      await queueJob(db,`closedmenu:${payload.inboundId}`,j.phone,'text',{text,automatic:true});return;
     }
     // Loja fechada: fora pedido de cardápio/preço, segue o fluxo normal para coletar o pedido antecipado.
   }
@@ -59,7 +60,7 @@ async function interpret(db:Admin,j:Job){
     if(gone){
       let msg:string;
       if(gone.id===b.lunchProductId){const day=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).getDay();const night=b.hours.find(h=>h.day===day)?.nightStart;const next=nextLunchInfo(b);msg=`Poxa, as marmitas de hoje já acabaram. Obrigado pela paciência!${next?` A próxima leva sai ${next}.`:''}${night?` Hoje, a partir das ${night}, tem hambúrguer e espetinho.`:''}`;}
-      else{const alt=catalog.filter(p=>p.category===gone.category).slice(0,2).map(p=>p.name);msg=alt.length?`Esse acabou por hoje! Mas temos ${alt.join(' e ')}. Quer dar uma olhada?`:'Esse acabou por hoje! Quer que eu te mande o cardápio pra ver as outras opções?';}
+      else{const alt=catalog.filter(p=>p.category===gone.category).slice(0,2).map(p=>p.name);msg=alt.length?`Esse acabou por hoje! Mas temos ${alt.join(' e ')}. Quer dar uma olhada?`:'Esse acabou por hoje! Quer ver outra opção?';}
       await queueJob(db,`soldout:${payload.inboundId}`,j.phone,'text',{text:msg,automatic:true});return;
     }
   }
@@ -112,6 +113,7 @@ async function interpret(db:Admin,j:Job){
   // Por política, nenhum fluxo automático envia PDF.
   if(period!=='night'&&!nightAsk)reply=reply.replace(/[^\n]*https?:\/\/\S*cardapio\S*[^\n]*\n*/gi,'').trim()||reply;
   // Pergunta específica: responde direto e só depois pede o que falta, sem repetir a apresentação.
+  if(period!=='night'&&!nightAsk)answer=answer.replace(/https?:\/\/\S*cardapio\S*/gi,'').trim();
   if(answer)reply=`${answer}${missing.length&&!d.items.length?'':`\n\n${reply}`}`.trim();
   await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,...(!missing.length?{summaryVersion:c.draft_version+1,summaryTotal:total}:{})});
 }
