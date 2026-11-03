@@ -35,6 +35,12 @@ export function missingOrderFields(d: ConversationDraft) {
   if (d.payment === 'Dinheiro' && d.cashFor === null) missing.push('troco (ou sem troco)');
   return missing;
 }
+/** Resumo só com pedido válido: itens com quantidade, total do cadastro > 0, entrega/retirada, endereço e pagamento. */
+export function summaryReady(d: ConversationDraft, total: number, missing = missingOrderFields(d)) {
+  return missing.length === 0 && d.items.length > 0 && d.items.every(i => Number.isFinite(i.qty) && i.qty > 0 && !!i.productId)
+    && Number.isFinite(total) && total > 0 && !!d.type && !!d.payment
+    && (d.type !== 'Delivery' || !!(d.address.street && d.address.number && d.address.neighborhood));
+}
 export const inEunapolis = (city: string) => city.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase() === 'eunapolis';
 export function businessPeriod(b: Business, now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now);
