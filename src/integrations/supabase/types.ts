@@ -416,6 +416,7 @@ export type Database = {
           reply_to: string | null
           sent_at: string | null
           sent_by: string | null
+          sent_by_name: string | null
           source: string
           status: string
           wa_message_id: string | null
@@ -437,6 +438,7 @@ export type Database = {
           reply_to?: string | null
           sent_at?: string | null
           sent_by?: string | null
+          sent_by_name?: string | null
           source?: string
           status?: string
           wa_message_id?: string | null
@@ -458,6 +460,7 @@ export type Database = {
           reply_to?: string | null
           sent_at?: string | null
           sent_by?: string | null
+          sent_by_name?: string | null
           source?: string
           status?: string
           wa_message_id?: string | null
@@ -802,6 +805,14 @@ export type Database = {
       }
       wa_reconcile: { Args: { _id: string }; Returns: undefined }
       wa_reject_request: { Args: { _id: string }; Returns: undefined }
+      wa_staff: { Args: never; Returns: boolean }
+      wa_staff_list: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       wa_store_inbound: { Args: { _message: Json }; Returns: boolean }
       wa_touch_inbound: {
         Args: { _at: string; _body: string; _name: string; _phone: string }
