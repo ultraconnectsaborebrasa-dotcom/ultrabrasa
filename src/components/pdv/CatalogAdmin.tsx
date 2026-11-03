@@ -36,7 +36,8 @@ export function CatalogAdmin() {
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { toast.error("Use foto JPG, PNG ou WEBP"); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error("A foto precisa ter até 5 MB"); return; }
     setSaving(id);
-    const name = `${id.replace(/[^A-Za-z0-9-]/g, "")}-${Date.now()}.${file.type.split("/")[1].replace("jpeg", "jpg")}`;
+    const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const name = `${id.replace(/[^A-Za-z0-9-]/g, "")}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("catalog-photos").upload(name, file, { contentType: file.type });
     if (error) { setSaving(null); toast.error("Não foi possível enviar a foto"); return; }
     const url = `/api/public/catalog-photo/${name}`;
