@@ -41,6 +41,14 @@ export async function downloadWhatsAppMedia(mediaId:string) {
   return {bytes,mime};
 }
 
+/** Best-effort "typing..." indicator via read receipt. Cosmetic: never throws. */
+export async function sendTyping(phone: string, messageId: string) {
+  try {
+    if (!messageId || !digits(phone)) return;
+    await gateway('/messages', { method: 'POST', body: { messaging_product: 'whatsapp', status: 'read', message_id: messageId, typing_indicator: { type: 'text' } } });
+  } catch { /* indicador é apenas visual */ }
+}
+
 /** Sends a text and records the outbound message. Returns the provider id. */
 export async function sendText(db: Admin, phone: string, text: string, extra: { orderId?: string | null; sentBy?: string | null; sentByName?: string | null; source?: string; replyTo?: string | null } = {}) {
   const to = digits(phone);
