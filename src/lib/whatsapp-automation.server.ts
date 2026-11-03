@@ -86,7 +86,7 @@ async function interpret(db:Admin,j:Job){
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
   const hadAuto=messages.some(m=>m.direction==='out');
-  const answer=parsed.answer.trim();
+  let answer=parsed.answer.trim();
   if(period==='lunch'&&!hadAuto&&!answer&&lunchAvailable&&!d.items.length&&!d.address.street&&!d.address.neighborhood)reply=initialLunchMessage(b,new Date(),lunchP.price);
   if(period==='night'&&!hadAuto&&!d.items.length)reply=`Oi! Que bom te ver por aqui 😊 Dá pra ver tudo e pedir pelo cardápio digital: ${MENU_URL}${b.pdfPath?'\n\nSe preferir, te mando em PDF. É só pedir.':''}\n\n${reply}`;
   // Pedido de cardápio: no almoço a marmita; à noite o digital; fora da noite a marmita e o digital.
@@ -97,8 +97,8 @@ async function interpret(db:Admin,j:Job){
   }
   // Pergunta genérica de preço: no almoço só a marmita; à noite o cardápio digital, sem listar produtos.
   if(parsed.genericPrice&&!parsed.wantsMenu&&!d.items.length){
-    if(period==='lunch'&&lunchP){reply=lunchPriceMessage(lunchP.price,b.freeDelivery);parsed.answer='';}
-    else if(period==='night'){reply=`Dá pra ver todos os preços no cardápio digital: ${MENU_URL}`;parsed.answer='';}
+    if(period==='lunch'&&lunchP){reply=lunchPriceMessage(lunchP.price,b.freeDelivery);answer='';}
+    else if(period==='night'){reply=`Dá pra ver todos os preços no cardápio digital: ${MENU_URL}`;answer='';}
   }
   // PDF só vai quando o cliente pede.
   if(parsed.wantsPdf){if(b.pdfPath)await queueJob(db,`pdf:${payload.inboundId}`,j.phone,'document',{automatic:true});else if(parsed.wantsPdf)reply='O cardápio em PDF ainda não está por aqui, mas pode perguntar que a gente te conta o que tem.';}
