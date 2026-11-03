@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { verifyWebhookRequest } from '@lovable.dev/webhooks-js';
+import { runAfterResponse } from '@/lib/background';
 
 export const Route = createFileRoute('/api/public/whatsapp/webhook')({
   server: {
