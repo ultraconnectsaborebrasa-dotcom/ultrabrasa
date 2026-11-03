@@ -1,6 +1,6 @@
 import { generateResponse, GatewayError } from '@lovable.dev/ai-gateway';
 import { z } from 'zod';
-import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,inEunapolis,nextOpening,initialLunchMessage } from './whatsapp-business';
+import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,inEunapolis,initialLunchMessage,closedMessage } from './whatsapp-business';
 import { gateway,sendText,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
@@ -28,7 +28,9 @@ async function interpret(db:Admin,j:Job){
   const catalog=catalogSchema.parse(snapshot.data).products.filter(p=>p.active&&p.price>0&&(p.stock===null||p.stock>0));
   const period=businessPeriod(b);
   if(period==='closed'){
-    const next=nextOpening(b);await queueJob(db,`closed:${payload.inboundId}`,j.phone,'text',{text:next?`Estamos fora do expediente. Próximo atendimento: ${next}. Você pode informar seu pedido e horário desejado para avaliação da loja.`:'Estamos fora do expediente. Nossa equipe confirmará os horários e a possibilidade de agendamento.',automatic:true});return;
+    const recentClosed=messages.some(m=>m.direction==='out'&&/Que bom receber sua mensagem|Daqui a pouco começamos/.test(m.body??''));
+    if(recentClosed){await handoff(db,j.phone,'Cliente escreveu com a loja fechada');return;}
+    await queueJob(db,`closed:${payload.inboundId}`,j.phone,'text',{text:closedMessage(b),automatic:true});return;
   }
   const previous=conversationDraftSchema.parse(c.draft);
   const decision=z.object({draft:conversationDraftSchema,needsHuman:z.boolean(),wantsPdf:z.boolean(),confirms:z.boolean()});
@@ -49,10 +51,10 @@ async function interpret(db:Admin,j:Job){
   const missing=missingOrderFields(d);
   if(parsed.confirms&&previous.summarySent&&!changed&&missing.length===0&&previous.quotedTotal===total){
     const confirmed=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:{customer:d.customer,type:d.type,items:d.items.map(i=>({...i,quotedPrice:catalog.find(p=>p.id===i.productId)?.price})),note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}}));
-    if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Recebemos sua confirmação. Seu pedido aguarda o aceite da loja; o pagamento ainda será confirmado pela equipe.',automatic:false});return;
+    if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Pode deixar, recebemos! 😊 Agora a equipe confere seu pedido e já te confirma por aqui. O pagamento também é conferido por eles.',automatic:false});return;
   }
   let reply='';
-  if(missing.length) reply=`Para continuar, informe: ${missing.join(', ')}.`;
+  if(missing.length) reply=`Show! Pra seguir, só falta: ${missing.join(', ')}.`;
   else {d.quotedTotal=total;reply=`Resumo do pedido:\n${d.items.map(i=>`${i.qty} × ${catalog.find(p=>p.id===i.productId)?.name}${i.note?` (${i.note})`:''}`).join('\n')}\n${d.type}${d.type==='Delivery'?`: ${d.address.street}, ${d.address.number} — ${d.address.neighborhood}, ${d.address.city}`:''}\nPagamento: ${d.payment} (pendente)${d.payment==='Dinheiro'?` · ${d.cashFor?`troco para R$ ${d.cashFor.toFixed(2)}`:'sem troco'}`:''}${d.payment==='Cartão'&&d.type==='Delivery'?' · Levar maquininha':''}\nTaxa: R$ 0,00\nTotal: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}${d.payment==='Pix'?`\nChave Pix: ${b.pixKey}`:''}\nConfirma este pedido?`;}
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
