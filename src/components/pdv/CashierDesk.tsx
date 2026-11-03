@@ -34,6 +34,8 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
  const [busy,setBusy]=useState(false);
  const [method,setMethod]=useState('');
  const [selected,setSelected]=useState<string|null>(null);
+ const [receiptOrders,setReceiptOrders]=useState<string[]>([]);
+ useEffect(()=>{const load=async()=>{const r=await supabase.from('payment_receipts').select('order_id').eq('state','review');if(!r.error)setReceiptOrders(r.data.flatMap(x=>x.order_id?[x.order_id]:[]));};void load();const timer=setInterval(()=>void load(),4000);return()=>clearInterval(timer);},[]);
  const [edit,setEdit]=useState<Product|null>(null);
  const [form,setForm]=useState({name:'',category:'',price:'',stock:''});
  const [cart,setCart]=useState<CartItem[]>([]);
@@ -63,7 +65,7 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
  async function printTicket(o:Order,method?:string,target:'kitchen'|'cashier'='cashier'){try{const order={id:o.id,number:o.number,type:o.type,tableNumber:o.tableNumber,customer:o.customer,note:o.note,createdAt:o.createdAt??Date.now(),items:o.items.map(i=>({...i,price:i.price??0})),discount:0,fee:0,serviceFee:false,payments:method?[{method,amount:o.total}]:[]} as unknown as StoreOrder;toast.info(`Imprimindo pedido #${o.number}...`);await printOrder(order,0,{manual:true,target});setPrinter(printerPreferences.selectedPrinter);toast.success(`Pedido #${o.number} impresso`);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao imprimir');}}
  async function cancelOrder(o:Order){const reason=window.prompt(`Motivo para cancelar #${o.number}? Cancelar não estorna pagamentos.`);if(!reason?.trim())return;setBusy(true);try{const {error}=await supabase.rpc('close_pdv_order',{_id:o.id,_reason:reason});if(error)throw error;toast.success(`Pedido #${o.number} cancelado`);await refresh();}catch(e){toast.error(e instanceof Error?e.message:'Falha ao cancelar');}finally{setBusy(false);}}
  const kitchenOrders=data.orders.filter(o=>o.status==='cozinha'||o.status==='pronto');
- const payable=data.orders.filter(o=>['aberta','cozinha','pronto'].includes(o.status)&&o.paymentStatus!=='pago'&&!o.hasPayment);
+ const payable=data.orders.filter(o=>['aberta','cozinha','pronto'].includes(o.status)&&o.paymentStatus!=='pago'&&!o.hasPayment&&!receiptOrders.includes(o.id));
  return <div className="min-h-dvh p-5 space-y-5">
   <header className="flex flex-wrap items-center gap-3 border-b pb-4"><Brand/><div><h1 className="text-xl font-bold">Caixa · Ultrabrasa</h1><p className="text-sm text-muted-foreground">{name} · Acesso limitado</p></div><Button className="ml-auto" variant="outline" onClick={()=>void signOut()}>Sair</Button></header>
   <WhatsAppNotifications onOpen={phone=>{setWaPhone(phone);setTab('whatsapp');}}/>

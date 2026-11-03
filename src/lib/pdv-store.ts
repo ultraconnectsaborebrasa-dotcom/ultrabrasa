@@ -215,9 +215,11 @@ export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []
     if (editingId) {
       const prev = s.orders.find((o) => o.id === editingId);
       if (prev) {
+        if(prev.status==='cancelado')return s;
+        if(status==='pago'&&prev.payments.some(p=>p.receiptId)){toast.error('Pedido já possui comprovante; use a conferência.');return s;}
         let products = applyStock(s, prev.items, 1);
         products = applyStock({ ...s, products }, d.items, -1);
-        const upd: Order = { ...prev, ...d, serviceAmount: totals(d, s.settings.serviceFeePct).service, status, payments: status === "pago" ? payments : prev.payments, paidAt: status === "pago" ? Date.now() : undefined };
+        const upd: Order = { ...prev, ...d, serviceAmount: totals(d, s.settings.serviceFeePct).service, status, payments: status === "pago" ? payments : prev.payments, paidAt: status === "pago" ? Date.now() : prev.paidAt };
         created = upd;
         return { ...s, products, orders: s.orders.map((o) => (o.id === editingId ? upd : o)), draft: emptyDraft() };
       }
@@ -236,6 +238,7 @@ export function setOrderStatus(id: string, status: OrderStatus, payments?: Payme
     const o = s.orders.find((x) => x.id === id);
     if (!o) return s;
     if (o.status === 'cancelado') return s;
+    if(payments&&o.payments.some(p=>p.receiptId)){toast.error('Pedido já possui comprovante; use a conferência.');return s;}
     let products = s.products;
     if (status === "cancelado") products = applyStock(s, o.items, 1);
     return {
