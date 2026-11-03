@@ -5,6 +5,18 @@ import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
 import { buildOrderMessage, cartTotal, validateCheckout, whatsappLink, type CartLine, type CheckoutForm, type PaymentChoice } from '@/lib/catalog';
 
+const PIX_KEY = '73982423404';
+function PixBox() {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="space-y-2 rounded-lg border border-primary p-3 text-sm">
+      <p className="font-bold">Pix (celular): {PIX_KEY.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3')}</p>
+      <p>Favorecido: Ultraconnect LTDA</p>
+      <Button type="button" variant="outline" size="sm" onClick={() => { navigator.clipboard?.writeText(PIX_KEY).then(() => setCopied(true)); }}>{copied ? 'Chave copiada!' : 'Copiar chave Pix'}</Button>
+      <p className="text-muted-foreground">Faça o Pix pelo app do seu banco e envie o comprovante no WhatsApp. A loja confere o pagamento antes de confirmar.</p>
+    </div>
+  );
+}
 const emptyForm: CheckoutForm = {
   customer: '', phone: '', type: 'Delivery',
   address: { street: '', number: '', neighborhood: '', complement: '', reference: '' },
@@ -140,6 +152,7 @@ export function CatalogCheckout({ cart, setCart, open, setOpen }: {
                 {form.needChange && <input className="field" inputMode="decimal" placeholder="Troco para quanto? (R$)" value={form.cashFor} onChange={(e) => set('cashFor', e.target.value)} />}
               </div>}
               {(form.payment === 'Crédito' || form.payment === 'Débito') && form.type === 'Delivery' && <p className="text-sm text-primary">O entregador levará a maquininha.</p>}
+              {form.payment === 'Pix' && <PixBox />}
               <textarea className="field" rows={2} maxLength={300} placeholder="Observação geral (opcional)" value={form.note} onChange={(e) => set('note', e.target.value)} />
             </fieldset>
 
