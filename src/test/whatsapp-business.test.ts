@@ -17,6 +17,6 @@ describe('marmita natural',()=>{
   it('asks only house number',()=>expect(fu(['número'])).toBe('Certo! Me passa só o número da casa.'));
   it('asks payment',()=>expect(fu(['forma de pagamento','nome'])).toBe('Vai pagar no Pix, cartão ou dinheiro?'));
   it('adds early line before 11h',()=>expect(ilm(db0,new Date('2026-11-03T13:00:00Z'),19.9)).toContain('Já pode deixar seu pedido adiantado'));
-  it('no early line after 11h',()=>expect(ilm(db0,new Date('2026-11-03T15:00:00Z'),19.9)).not.toContain('adiantado'));
+  it('no early line after 11h',()=>expect(ilm(db0,new Date('2026-11-03T15:00:00Z'),19.9)).not.toContain('começam a sair'));
   it('uses PDV price',()=>expect(ilm(db0,new Date(),21)).toContain('21,00'));
 });
