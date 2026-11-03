@@ -295,6 +295,13 @@
       "when": 1793693600490,
       "tag": "0041_receipt_jobs_and_acceptance_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793693773329,
+      "tag": "0042_cashier_receipt_projection",
+      "breakpoints": true
     }
   ]
 }
