@@ -1,7 +1,7 @@
 import {useSyncExternalStore} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 export type AlertConversation={phone:string;name:string|null;unread:number;last_message:string|null;last_inbound_at:string|null;attendance_status:string;awaiting_since:string|null};
-export type OrderAlert={id:string;phone:string;name:string|null;code:string|null;total:number;items:{qty:number;productId:string;note?:string}[];type:string|null;payment:string|null;createdAt:string};
+export type OrderAlert={id:string;phone:string;name:string|null;code:string|null;total:number;items:{qty:number;productId:string;note:string|undefined}[];type:string|null;payment:string|null;createdAt:string};
 export type ReceiptAlert={id:string;phone:string;name:string|null;receivedAt:string};
 type RequestRow={id:string;phone:string;created_at:string;quoted_total:number;public_code:string|null;order_number:number|null;request:unknown};
 let conversations:AlertConversation[]=[];let listeners=new Set<()=>void>();let timer:ReturnType<typeof setInterval>|undefined;let refs=0;let baseline=false;let loading=false;let pendingOrders=0;
