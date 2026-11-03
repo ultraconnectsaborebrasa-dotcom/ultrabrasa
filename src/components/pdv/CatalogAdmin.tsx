@@ -16,7 +16,7 @@ export function CatalogAdmin() {
 
   useEffect(() => {
     supabase.from("catalog_products").select("*").then(({ data, error }) => {
-      if (error) return toast.error("Não foi possível carregar o cardápio");
+      if (error) { toast.error("Não foi possível carregar o cardápio"); return; }
       setRows(Object.fromEntries((data ?? []).map((r) => [r.product_id, r as Row])));
     });
   }, []);
@@ -27,7 +27,7 @@ export function CatalogAdmin() {
 
   async function save(id: string) {
     const r = get(id); setSaving(id);
-    const { error } = await supabase.rpc("save_catalog_product", { _product_id: id, _description: r.description, _image_url: r.image_url?.trim() || null, _illustrative: false, _published: r.published, _featured: r.featured, _sort: r.sort });
+    const { error } = await supabase.rpc("save_catalog_product", { _product_id: id, _description: r.description, _image_url: (r.image_url?.trim() || null) as string, _illustrative: false, _published: r.published, _featured: r.featured, _sort: r.sort });
     setSaving(null);
     error ? toast.error(error.message) : toast.success("Cardápio atualizado");
   }
