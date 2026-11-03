@@ -8,7 +8,7 @@ async function admin(context:{supabase:SupabaseClient<Database>;userId:string}){
   const r=await context.supabase.rpc('has_role',{_user_id:context.userId,_role:'admin'});if(r.error||!r.data)throw new Error('Somente o administrador');
 }
 export const whatsappAction=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator((input:unknown)=>z.object({phone:z.string().regex(/^[1-9]\d{9,14}$/),action:z.enum(['take','resume','read','waiting','finish','note']),body:z.string().max(2000).optional()}).parse(input)).handler(async({data,context})=>{
-  await admin(context);const r=await context.supabase.rpc('wa_conversation_action',{_phone:data.phone,_action:data.action,_body:data.body??undefined});if(r.error)throw new Error(r.error.message);return {ok:true};
+  await admin(context);const r=await context.supabase.rpc('wa_conversation_action',{_phone:data.phone,_action:data.action,_body:data.body??''});if(r.error)throw new Error(r.error.message);return {ok:true};
 });
 export const whatsappRequestAction=createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator((input:unknown)=>z.object({id:z.string().uuid(),accept:z.boolean()}).parse(input)).handler(async({data,context})=>{
   await admin(context);if(data.accept){const r=await context.supabase.rpc('wa_accept_request',{_id:data.id});if(r.error)throw new Error(r.error.message);return r.data;}

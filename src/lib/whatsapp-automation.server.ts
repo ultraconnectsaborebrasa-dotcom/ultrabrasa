@@ -5,11 +5,12 @@ import { gateway,sendText,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
 const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),automatic:z.boolean().optional()});
-const check = <T>(r:{data:T;error:{message:string}|null}):T => {if(r.error) throw new Error(r.error.message);return r.data;};
+const check = <T>(r:{data:T;error:{message:string}|null}):NonNullable<T> => {if(r.error) throw new Error(r.error.message);if(r.data===null||r.data===undefined)throw new Error('Dados não encontrados');return r.data;};
+const checkEmpty = <T>(r:{data:T;error:{message:string}|null}):T => {if(r.error)throw new Error(r.error.message);return r.data;};
 export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'|'text'|'document',payload:Record<string,unknown>) {
-  check(await db.from('whatsapp_jobs').upsert({dedup_key:key,phone:digits(phone),kind,payload:payload as never},{onConflict:'dedup_key',ignoreDuplicates:true}));
+  checkEmpty(await db.from('whatsapp_jobs').upsert({dedup_key:key,phone:digits(phone),kind,payload:payload as never},{onConflict:'dedup_key',ignoreDuplicates:true}));
 }
-async function handoff(db:Admin,phone:string,reason:string){check(await db.from('whatsapp_conversations').update({automation_paused:true,attendance_status:'needs_reply'}).eq('phone',phone));return reason;}
+async function handoff(db:Admin,phone:string,reason:string){checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,attendance_status:'needs_reply'}).eq('phone',phone));return reason;}
 async function interpret(db:Admin,j:Job){
   const payload=jobPayload.parse(j.payload);
   const cfg=check(await db.from('whatsapp_settings').select('business,auto_reply_enabled,account_state').eq('id',1).single());
@@ -42,7 +43,7 @@ async function interpret(db:Admin,j:Job){
   const changed=JSON.stringify({...d,summarySent:false,quotedTotal:0})!==JSON.stringify({...previous,summarySent:false,quotedTotal:0});
   const missing=missingOrderFields(d);
   if(parsed.confirms&&previous.summarySent&&!changed&&missing.length===0&&previous.quotedTotal===total){
-    check(await db.from('whatsapp_order_requests').upsert({phone:j.phone,inbound_id:payload.inboundId??j.id,quoted_total:total,request:{customer:d.customer,type:d.type,items:d.items,note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}},{onConflict:'inbound_id',ignoreDuplicates:true}));
+    checkEmpty(await db.from('whatsapp_order_requests').upsert({phone:j.phone,inbound_id:payload.inboundId??j.id,quoted_total:total,request:{customer:d.customer,type:d.type,items:d.items,note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}},{onConflict:'inbound_id',ignoreDuplicates:true}));
     await handoff(db,j.phone,'Pedido aguardando aceite');await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Recebemos sua confirmação. Seu pedido aguarda o aceite da loja; o pagamento ainda será confirmado pela equipe.',automatic:false});return;
   }
   let reply='';
@@ -63,32 +64,32 @@ export async function processJobs(db:Admin,limit=2){
     try{
       const p=jobPayload.parse(j.payload);
       const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at').eq('phone',j.phone).single());
-      if(p.automatic&&c.automation_paused){check(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
+      if(p.automatic&&c.automation_paused){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
       if(j.kind==='interpret')await interpret(db,j);
       else{
         if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>=86400000)throw new Error('Janela de 24h encerrada; modelo aprovado necessário');
-        const pre=check(await db.from('whatsapp_messages').select('wa_message_id,status').eq('reply_to',j.id).maybeSingle());
-        if(pre?.wa_message_id){check(await db.from('whatsapp_jobs').update({state:'completed',provider_id:pre.wa_message_id,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
+        const pre=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id,status').eq('reply_to',j.id).maybeSingle());
+        if(pre?.wa_message_id){checkEmpty(await db.from('whatsapp_jobs').update({state:'completed',provider_id:pre.wa_message_id,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
         if(pre)throw new Error('Envio anterior requer revisão');
         let providerId:string|undefined;
-        if(j.kind==='text')providerId=await sendText(db,j.phone,p.text??'',{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId});
+        if(j.kind==='text')providerId=await sendText(db,j.phone,p.text??'',{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
         else{
           const b=businessSchema.parse(cfg.business);if(!b.pdfPath)throw new Error('Cadastre o PDF');
           const url=check(await db.storage.from('whatsapp-menu').createSignedUrl(b.pdfPath,300));
           const r=await gateway('/messages',{method:'POST',body:{messaging_product:'whatsapp',to:j.phone,type:'document',document:{link:url.signedUrl,filename:'Cardapio-Ultrabrasa.pdf'}}});
           providerId=r?.messages?.[0]?.id;if(!providerId)throw new Error('WhatsApp não retornou identificador');
-          check(await db.from('whatsapp_messages').insert({wa_message_id:providerId,phone:j.phone,direction:'out',kind:'document',body:'Cardápio PDF',source:'pdv',status:'accepted',reply_to:j.id}));check(await db.rpc('wa_reconcile',{_id:providerId}));
+          checkEmpty(await db.from('whatsapp_messages').insert({wa_message_id:providerId,phone:j.phone,direction:'out',kind:'document',body:'Cardápio PDF',source:'pdv',status:'accepted',reply_to:j.id}));checkEmpty(await db.rpc('wa_reconcile',{_id:providerId}));
         }
-        check(await db.from('whatsapp_jobs').update({provider_id:providerId??null}).eq('id',j.id));
+        checkEmpty(await db.from('whatsapp_jobs').update({provider_id:providerId??null}).eq('id',j.id));
       }
-      check(await db.from('whatsapp_jobs').update({state:'completed',completed_at:new Date().toISOString(),lease_until:null}).eq('id',j.id));
+      checkEmpty(await db.from('whatsapp_jobs').update({state:'completed',completed_at:new Date().toISOString(),lease_until:null}).eq('id',j.id));
     }catch(e){
       const reason=e instanceof Error?e.message:String(e);
       const ambiguous=e instanceof GatewayError&&(e.outcome==='unknown'||['NetworkError','TimeoutError'].includes(e.name));
-      check(await db.from('whatsapp_jobs').update({state:ambiguous?'unknown':'failed',processing_error:reason.slice(0,1000),lease_until:null}).eq('id',j.id));
+      checkEmpty(await db.from('whatsapp_jobs').update({state:ambiguous?'unknown':'failed',processing_error:reason.slice(0,1000),lease_until:null}).eq('id',j.id));
       await handoff(db,j.phone,reason);
       if(e instanceof GatewayError&&[402,403,429].includes(e.httpStatus??0)){
-        const b=businessSchema.parse(cfg.business);check(await db.from('whatsapp_settings').update({business:{...b,circuitPaused:true,circuitReason:reason.slice(0,500)}}).eq('id',1));return;
+        const b=businessSchema.parse(cfg.business);checkEmpty(await db.from('whatsapp_settings').update({business:{...b,circuitPaused:true,circuitReason:reason.slice(0,500)}}).eq('id',1));return;
       }
     }
   }
