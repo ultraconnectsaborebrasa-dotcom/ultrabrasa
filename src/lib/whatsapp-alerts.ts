@@ -2,7 +2,7 @@ import {useSyncExternalStore} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 export type AlertConversation={phone:string;name:string|null;unread:number;last_message:string|null;last_inbound_at:string|null;attendance_status:string;awaiting_since:string|null};
 export type OrderAlert={id:string;phone:string;name:string|null;code:string|null;total:number;items:{qty:number;productId:string;note:string|undefined}[];type:string|null;payment:string|null;createdAt:string};
-export type ReceiptAlert={id:string;phone:string;name:string|null;receivedAt:string};
+export type ReceiptAlert={id:string;phone:string;name:string|null;receivedAt:string;recognized:boolean};
 type RequestRow={id:string;phone:string;created_at:string;quoted_total:number;public_code:string|null;order_number:number|null;request:unknown};
 let conversations:AlertConversation[]=[];let listeners=new Set<()=>void>();let timer:ReturnType<typeof setInterval>|undefined;let refs=0;let baseline=false;let loading=false;let pendingOrders=0;
 let orderAlerts:OrderAlert[]=[];let receiptAlerts:ReceiptAlert[]=[];let acked=new Set<string>();let seenReceipts=new Set<string>();let lastRepeatAt=0;
@@ -50,13 +50,13 @@ export async function refreshWhatsAppConversations(){
    if(grew){const first=alerts[alerts.length-1]!;playWhatsAppSound('order');lastRepeatAt=Date.now();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:first.phone,name:first.name,kind:'order',last_message:'Pedido fechado pelo robô — aguardando aceite'}}));notify('🔔 Novo pedido confirmado: '+(first.name||`+${first.phone}`),`Total ${first.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} · aguardando aceite da loja`,`wa-order-${first.id}`,first.phone);}
    if(shouldRepeatOrderSound(Date.now(),lastRepeatAt,getRepeatSeconds(),alerts.length)){playWhatsAppSound('order');lastRepeatAt=Date.now();}
    for(const p of rows){const key='request:'+p.id;if(Date.now()-Date.parse(p.created_at)>reminderMinutes*60000&&!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:p.phone,name:nameOf(p.phone),kind:'order',last_message:'Pedido aguardando aceite da loja'}}));}}}
-  const receipts=await supabase.from('payment_receipts').select('id,phone,received_at').is('reviewed_at',null).order('received_at',{ascending:false}).limit(20);
+  const receipts=await supabase.from('payment_receipts').select('id,phone,received_at,evidence').is('reviewed_at',null).order('received_at',{ascending:false}).limit(20);
 
   if(!receipts.error){
-   const rows=receipts.data as {id:string;phone:string;received_at:string}[];
+   const rows=receipts.data.map(r=>({...r,recognized:(r.evidence as {isPixReceipt?:boolean})?.isPixReceipt===true}));
    if(!baseline)seenReceipts=new Set(rows.map(x=>x.id));
-   else{const freshOnes=newReceipts(seenReceipts,rows);for(const x of freshOnes){seenReceipts.add(x.id);playWhatsAppSound('receipt');window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:x.phone,name:nameOf(x.phone),kind:'receipt',last_message:'Comprovante recebido — conferir'}}));notify('🧾 Comprovante recebido: '+(nameOf(x.phone)||`+${x.phone}`),'Confira o comprovante no Caixa',`wa-receipt-${x.id}`,x.phone);}}
-   receiptAlerts=rows.map(x=>({id:x.id,phone:x.phone,name:nameOf(x.phone),receivedAt:x.received_at}));
+   else{const freshOnes=newReceipts(seenReceipts,rows);for(const x of freshOnes){seenReceipts.add(x.id);playWhatsAppSound('receipt');const label=x.recognized?'Comprovante recebido — conferir':'Arquivo recebido — verificar';window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:x.phone,name:nameOf(x.phone),kind:'receipt',last_message:label}}));notify(label+': '+(nameOf(x.phone)||`+${x.phone}`),'Confira o arquivo no Caixa',`wa-receipt-${x.id}`,x.phone);}}
+   receiptAlerts=rows.map(x=>({id:x.id,phone:x.phone,name:nameOf(x.phone),receivedAt:x.received_at,recognized:x.recognized}));
   }
   if(baseline){for(const c of fresh){const old=conversations.find(o=>o.phone===c.phone);if(c.last_inbound_at&&Date.parse(c.last_inbound_at)>(old?.last_inbound_at?Date.parse(old.last_inbound_at):0)&&Date.now()-Date.parse(c.last_inbound_at)<60000){
    const kind=c.attendance_status==='new'?'new':'message';if(Date.now()-(lastSound.get(c.phone)??0)>8000){playWhatsAppSound(kind);lastSound.set(c.phone,Date.now());}
