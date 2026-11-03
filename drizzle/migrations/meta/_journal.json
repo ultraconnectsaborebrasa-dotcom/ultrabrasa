@@ -260,6 +260,13 @@
       "when": 1793683760427,
       "tag": "0036_whatsapp_customer_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793688282379,
+      "tag": "0037_catalog_real_burger_photos",
+      "breakpoints": true
     }
   ]
 }
