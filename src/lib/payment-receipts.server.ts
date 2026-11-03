@@ -52,8 +52,8 @@ export async function processReceipt(db: Admin, messageId: string, retry = false
     if(saved.error)throw new Error(saved.error.message);receiptId=saved.data;
   }
   const req=requests.data.find(r=>r.id===requestId);
-  if(receiptId&&path&&req?.order_id&&canRecordProvisional(evidence)&&!reason.includes('reutilização')){
-    const marked=await db.rpc('mark_receipt_received',{_id:receiptId,_order:req.order_id});
+  if(receiptId&&path&&req&&canRecordProvisional(evidence)&&!reason.includes('reutilização')){
+    const marked=await db.rpc('mark_receipt_for_request',{_id:receiptId,_request:req.id});
     if(marked.error){reason=marked.error.message;const update=await db.from('payment_receipts').update({reason}).eq('id',receiptId);if(update.error)throw new Error(update.error.message);}
   }
   if(!receiptId)throw new Error('Comprovante não registrado');

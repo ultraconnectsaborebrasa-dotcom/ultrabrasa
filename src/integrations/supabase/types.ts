@@ -956,6 +956,10 @@ export type Database = {
         Args: { phone_query: string }
         Returns: Json
       }
+      mark_receipt_for_request: {
+        Args: { _id: string; _request: string }
+        Returns: undefined
+      }
       mark_receipt_received: {
         Args: { _id: string; _order: string }
         Returns: undefined

@@ -351,6 +351,13 @@
       "when": 1793698790956,
       "tag": "0049_receipt_order_projection_and_departure_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793699059308,
+      "tag": "0050_receipt_provisional_before_acceptance_and_staff_delivery_history",
+      "breakpoints": true
     }
   ]
 }
