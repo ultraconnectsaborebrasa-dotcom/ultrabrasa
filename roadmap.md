@@ -1,4 +1,5 @@
 # PDV: histórico e administração
+- [x] Fotos novas dos oito hambúrgueres do cardápio digital, conferidas uma a uma pelo nome dos ingredientes; ConnecBurger manteve a foto atual, nada foi publicado nem apagado.
 - [x] Alerta de pedido confirmado com detalhes (itens, total, entrega, pagamento), botões Ver/Aceitar/Silenciar, som repetido em intervalo configurável até reconhecer; reconhecer não aceita o pedido.
 - [x] Terceiro som e aviso "Comprovante recebido — conferir" para comprovantes novos; teste individual dos três sons; mensagens de comprovante naturais sem frases burocráticas.
 - [x] Cancelamento de pedido com pagamento informado avisa o caixa para verificar eventual devolução.
