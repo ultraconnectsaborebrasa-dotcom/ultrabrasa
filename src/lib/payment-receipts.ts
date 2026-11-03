@@ -23,8 +23,9 @@ export function assessReceipt(e: ReceiptEvidence, candidates: ReceiptCandidate[]
   if(e.pixKey&&normalized(e.pixKey)!==normalized(pixKey))return fail('Chave Pix divergente');
   if(!e.transactionId||!/^E\d{8}[A-Za-z0-9]{23}$/.test(e.transactionId))return fail('Identificador Pix ausente ou ilegível');
   if(!e.paidDate||!/^\d{4}-\d{2}-\d{2}$/.test(e.paidDate))return fail('Data ilegível');
-  const today=now.toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
-  const created=new Date(c.createdAt).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+  const calendar=(date:Date)=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);return ['year','month','day'].map(type=>parts.find(p=>p.type===type)?.value??'').join('-');};
+  const today=calendar(now);
+  const created=calendar(new Date(c.createdAt));
   if(e.paidDate!==today||e.paidDate<created)return fail('Data divergente: precisa de conferência');
   return {compatible:true,requestId:c.id,reason:'Comprovante compatível; recebimento bancário não verificado'};
 }
