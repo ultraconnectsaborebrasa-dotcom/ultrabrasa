@@ -165,11 +165,13 @@ export type Database = {
       delivery_orders: {
         Row: {
           address: Json
+          assigned_courier_id: string | null
           cash_for: number
           created_at: string
           customer: string
           customer_id: string | null
           delivered_at: string | null
+          departed_at: string | null
           id: string
           order_id: string
           payment_method: string
@@ -181,11 +183,13 @@ export type Database = {
         }
         Insert: {
           address?: Json
+          assigned_courier_id?: string | null
           cash_for?: number
           created_at?: string
           customer?: string
           customer_id?: string | null
           delivered_at?: string | null
+          departed_at?: string | null
           id?: string
           order_id: string
           payment_method?: string
@@ -197,11 +201,13 @@ export type Database = {
         }
         Update: {
           address?: Json
+          assigned_courier_id?: string | null
           cash_for?: number
           created_at?: string
           customer?: string
           customer_id?: string | null
           delivered_at?: string | null
+          departed_at?: string | null
           id?: string
           order_id?: string
           payment_method?: string
@@ -212,6 +218,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "delivery_orders_assigned_courier_id_fkey"
+            columns: ["assigned_courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "delivery_orders_customer_id_fkey"
             columns: ["customer_id"]
@@ -920,6 +933,10 @@ export type Database = {
         Returns: undefined
       }
       delivery_staff: { Args: never; Returns: boolean }
+      depart_delivery: {
+        Args: { _courier?: string; _order: string }
+        Returns: undefined
+      }
       finish_delivery_route: {
         Args: { new_status: string; route_id: string }
         Returns: undefined
@@ -938,6 +955,10 @@ export type Database = {
       lookup_delivery_addresses: {
         Args: { phone_query: string }
         Returns: Json
+      }
+      mark_receipt_received: {
+        Args: { _id: string; _order: string }
+        Returns: undefined
       }
       normalize_phone: { Args: { _raw: string }; Returns: string }
       pay_pdv_cashier: {
@@ -961,6 +982,10 @@ export type Database = {
         Returns: string
       }
       record_payment_receipt_input: { Args: { _input: Json }; Returns: string }
+      register_staff_receipt: {
+        Args: { _message: string; _order: string; _path: string }
+        Returns: string
+      }
       review_payment_receipt: {
         Args: { _confirm: boolean; _id: string; _reason: string }
         Returns: undefined

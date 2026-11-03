@@ -337,6 +337,13 @@
       "when": 1793695024123,
       "tag": "0047_fix_pix_key_job_recursion",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793698709295,
+      "tag": "0048_receipt_manual_registration_and_delivery_departure",
+      "breakpoints": true
     }
   ]
 }
