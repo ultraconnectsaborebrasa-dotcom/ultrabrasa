@@ -25,6 +25,22 @@ type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['su
 
 export const digits = (s: string) => s.replace(/\D/g, '');
 
+export async function downloadWhatsAppMedia(mediaId:string) {
+  if(!/^\d+$/.test(mediaId))throw new Error('Identificador de mídia inválido');
+  const info=await gateway(`/media/${mediaId}`);
+  const limit=5*1024*1024;
+  if(!Number.isFinite(Number(info.file_size))||Number(info.file_size)<=0||Number(info.file_size)>limit)throw new Error('Arquivo excede 5 MB');
+  const mime=String(info.mime_type??'');
+  if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(mime)||typeof info.url!=='string')throw new Error('Formato não suportado');
+  const {lovable,wa}=keys();
+  const res=await fetch(`${GATEWAY_URL}/media_download`,{headers:{Authorization:`Bearer ${lovable}`,'X-Connection-Api-Key':wa,'X-WhatsApp-Media-URL':info.url}});
+  if(!res.ok||!res.body)throw new Error(`Download WhatsApp falhou [${res.status}]`);
+  const reader=res.body.getReader();const chunks:Uint8Array[]=[];let size=0;
+  for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>limit){await reader.cancel();throw new Error('Arquivo excede 5 MB');}chunks.push(value);}
+  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+  return {bytes,mime};
+}
+
 /** Sends a text and records the outbound message. Returns the provider id. */
 export async function sendText(db: Admin, phone: string, text: string, extra: { orderId?: string | null; sentBy?: string | null; sentByName?: string | null; source?: string; replyTo?: string | null } = {}) {
   const to = digits(phone);
@@ -111,7 +127,10 @@ export async function processEvent(db: Admin, event: string, payload: any) {
       const phone = digits(m.from ?? '');
       if (!phone) continue;
       await storeMessage(db, m, 'in', 'customer', phone, names.get(m.from));
-      await maybeAutoReply(db, phone, m.id);
+      if(['image','document'].includes(m.type)){
+        const {queueJob}=await import('./whatsapp-automation.server');
+        await queueJob(db,`receipt:${m.id}`,phone,'receipt',{inboundId:m.id,automatic:false});
+      }else await maybeAutoReply(db, phone, m.id);
     }
   } else if (event === 'whatsapp.status') {
     for (const s of value.statuses ?? []) {

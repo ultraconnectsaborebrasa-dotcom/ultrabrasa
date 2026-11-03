@@ -269,6 +269,113 @@ export type Database = {
           },
         ]
       }
+      payment_receipt_events: {
+        Row: {
+          action: string
+          actor: string | null
+          actor_name: string
+          created_at: string
+          id: string
+          reason: string
+          receipt_id: string
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          actor_name?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          receipt_id: string
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          actor_name?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_receipt_events_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "payment_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_receipts: {
+        Row: {
+          amount: number
+          evidence: Json
+          file_hash: string | null
+          id: string
+          message_id: string
+          order_id: string | null
+          phone: string
+          reason: string
+          received_at: string
+          request_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          state: string
+          storage_path: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          amount?: number
+          evidence?: Json
+          file_hash?: string | null
+          id?: string
+          message_id: string
+          order_id?: string | null
+          phone: string
+          reason?: string
+          received_at?: string
+          request_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          state?: string
+          storage_path?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          evidence?: Json
+          file_hash?: string | null
+          id?: string
+          message_id?: string
+          order_id?: string | null
+          phone?: string
+          reason?: string
+          received_at?: string
+          request_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          state?: string
+          storage_path?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_receipts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "whatsapp_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_order_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_customer_visits: {
         Row: {
           created_at: string
@@ -621,6 +728,10 @@ export type Database = {
       whatsapp_order_requests: {
         Row: {
           accepted_by: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          closed_reason: string | null
           created_at: string
           id: string
           inbound_id: string
@@ -636,6 +747,10 @@ export type Database = {
         }
         Insert: {
           accepted_by?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_by_name?: string | null
+          closed_reason?: string | null
           created_at?: string
           id?: string
           inbound_id: string
@@ -651,6 +766,10 @@ export type Database = {
         }
         Update: {
           accepted_by?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_by_name?: string | null
+          closed_reason?: string | null
           created_at?: string
           id?: string
           inbound_id?: string
@@ -792,6 +911,14 @@ export type Database = {
         Returns: Json
       }
       claim_pdv_admin: { Args: never; Returns: boolean }
+      close_pdv_order: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
+      close_whatsapp_request: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
       delivery_staff: { Args: never; Returns: boolean }
       finish_delivery_route: {
         Args: { new_status: string; route_id: string }
@@ -803,6 +930,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      link_payment_receipt: {
+        Args: { _id: string; _request: string }
+        Returns: undefined
       }
       lookup_delivery_addresses: {
         Args: { phone_query: string }
@@ -817,6 +948,23 @@ export type Database = {
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }
       read_public_catalog: { Args: never; Returns: Json }
+      record_payment_receipt: {
+        Args: {
+          _compatible: boolean
+          _evidence: Json
+          _hash: string
+          _message: string
+          _path: string
+          _reason: string
+          _request: string
+        }
+        Returns: string
+      }
+      record_payment_receipt_input: { Args: { _input: Json }; Returns: string }
+      review_payment_receipt: {
+        Args: { _confirm: boolean; _id: string; _reason: string }
+        Returns: undefined
+      }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
       save_catalog_product: {
         Args: {

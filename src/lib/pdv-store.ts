@@ -16,7 +16,7 @@ export type Product = {
 };
 export type CartItem = { uid: string; productId: string; name: string; price: number; qty: number; note: string };
 export type OrderType = "Balcão" | "Mesa" | "Retirada" | "Delivery";
-export type Payment = { method: string; amount: number };
+export type Payment = { method: string; amount: number; receiptId?: string; origin?: string; verification?: 'unverified'|'confirmed'|'bank_confirmed' };
 export type OrderStatus = "aberta" | "cozinha" | "pronto" | "pago" | "cancelado";
 export type Order = {
   id: string;
@@ -32,6 +32,7 @@ export type Order = {
   status: OrderStatus;
   createdAt: number;
   paidAt?: number | undefined;
+  paymentStatus?: 'pago'|'pendente';
   delivery?: DeliveryInput | undefined;
   customerPhone?: string | undefined;
   sellerId?: string;
@@ -164,7 +165,7 @@ export function totals(o: { items: CartItem[]; discount: number; fee: number; se
   const total = Math.max(0, sub - o.discount + o.fee + service);
   return { sub, service, total };
 }
-export const paid = (o: Order) => o.payments.reduce((a, p) => a + p.amount, 0);
+export const paid = (o: Order) => o.payments.reduce((a, p) => a + (p.verification==='unverified'?0:p.amount), 0);
 
 // ---- ações do rascunho
 export function addToDraft(prod: Product) {
@@ -214,9 +215,11 @@ export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []
     if (editingId) {
       const prev = s.orders.find((o) => o.id === editingId);
       if (prev) {
+        if(prev.status==='cancelado')return s;
+        if(status==='pago'&&prev.payments.some(p=>p.receiptId)){toast.error('Pedido já possui comprovante; use a conferência.');return s;}
         let products = applyStock(s, prev.items, 1);
         products = applyStock({ ...s, products }, d.items, -1);
-        const upd: Order = { ...prev, ...d, serviceAmount: totals(d, s.settings.serviceFeePct).service, status, payments: status === "pago" ? payments : prev.payments, paidAt: status === "pago" ? Date.now() : undefined };
+        const upd: Order = { ...prev, ...d, serviceAmount: totals(d, s.settings.serviceFeePct).service, status, payments: status === "pago" ? payments : prev.payments, paidAt: status === "pago" ? Date.now() : prev.paidAt };
         created = upd;
         return { ...s, products, orders: s.orders.map((o) => (o.id === editingId ? upd : o)), draft: emptyDraft() };
       }
@@ -234,8 +237,10 @@ export function setOrderStatus(id: string, status: OrderStatus, payments?: Payme
   setState((s) => {
     const o = s.orders.find((x) => x.id === id);
     if (!o) return s;
+    if (o.status === 'cancelado') return s;
+    if(payments&&o.payments.some(p=>p.receiptId)){toast.error('Pedido já possui comprovante; use a conferência.');return s;}
     let products = s.products;
-    if (status === "cancelado" && o.status !== "cancelado") products = applyStock(s, o.items, 1);
+    if (status === "cancelado") products = applyStock(s, o.items, 1);
     return {
       ...s,
       products,

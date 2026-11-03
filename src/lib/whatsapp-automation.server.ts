@@ -4,10 +4,10 @@ import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderField
 import { gateway,sendText,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
-const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
+const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
 const check = <T>(r:{data:T;error:{message:string}|null}):NonNullable<T> => {if(r.error) throw new Error(r.error.message);if(r.data===null||r.data===undefined)throw new Error('Dados não encontrados');return r.data;};
 const checkEmpty = <T>(r:{data:T;error:{message:string}|null}):T => {if(r.error)throw new Error(r.error.message);return r.data;};
-export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'|'text'|'document',payload:Record<string,unknown>) {
+export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'|'text'|'document'|'receipt',payload:Record<string,unknown>) {
   checkEmpty(await db.from('whatsapp_jobs').upsert({dedup_key:key,phone:digits(phone),kind,payload:payload as never},{onConflict:'dedup_key',ignoreDuplicates:true}));
 }
 async function handoff(db:Admin,phone:string,reason:string){checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,attendance_status:'needs_reply'}).eq('phone',phone));return reason;}
@@ -70,7 +70,7 @@ async function interpret(db:Admin,j:Job){
   const missing=missingOrderFields(d);
   if(parsed.confirms&&previous.summarySent&&!changed&&missing.length===0&&previous.quotedTotal===total){
     const confirmed=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:{customer:d.customer,type:d.type,items:d.items.map(i=>({...i,quotedPrice:catalog.find(p=>p.id===i.productId)?.price})),note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento pendente: ${d.payment}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}}));
-    if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Pode deixar, recebemos! 😊 Agora a equipe confere seu pedido e já te confirma por aqui. O pagamento também é conferido por eles.',automatic:false});return;
+    if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Pode deixar! Seu pedido chegou por aqui 😊 Já vamos te confirmar.',requestId:confirmed,automatic:false});return;
   }
   let reply='';
   if(missing.length) reply=followUpMessage(missing);
@@ -107,9 +107,24 @@ export async function processJobs(db:Admin,limit=2){
     const claimed=check(await db.rpc('wa_claim_job'));const j=claimed?.[0];if(!j)return;
     try{
       const p=jobPayload.parse(j.payload);
+      if(p.orderId||p.requestId){
+        const q=db.from('whatsapp_order_requests').select('status,id').eq(p.requestId?'id':'order_id',p.requestId??p.orderId??'');
+        const target=checkEmpty(await q.maybeSingle());
+        if(target&&['rejected','cancelled'].includes(target.status)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+        if(p.pixPrompt){
+          const receipts=checkEmpty(await db.from('payment_receipts').select('id').eq('phone',j.phone).in('state',['review','unverified','confirmed']).limit(1));
+          const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
+          const orders=z.object({orders:z.array(z.object({id:z.string(),payments:z.array(z.unknown()).default([])}))}).parse(snapshot.data).orders;
+          if(receipts?.length||orders.find(o=>o.id===p.orderId)?.payments.length){
+            if(j.dedup_key.endsWith(':pix-key')){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+            p.text='Seu pedido está confirmado! 😊';
+          }
+        }
+      }
       const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at').eq('phone',j.phone).single());
       if(p.automatic&&(c.automation_paused||!cfg.auto_reply_enabled)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
-      if(j.kind==='interpret')await interpret(db,j);
+      if(j.kind==='receipt'){const {processReceipt}=await import('./payment-receipts.server');await processReceipt(db,p.inboundId??'');}
+      else if(j.kind==='interpret')await interpret(db,j);
       else{
         if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>=86400000)throw new Error('Janela de 24h encerrada; modelo aprovado necessário');
         const pre=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id,status').eq('reply_to',j.id).maybeSingle());

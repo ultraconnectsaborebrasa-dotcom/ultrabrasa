@@ -281,6 +281,48 @@
       "when": 1793690552603,
       "tag": "0039_whatsapp_claim_per_phone",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793693544332,
+      "tag": "0040_receipt_review_and_terminal_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793693600490,
+      "tag": "0041_receipt_jobs_and_acceptance_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793693773329,
+      "tag": "0042_cashier_receipt_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793693803291,
+      "tag": "0043_request_cancelled_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793693940240,
+      "tag": "0044_pending_receipt_payment_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793694048006,
+      "tag": "0045_nullable_receipt_input",
+      "breakpoints": true
     }
   ]
 }
