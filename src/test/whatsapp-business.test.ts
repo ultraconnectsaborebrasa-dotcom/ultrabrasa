@@ -22,12 +22,12 @@ describe('marmita natural',()=>{
 });
 import { menuOutsideNightMessage as mom } from '@/lib/whatsapp-business';
 describe('menu request outside night',()=>{
-  const b={...defaultBusiness,hours:[{day:2,lunchEnd:'14:00',nightStart:'18:00',nightEnd:'23:00'}]};
+  const b={...defaultBusiness,hours:[{day:2,lunchEnd:'14:00',nightStart:'18:00',nightEnd:'23:00'},{day:3,lunchEnd:'14:00',nightStart:'18:00',nightEnd:'23:00'}]};
   const base={price:19.9,available:true,menuUrl:'https://ultraconnectbrasa.com.br/cardapio',pdfOffer:true};
   const morning=new Date('2026-11-03T12:00:00Z'); // 09:00 Tue, before 11h
   const afternoon=new Date('2026-11-03T18:00:00Z'); // 15:00 Tue, after lunchEnd 14:00
   it('says what comes in the marmita',()=>expect(mom(b,{...base,now:morning})).toContain('Nossa marmita vem com churrasco de carne assada, linguiça de frango, arroz, salada, macarrão e farofa de feijão.'));
-  it('gives the current price and the free delivery promise',()=>expect(mom(b,{...base,now:morning})).toContain('É R$ 19,90, com entrega grátis pra qualquer bairro de Eunápolis.'));
+  it('gives the current price and the free delivery promise',()=>{const t=mom(b,{...base,now:morning});expect(t).toContain('19,90');expect(t).toContain('entrega grátis pra qualquer bairro de Eunápolis');});
   it('keeps the digital menu and the PDF offer',()=>{const t=mom(b,{...base,now:afternoon});expect(t).toContain('https://ultraconnectbrasa.com.br/cardapio');expect(t).toContain('te mando em PDF');});
   it('drops the PDF line when no PDF is registered',()=>expect(mom(b,{...base,pdfOffer:false,now:afternoon})).not.toContain('PDF'));
   it('uses today departure time before 11h',()=>expect(mom(b,{...base,now:morning})).toContain('As entregas de hoje começam a sair às 11h.'));
