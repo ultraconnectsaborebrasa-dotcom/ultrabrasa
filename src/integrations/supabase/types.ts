@@ -786,6 +786,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      wa_confirm_request: {
+        Args: {
+          _inbound_id: string
+          _phone: string
+          _request: Json
+          _total: number
+          _version: number
+        }
+        Returns: string
+      }
       wa_conversation_action: {
         Args: { _action: string; _body?: string; _phone: string }
         Returns: undefined
