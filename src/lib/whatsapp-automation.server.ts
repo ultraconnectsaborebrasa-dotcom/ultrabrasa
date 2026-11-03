@@ -1,6 +1,6 @@
 import { generateResponse, GatewayError } from '@lovable.dev/ai-gateway';
 import { z } from 'zod';
-import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo,menuOutsideNightMessage,isMenuAsk,isPriceAsk,lunchPriceMessage,closedMenuMessage } from './whatsapp-business';
+import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo,menuOutsideNightMessage,isMenuAsk,isPriceAsk,lunchPriceMessage,closedMenuMessage,lunchPresented,lunchQtyAck } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
