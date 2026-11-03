@@ -78,7 +78,13 @@ async function interpret(db:Admin,j:Job){
     if(confirmed)await queueJob(db,`awaiting:${payload.inboundId}`,j.phone,'text',{text:'Pode deixar! Seu pedido chegou por aqui 😊 Já vamos te confirmar.',requestId:confirmed,automatic:false});return;
   }
   let reply='';
+  const presented=lunchPresented(messages.filter(m=>m.direction==='out').map(m=>m.body??''),b);
+  const lunchItem=d.items.find(i=>i.productId===b.lunchProductId);
+  const newlyAdded=!!lunchItem&&!previous.items.some(i=>i.productId===b.lunchProductId);
   if(missing.length) reply=followUpMessage(missing);
+  // Marmita: apresenta composição e preço antes de perguntar quantidade.
+  if(missing.includes('itens e quantidades')&&!presented&&period!=='night'&&lunchAvailable&&lunchP)reply=initialLunchMessage(b,new Date(),lunchP.price);
+  if(newlyAdded&&missing.length)reply=`${lunchQtyAck(lunchItem.qty)} ${reply}`;
   else {d.quotedTotal=total;reply=`Pode deixar! Confere se ficou tudo certo:\n${d.items.map(i=>`${i.qty} × ${catalog.find(p=>p.id===i.productId)?.name}${i.note?` (${i.note})`:''}`).join('\n')}\n${d.type}${d.type==='Delivery'?`: ${d.address.street}, ${d.address.number} — ${d.address.neighborhood}, ${d.address.city}`:''}\nPagamento: ${d.payment} (pendente)${d.payment==='Dinheiro'?` · ${d.cashFor?`troco para R$ ${d.cashFor.toFixed(2)}`:'sem troco'}`:''}${d.payment==='Cartão'&&d.type==='Delivery'?' · Levar maquininha':''}\nTaxa: R$ 0,00\nTotal: ${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}${d.payment==='Pix'?`\nChave Pix: ${b.pixKey}`:''}\nConfirma este pedido?`;}
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;

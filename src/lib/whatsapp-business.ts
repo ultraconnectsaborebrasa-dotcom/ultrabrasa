@@ -46,25 +46,32 @@ export function businessPeriod(b: Business, now = new Date()) {
   return 'closed';
 }
 const spTime=(now:Date)=>new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
-/** Apresentação da marmita; price deve vir do produto atual do PDV. */
+/** Apresentação da marmita (composição e preço antes de pedir quantidade); price deve vir do produto atual do PDV. */
 export function initialLunchMessage(b: Business, now = new Date(), price = b.lunchPrice) {
   const brl=price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const early=spTime(now)<b.departureFrom?`\n\nAs entregas começam a sair às ${b.departureFrom.replace(/^0?(\d+):00$/,'$1h')}. Já pode deixar seu pedido adiantado!`:'';
-  return `Oi! Já vamos garantir seu almoço? 😊\n\nNossa marmita vem com ${b.lunchMenu}. É ${brl}${b.freeDelivery?', com entrega grátis pra qualquer bairro de Eunápolis!':'.'}${early}${b.highDemand?`\n\n${b.demandText}`:''}\n\nMe fala quantas você vai querer e o endereço com bairro e número.`;
+  const dep=b.departureFrom.replace(/^0?(\d+):00$/,'$1h');
+  const before=spTime(now)<b.departureFrom;
+  const delivery=b.freeDelivery
+    ? `A entrega está grátis para qualquer bairro de Eunápolis${before?`, e as entregas começam a sair às ${dep}`:''}.`
+    : before?`As entregas começam a sair às ${dep}.`:'';
+  return `Hoje temos marmita com ${b.lunchMenu}, por ${brl} 😋${delivery?`\n\n${delivery}`:''}\n\nQuer deixar a sua pedida? Me fala quantas marmitas e o bairro da entrega 😊`;
 }
+/** Detecta se a apresentação da marmita já foi enviada na conversa. */
+export const lunchPresented = (outBodies: string[], b: Business) => outBodies.some(t => t.includes(b.lunchMenu) || /Hoje temos marmita|Nossa marmita/.test(t));
+const qtyWords=['','Uma','Duas','Três','Quatro','Cinco','Seis','Sete','Oito','Nove','Dez'];
+export const lunchQtyAck = (qty: number) => `${qtyWords[qty] ?? qty} marmita${qty>1?'s':''}, combinado! 😊`;
 /** Pergunta curta só pelo que falta, em ordem natural: itens/endereço, pagamento, nome. */
 export function followUpMessage(missing: string[]) {
   const has=(k:string)=>missing.includes(k);
   const addr=['rua','número','bairro'].filter(has);
-  if(has('itens e quantidades')&&addr.length)return 'Certo! Me fala quantas você vai querer e o endereço com bairro e número.';
-  if(has('itens e quantidades'))return 'Certo! Quantas você vai querer?';
-  if(has('entrega ou retirada'))return 'Certo! É pra entregar ou vai retirar aqui?';
-  if(addr.length===1&&addr[0]==='número')return 'Certo! Me passa só o número da casa.';
-  if(addr.length===1&&addr[0]==='bairro')return 'Certo! Me passa só o bairro.';
-  if(addr.length)return `Certo! Me passa ${addr.length===1?'só ':''}${addr.map(a=>a==='número'?'o número da casa':a==='cidade'?'a cidade':`o ${a}`).join(', ').replace(/, ([^,]*)$/,' e $1')}.`;
+  if(has('itens e quantidades'))return 'Quantas marmitas você vai querer?';
+  if(has('entrega ou retirada')||addr.length===3)return 'Me passa a rua, o número e o bairro da entrega.';
+  if(addr.length===1&&addr[0]==='número')return 'Me passa só o número da casa.';
+  if(addr.length===1&&addr[0]==='bairro')return 'Me passa só o bairro.';
+  if(addr.length)return `Me passa ${addr.length===1?'só ':''}${addr.map(a=>a==='número'?'o número da casa':`o ${a}`).join(', ').replace(/, ([^,]*)$/,' e $1')}.`;
   if(has('forma de pagamento'))return 'Vai pagar no Pix, cartão ou dinheiro?';
   if(has('troco (ou sem troco)'))return 'Precisa de troco? Se sim, pra quanto?';
-  if(has('nome'))return 'Certo! E qual seu nome?';
+  if(has('nome'))return 'E qual seu nome?';
   return 'Certo!';
 }
 /** Próximo dia com almoço, para avisar quando a marmita esgota. */
