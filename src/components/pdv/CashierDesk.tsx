@@ -20,6 +20,8 @@ import { MessageCircle } from 'lucide-react';
 import { ReceiptReview } from './ReceiptReview';
 import { useServerFn } from '@tanstack/react-start';
 import { whatsappRequestAction } from '@/lib/whatsapp-attendance.functions';
+import {ReceiptRegistration} from './ReceiptRegistration';
+import {DeliveryDeparture} from './DeliveryDeparture';
 
 type Product = {id:string;name:string;category:string;price:number;stock:number|null;active:boolean};
 type Item = {name:string;productId?:string;qty:number;price:number;note?:string};

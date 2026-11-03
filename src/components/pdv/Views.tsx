@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { printOrder } from '@/services/thermalPrinter';
 import { supabase } from '@/integrations/supabase/client';
 import { ReceiptReview } from './ReceiptReview';
+import { ReceiptRegistration } from './ReceiptRegistration';
+import { DeliveryDeparture } from './DeliveryDeparture';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -46,7 +48,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
                 <div><div className="font-display text-2xl font-bold">#{o.number}</div><div className="text-sm font-semibold text-primary">{tableLabel(o)}</div>{o.customer&&<div className="text-xs text-muted-foreground">{o.customer}</div>}</div>
                 <StatusPill s={o.status} />
               </div>
-              {o.paymentStatus==='pago'&&<p className="text-sm text-warning">Pago{o.payments.some(p=>p.verification==='unverified')?' · Recebimento bancário não verificado':''}</p>}
+              {o.paymentStatus==='pago'&&<p className="text-sm text-warning">{o.payments.some(p=>p.verification==='unverified')?'Pago — conferir comprovante':'Pago'}</p>}
               {receiptOrders.includes(o.id)&&<p className="text-sm text-warning">Comprovante precisa de conferência</p>}
               <ul className="my-3 space-y-0.5 text-sm">{o.items.map((i) => <li key={i.uid} className="flex justify-between"><span>{i.qty}× {i.name}</span><span className="font-mono text-muted-foreground">{brl(i.qty * i.price)}</span></li>)}</ul>
               <div className="flex items-center justify-between border-t pt-3">
@@ -54,6 +56,8 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
                 <span className="font-display text-xl font-bold">{brl(t)}</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
+                {admin&&<ReceiptRegistration orderId={o.id}/>}
+                {admin&&o.type==='Delivery'&&<DeliveryDeparture orderId={o.id}/>}
                 <button className="btn btn-ghost text-xs" onClick={() => { loadOrderToDraft(o); goSell(); }}><Pencil size={13} />Editar</button>
                 <button className="btn btn-ghost text-xs" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={13} />Imprimir</button>
                 {admin && <Button variant="destructive" size="sm" onClick={() => {const reason=window.prompt(`Motivo para cancelar #${o.number}? Cancelar não estorna pagamentos.`);if(reason?.trim())void supabase.rpc('close_pdv_order',{_id:o.id,_reason:reason}).then(r=>{if(r.error)toast.error(r.error.message);else{toast.success('Pedido cancelado');if(o.payments.length>0)toast.warning('Este pedido tinha pagamento informado — verifique eventual devolução.');}});}}>Cancelar</Button>}
