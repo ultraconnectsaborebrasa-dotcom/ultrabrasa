@@ -1,0 +1,2 @@
+ALTER TABLE public.whatsapp_order_requests DROP CONSTRAINT whatsapp_order_requests_status_check;
+ALTER TABLE public.whatsapp_order_requests ADD CONSTRAINT whatsapp_order_requests_status_check CHECK(status IN ('awaiting_acceptance','accepted','rejected','cancelled'));

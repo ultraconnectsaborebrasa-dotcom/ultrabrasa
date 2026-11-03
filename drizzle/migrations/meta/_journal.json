@@ -302,6 +302,13 @@
       "when": 1793693773329,
       "tag": "0042_cashier_receipt_projection",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793693803291,
+      "tag": "0043_request_cancelled_state",
+      "breakpoints": true
     }
   ]
 }
