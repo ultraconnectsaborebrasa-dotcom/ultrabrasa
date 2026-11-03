@@ -83,7 +83,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const cashOpen = useStore((s) => s.cash.open);
   const today = paidSalesSince(orders, new Date().setHours(0, 0, 0, 0));
   const revenue = today.reduce((a, o) => a + paid(o), 0);
-  const open = orders.filter((o) => ["aberta", "cozinha", "pronto"].includes(o.status));
+  const open = orders.filter((o) => ["aberta", "cozinha", "pronto", "entrega"].includes(o.status) && o.paymentStatus !== "pago");
   const kitchen = orders.filter((o) => o.status === "cozinha").length;
   const low = products.filter((p) => p.stock !== null && p.stock <= p.minStock).length;
 

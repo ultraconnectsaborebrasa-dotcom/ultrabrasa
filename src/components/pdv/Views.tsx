@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ReceiptReview } from './ReceiptReview';
 import { ReceiptRegistration } from './ReceiptRegistration';
 import { DeliveryDeparture } from './DeliveryDeparture';
+import { CancelOrderButton } from './CancelOrderButton';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -33,7 +34,8 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
   const [paying, setPaying] = useState<Order | null>(null);
   const [receiptOrders,setReceiptOrders]=useState<string[]>([]);
   useEffect(()=>{const load=async()=>{const r=await supabase.from('payment_receipts').select('order_id').eq('state','review');if(!r.error)setReceiptOrders(r.data.flatMap(x=>x.order_id?[x.order_id]:[]));};void load();const timer=setInterval(()=>void load(),4000);return()=>clearInterval(timer);},[]);
-  const open = orders.filter((o) => ["aberta", "cozinha", "pronto", "entrega"].includes(o.status));
+  // Comanda paga sai daqui; a etapa de cozinha/entrega continua nas telas próprias.
+  const open = orders.filter((o) => ["aberta", "cozinha", "pronto", "entrega"].includes(o.status) && o.paymentStatus !== "pago");
 
   return (
     <div className="space-y-6">
@@ -60,7 +62,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
                 {admin&&o.type==='Delivery'&&<DeliveryDeparture orderId={o.id}/>}
                 <button className="btn btn-ghost text-xs" onClick={() => { loadOrderToDraft(o); goSell(); }}><Pencil size={13} />Editar</button>
                 <button className="btn btn-ghost text-xs" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={13} />Imprimir</button>
-                {admin && <Button variant="destructive" size="sm" onClick={() => {const reason=window.prompt(`Motivo para cancelar #${o.number}? Cancelar não estorna pagamentos.`);if(reason?.trim())void supabase.rpc('close_pdv_order',{_id:o.id,_reason:reason}).then(r=>{if(r.error)toast.error(r.error.message);else{toast.success('Pedido cancelado');if(o.payments.length>0)toast.warning('Este pedido tinha pagamento informado — verifique eventual devolução.');}});}}>Cancelar</Button>}
+                {admin && <CancelOrderButton orderId={o.id} number={o.number} hadPayment={o.payments.length>0}/>}
                 <Button size="sm" disabled={o.paymentStatus==='pago'||o.payments.length>0||receiptOrders.includes(o.id)} onClick={() => cashOpen ? setPaying(o) : toast.error("Abra o caixa primeiro.")}>{o.paymentStatus==='pago'?'Pago':receiptOrders.includes(o.id)?'Em conferência':'Cobrar'}</Button>
               </div>
             </div>
