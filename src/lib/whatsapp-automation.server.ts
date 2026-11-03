@@ -1,7 +1,7 @@
 import { generateResponse, GatewayError } from '@lovable.dev/ai-gateway';
 import { z } from 'zod';
 import { businessSchema,businessPeriod,conversationDraftSchema,missingOrderFields,inEunapolis,initialLunchMessage,closedMessage,followUpMessage,nextLunchInfo,menuOutsideNightMessage,isMenuAsk,isPriceAsk,lunchPriceMessage,closedMenuMessage } from './whatsapp-business';
-import { gateway,sendText,digits } from './whatsapp.server';
+import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
 const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
@@ -131,7 +131,14 @@ export async function processJobs(db:Admin,limit=2){
         if(pre?.wa_message_id){checkEmpty(await db.from('whatsapp_jobs').update({state:'completed',provider_id:pre.wa_message_id,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
         if(pre)throw new Error('Envio anterior requer revisão');
         let providerId:string|undefined;
-        if(j.kind==='text')providerId=await sendText(db,j.phone,p.text??'',{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
+        if(j.kind==='text'){
+          const text=p.text??'';
+          if(p.automatic){
+            await sendTyping(j.phone,String(j.dedup_key??'').split(':').slice(1).join(':'));
+            await new Promise(r=>setTimeout(r,3000+Math.min(2000,text.length*10)));
+          }
+          providerId=await sendText(db,j.phone,text,{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
+        }
         else{
           const b=businessSchema.parse(cfg.business);if(!b.pdfPath)throw new Error('Cadastre o PDF');
           const url=check(await db.storage.from('whatsapp-menu').createSignedUrl(b.pdfPath,300));
