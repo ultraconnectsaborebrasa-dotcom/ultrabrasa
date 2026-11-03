@@ -1,4 +1,5 @@
 # PDV: histórico e administração
+- [x] WhatsApp no Caixa: filas, alertas, respostas, PDF, assumir/transferir/finalizar, montar pedido vinculado; permissões no banco. Conta Caixa testada sem envio real.
 - [x] WhatsApp: filtros, responsabilidade/pausa humana, notas, rascunhos e alertas implementados sem reconectar; assumir, nota e finalização conferidos na conta admin, rascunho preservado ao alternar para balcão. Conversa de teste removida; nenhum WhatsApp enviado.
 - [x] WhatsApp: configurações comerciais, horários, PDF protegido, extração de texto livre e aceite atômico antes da cozinha implementados; 31 testes direcionados aprovados, IA real extraiu quantidade e manteve Pix pendente. Automação permanece desligada.
 - [x] WhatsApp: fila durável com exclusividade, confirmação deduplicada, bloqueios de envio e callbacks preservados; recuperação gerenciada criada a cada minuto. Prévia admin sem erros; produtos/pedidos não foram alterados. Nenhuma publicação.
