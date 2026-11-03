@@ -9,6 +9,8 @@ export const businessSchema = z.object({
   highDemand: z.boolean().default(true),
   demandText: z.string().max(300).default('A procura está alta! Quer deixar seu pedido adiantado?'),
   pixKey: z.string().max(200).default(''),
+  pixRecipient: z.string().min(1).max(200).default('Ultraconnect LTDA'),
+  autoReceiptPayment: z.boolean().default(false),
   pdfPath: z.string().max(300).default(''),
   reminderMinutes: z.number().int().min(1).max(120).default(5),
   advanceFrom: z.string().regex(/^\d{2}:\d{2}$/).default('10:00'),
