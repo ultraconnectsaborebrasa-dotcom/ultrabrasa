@@ -239,6 +239,13 @@
       "when": 1793682212923,
       "tag": "0033_digital_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793683259461,
+      "tag": "0034_catalog_checkout",
+      "breakpoints": true
     }
   ]
 }

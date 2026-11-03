@@ -562,8 +562,10 @@ export type Database = {
           order_id: string | null
           order_number: number | null
           phone: string
+          public_code: string | null
           quoted_total: number
           request: Json
+          source: string
           status: string
           updated_at: string
         }
@@ -575,8 +577,10 @@ export type Database = {
           order_id?: string | null
           order_number?: number | null
           phone: string
+          public_code?: string | null
           quoted_total: number
           request: Json
+          source?: string
           status?: string
           updated_at?: string
         }
@@ -588,8 +592,10 @@ export type Database = {
           order_id?: string | null
           order_number?: number | null
           phone?: string
+          public_code?: string | null
           quoted_total?: number
           request?: Json
+          source?: string
           status?: string
           updated_at?: string
         }
@@ -715,6 +721,10 @@ export type Database = {
       cancel_pdv_cashier_order: {
         Args: { order_id: string }
         Returns: undefined
+      }
+      catalog_place_order: {
+        Args: { _client_key: string; _order: Json }
+        Returns: Json
       }
       claim_pdv_admin: { Args: never; Returns: boolean }
       delivery_staff: { Args: never; Returns: boolean }
