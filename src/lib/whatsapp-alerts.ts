@@ -53,7 +53,6 @@ export async function refreshWhatsAppConversations(){
   }
   const receipts=await supabase.from('payment_receipts').select('id,phone,received_at').is('reviewed_at',null).order('received_at',{ascending:false}).limit(20);
   if(!receipts.error){
-  if(!receipts.error){
    const rows=receipts.data as {id:string;phone:string;received_at:string}[];
    if(!baseline)seenReceipts=new Set(rows.map(x=>x.id));
    else{const freshOnes=newReceipts(seenReceipts,rows);for(const x of freshOnes){seenReceipts.add(x.id);playWhatsAppSound('receipt');window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:x.phone,name:nameOf(x.phone),kind:'receipt',last_message:'Comprovante recebido — conferir'}}));notify('🧾 Comprovante recebido: '+(nameOf(x.phone)||`+${x.phone}`),'Confira o comprovante no Caixa',`wa-receipt-${x.id}`,x.phone);}}
