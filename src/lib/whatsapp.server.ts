@@ -84,6 +84,10 @@ async function storeMessage(db: Admin, m: any, direction: 'in' | 'out', source: 
   if (!m?.id) return false;
   const d = describe(m);
   const at = tsOf(m.timestamp);
+  if(direction==='in'&&source==='customer'){
+    const stored=await db.rpc('wa_store_inbound',{_message:{id:m.id,phone,kind:d.kind,body:d.body,media:d.media,name:name??null,at}});
+    if(stored.error)throw new Error(stored.error.message);return Boolean(stored.data);
+  }
   const ins = await db.from('whatsapp_messages').upsert({ wa_message_id: m.id, phone, direction, source, kind: d.kind, body: d.body, media_id: d.media, status: direction === 'in' ? 'received' : 'sent', provider_at: at }, { onConflict: 'wa_message_id', ignoreDuplicates: true }).select('id');
   if (ins.error) throw new Error(ins.error.message);
   const isNew = (ins.data?.length ?? 0) > 0;

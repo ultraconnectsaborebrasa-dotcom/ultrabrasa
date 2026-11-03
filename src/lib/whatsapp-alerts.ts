@@ -2,7 +2,7 @@ import {useSyncExternalStore} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 export type AlertConversation={phone:string;name:string|null;unread:number;last_message:string|null;last_inbound_at:string|null;attendance_status:string;awaiting_since:string|null};
 let conversations:AlertConversation[]=[];let listeners=new Set<()=>void>();let timer:ReturnType<typeof setInterval>|undefined;let refs=0;let baseline=false;let loading=false;
-let audio:AudioContext|undefined;let enabled=false;let volume=0.5;const lastSound=new Map<string,number>();
+let audio:AudioContext|undefined;let enabled=false;let volume=0.5;const lastSound=new Map<string,number>();const reminded=new Set<string>();let reminderMinutes=5;
 const empty:AlertConversation[]=[];
 const emit=()=>listeners.forEach(l=>l());
 export function useWhatsAppConversations(){return useSyncExternalStore(l=>{listeners.add(l);return()=>{listeners.delete(l);};},()=>conversations,()=>empty);}
@@ -19,6 +19,7 @@ export async function refreshWhatsAppConversations(){
  if(document.hidden&&'Notification' in window&&Notification.permission==='granted'){const n=new Notification(c.name||`+${c.phone}`,{body:c.last_message??'Nova mensagem',tag:`wa-${c.phone}`});n.onclick=()=>{window.focus();window.dispatchEvent(new CustomEvent('whatsapp-open',{detail:c.phone}));n.close();};}
  }}}
  baseline=true;conversations=fresh;emit();
+ for(const c of fresh){if(c.awaiting_since&&Date.now()-Date.parse(c.awaiting_since)>reminderMinutes*60000){const key=c.phone+':'+c.awaiting_since;if(!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{...c,last_message:'Cliente aguardando resposta'}}));}}}
  }catch(e){console.error('WhatsApp inbox refresh failed');}finally{loading=false;}
 }
-export function mountWhatsAppInbox(){refs++;if(refs===1){baseline=false;void refreshWhatsAppConversations();timer=setInterval(()=>void refreshWhatsAppConversations(),4000);}return()=>{refs--;if(refs===0){clearInterval(timer);timer=undefined;conversations=[];baseline=false;emit();}};}
+export function mountWhatsAppInbox(){refs++;if(refs===1){baseline=false;void supabase.from('whatsapp_settings').select('business').eq('id',1).single().then(r=>{if(!r.error&&r.data.business&&typeof r.data.business==='object'&&!Array.isArray(r.data.business)&&typeof r.data.business['reminderMinutes']==='number')reminderMinutes=r.data.business['reminderMinutes'];});void refreshWhatsAppConversations();timer=setInterval(()=>void refreshWhatsAppConversations(),4000);}return()=>{refs--;if(refs===0){clearInterval(timer);timer=undefined;conversations=[];baseline=false;emit();}};}
