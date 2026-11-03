@@ -237,7 +237,7 @@ export function setOrderStatus(id: string, status: OrderStatus, payments?: Payme
     if (!o) return s;
     if (o.status === 'cancelado') return s;
     let products = s.products;
-    if (status === "cancelado" && o.status !== "cancelado") products = applyStock(s, o.items, 1);
+    if (status === "cancelado") products = applyStock(s, o.items, 1);
     return {
       ...s,
       products,
