@@ -31,22 +31,34 @@ export async function sendText(db: Admin, phone: string, text: string, extra: { 
   if (!/^[1-9]\d{9,14}$/.test(to)) throw new Error('Número inválido');
   const body = text.trim().slice(0, 4000);
   if (!body) throw new Error('Mensagem vazia');
+  const settings = await db.from('whatsapp_settings').select('account_state').eq('id',1).single();
+  if(settings.error || settings.data.account_state !== 'ok') throw new Error('WhatsApp indisponível');
+  const conversation = await db.from('whatsapp_conversations').select('last_inbound_at').eq('phone',to).single();
+  if(conversation.error || !conversation.data.last_inbound_at || Date.now()-Date.parse(conversation.data.last_inbound_at)>=86400000) throw new Error('Fora da janela de 24h: é necessário um modelo aprovado');
+  const reserved = await db.from('whatsapp_messages').insert({phone:to,direction:'out',source:extra.source??'pdv',body,status:'sending',order_id:extra.orderId??null,sent_by:extra.sentBy??null,reply_to:extra.replyTo??null}).select('id').single();
+  if(reserved.error) throw new Error(reserved.error.message);
+  let accepted = false;
   try {
     const r = await gateway('/messages', { method: 'POST', body: { messaging_product: 'whatsapp', to, type: 'text', text: { body } } });
     const waId: string | undefined = r?.messages?.[0]?.id;
-    const ins = await db.from('whatsapp_messages').insert({ wa_message_id: waId ?? null, phone: to, direction: 'out', source: extra.source ?? 'pdv', body, status: 'accepted', order_id: extra.orderId ?? null, sent_by: extra.sentBy ?? null, reply_to: extra.replyTo ?? null });
+    accepted = true;
+    if(!waId) throw new Error('WhatsApp não retornou o identificador; conferir envio antes de tentar novamente');
+    const ins = await db.from('whatsapp_messages').update({wa_message_id:waId,status:'accepted'}).eq('id',reserved.data.id);
     if (ins.error) throw new Error(ins.error.message);
-    if (waId) await db.rpc('wa_reconcile', { _id: waId });
+    const reconciled = await db.rpc('wa_reconcile', { _id: waId });
+    if(reconciled.error) throw new Error(reconciled.error.message);
     await touchConversation(db, to, body, false);
     return waId;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    await db.from('whatsapp_messages').insert({ phone: to, direction: 'out', source: extra.source ?? 'pdv', body, status: 'failed', error: msg, failed_at: new Date().toISOString(), order_id: extra.orderId ?? null, sent_by: extra.sentBy ?? null, reply_to: extra.replyTo ?? null });
+    const failed = await db.from('whatsapp_messages').update({status:accepted||!msg.startsWith('WhatsApp [')?'unknown':'failed',error:msg,failed_at:new Date().toISOString()}).eq('id',reserved.data.id);
+    if(failed.error) console.error('WhatsApp outcome persistence failed');
     throw e;
   }
 }
 
 async function touchConversation(db: Admin, phone: string, last: string, inbound: boolean, name?: string | null, at = new Date().toISOString()) {
+  if(inbound){const r=await db.rpc('wa_touch_inbound',{_phone:phone,_body:last,_name:name??'',_at:at});if(r.error)throw new Error(r.error.message);return;}
   const cur = await db.from('whatsapp_conversations').select('unread,name').eq('phone', phone).maybeSingle();
   if (cur.error) throw new Error(cur.error.message);
   const row: Record<string, unknown> = { phone, last_message: last.slice(0, 200), last_message_at: at };
@@ -80,18 +92,11 @@ async function storeMessage(db: Admin, m: any, direction: 'in' | 'out', source: 
 }
 
 async function maybeAutoReply(db: Admin, phone: string, inboundId: string) {
-  const s = await db.from('whatsapp_settings').select('auto_reply_enabled,auto_reply_text,account_state').eq('id', 1).single();
+  const s = await db.from('whatsapp_settings').select('auto_reply_enabled,account_state').eq('id', 1).single();
   if (s.error) throw new Error(s.error.message);
   if (!s.data.auto_reply_enabled || s.data.account_state !== 'ok') return;
-  const done = await db.from('whatsapp_messages').select('id,status').eq('reply_to', inboundId).maybeSingle();
-  if (done.error) throw new Error(done.error.message);
-  if (done.data) return; // already attempted for this inbound message
-  // At most one automatic reply per conversation every 12 hours.
-  const since = new Date(Date.now() - 12 * 3600_000).toISOString();
-  const claim = await db.from('whatsapp_conversations').update({ last_auto_reply_at: new Date().toISOString() }).eq('phone', phone).or(`last_auto_reply_at.is.null,last_auto_reply_at.lt.${since}`).select('phone');
-  if (claim.error) throw new Error(claim.error.message);
-  if (!claim.data?.length) return;
-  try { await sendText(db, phone, s.data.auto_reply_text, { source: 'auto', replyTo: inboundId }); } catch (e) { console.error('auto reply failed', e); }
+  const {queueJob}=await import('./whatsapp-automation.server');
+  await queueJob(db,`interpret:${inboundId}`,phone,'interpret',{inboundId,automatic:true});
 }
 
 export async function processEvent(db: Admin, event: string, payload: any) {
@@ -136,14 +141,17 @@ export async function processEvent(db: Admin, event: string, payload: any) {
 }
 
 export async function runEvent(db: Admin, row: { id: string; event: string; payload: unknown; attempts: number }) {
+  const claimed=await db.from('whatsapp_webhook_events').update({lease_until:new Date(Date.now()+60000).toISOString()}).eq('id',row.id).is('processed_at',null).or(`lease_until.is.null,lease_until.lt.${new Date().toISOString()}`).select('id');
+  if(claimed.error) return false;
+  if(!claimed.data.length) return true;
   try {
     await processEvent(db, row.event, row.payload);
-    const r = await db.from('whatsapp_webhook_events').update({ processed_at: new Date().toISOString(), processing_error: null }).eq('id', row.id);
+    const r = await db.from('whatsapp_webhook_events').update({ processed_at: new Date().toISOString(), processing_error: null,lease_until:null }).eq('id', row.id);
     if (r.error) throw new Error(r.error.message);
     return true;
   } catch (e) {
     const attempts = row.attempts + 1;
-    await db.from('whatsapp_webhook_events').update({ attempts, processing_error: e instanceof Error ? e.message : String(e), next_attempt_at: new Date(Date.now() + Math.min(3600, 30 * 2 ** attempts) * 1000).toISOString() }).eq('id', row.id);
+    await db.from('whatsapp_webhook_events').update({ attempts, lease_until:null,processing_error: e instanceof Error ? e.message : String(e), next_attempt_at: new Date(Date.now() + Math.min(3600, 30 * 2 ** attempts) * 1000).toISOString() }).eq('id', row.id);
     return false;
   }
 }
