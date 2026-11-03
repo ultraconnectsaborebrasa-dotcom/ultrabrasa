@@ -7,7 +7,8 @@ const empty:AlertConversation[]=[];
 const emit=()=>listeners.forEach(l=>l());
 export function useWhatsAppConversations(){return useSyncExternalStore(l=>{listeners.add(l);return()=>{listeners.delete(l);};},()=>conversations,()=>empty);}
 export function useWhatsAppPendingOrders(){return useSyncExternalStore(l=>{listeners.add(l);return()=>{listeners.delete(l);};},()=>pendingOrders,()=>0);}
-export function playWhatsAppSound(){if(!enabled||!audio)return;const osc=audio.createOscillator(),gain=audio.createGain();osc.connect(gain);gain.connect(audio.destination);osc.frequency.value=880;gain.gain.setValueAtTime(volume*.12,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.35);osc.start();osc.stop(audio.currentTime+.35);}
+const tone=(f:number,start:number,len:number,level:number,type:OscillatorType='square')=>{if(!audio)return;const osc=audio.createOscillator(),gain=audio.createGain();osc.type=type;osc.connect(gain);gain.connect(audio.destination);const t=audio.currentTime+start;osc.frequency.value=f;gain.gain.setValueAtTime(volume*level,t);gain.gain.exponentialRampToValueAtTime(.001,t+len);osc.start(t);osc.stop(t+len);};
+export function playWhatsAppSound(kind:'new'|'message'='new'){if(!enabled||!audio||volume<=0)return;if(kind==='new'){[0,.18,.36,.7,.88,1.06].forEach((s,i)=>tone(i%3===2?1320:i%3===1?1100:880,s,.16,.25));}else tone(660,0,.25,.08,'sine');}
 export async function activateWhatsAppSound(v=0.5){volume=v;enabled=true;audio??=new AudioContext();await audio.resume();playWhatsAppSound();if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();}
 export function setWhatsAppSound(on:boolean,v:number){enabled=on;volume=v;}
 export async function refreshWhatsAppConversations(){
@@ -18,12 +19,12 @@ export async function refreshWhatsAppConversations(){
  if(!pending.error){if(baseline&&pending.data.length>pendingOrders){playWhatsAppSound();const first=pending.data[0];if(first)window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:first.phone,name:fresh.find(c=>c.phone===first.phone)?.name??null,last_message:'Pedido aguardando aceite da loja'}}));}pendingOrders=pending.data.length;
  for(const p of pending.data){const key='request:'+p.id;if(Date.now()-Date.parse(p.created_at)>reminderMinutes*60000&&!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:p.phone,name:fresh.find(c=>c.phone===p.phone)?.name??null,last_message:'Pedido aguardando aceite da loja'}}));}}}
  if(baseline){for(const c of fresh){const old=conversations.find(o=>o.phone===c.phone);if(c.last_inbound_at&&Date.parse(c.last_inbound_at)>(old?.last_inbound_at?Date.parse(old.last_inbound_at):0)&&Date.now()-Date.parse(c.last_inbound_at)<60000){
- if(Date.now()-(lastSound.get(c.phone)??0)>8000){playWhatsAppSound();lastSound.set(c.phone,Date.now());}
- window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:c}));
- if(document.hidden&&'Notification' in window&&Notification.permission==='granted'){const n=new Notification(c.name||`+${c.phone}`,{body:c.last_message??'Nova mensagem',tag:`wa-${c.phone}`});n.onclick=()=>{window.focus();window.dispatchEvent(new CustomEvent('whatsapp-open',{detail:c.phone}));n.close();};}
+ const kind=c.attendance_status==='new'?'new':'message';if(Date.now()-(lastSound.get(c.phone)??0)>8000){playWhatsAppSound(kind);lastSound.set(c.phone,Date.now());}
+ window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{...c,kind}}));
+ if(document.hidden&&'Notification' in window&&Notification.permission==='granted'){const n=new Notification((kind==='new'?'Novo atendimento: ':'')+(c.name||`+${c.phone}`),{body:c.last_message??'Nova mensagem',tag:`wa-${c.phone}`});n.onclick=()=>{window.focus();window.dispatchEvent(new CustomEvent('whatsapp-open',{detail:c.phone}));n.close();};}
  }}}
  baseline=true;conversations=fresh;emit();
- for(const c of fresh){if(c.awaiting_since&&Date.now()-Date.parse(c.awaiting_since)>reminderMinutes*60000){const key=c.phone+':'+c.awaiting_since;if(!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{...c,last_message:'Cliente aguardando resposta'}}));}}}
+ for(const c of fresh){if(c.attendance_status!=='waiting_customer'&&c.attendance_status!=='finished'&&c.awaiting_since&&Date.now()-Date.parse(c.awaiting_since)>reminderMinutes*60000){const key=c.phone+':'+c.awaiting_since;if(!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{...c,last_message:'Cliente aguardando resposta'}}));}}}
  }catch(e){console.error('WhatsApp inbox refresh failed');}finally{loading=false;}
 }
 export function mountWhatsAppInbox(){refs++;if(refs===1){baseline=false;void supabase.from('whatsapp_settings').select('business').eq('id',1).single().then(r=>{if(!r.error&&r.data.business&&typeof r.data.business==='object'&&!Array.isArray(r.data.business)&&typeof r.data.business['reminderMinutes']==='number')reminderMinutes=r.data.business['reminderMinutes'];});void refreshWhatsAppConversations();timer=setInterval(()=>void refreshWhatsAppConversations(),4000);}return()=>{refs--;if(refs===0){clearInterval(timer);timer=undefined;conversations=[];baseline=false;emit();}};}
