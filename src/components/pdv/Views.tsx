@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Clock, Pencil, Plus, Printer, Star } from "lucide-react";
 import {
-  brl, isToday, loadOrderToDraft, markPaid, paid, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
+  brl, isToday, loadOrderToDraft, paid, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
 } from "@/lib/pdv-store";
-import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
 import { SalesHistory } from "./SalesHistory";
 import { paidSalesSince, summarizeSales } from '@/lib/sales-history';
@@ -14,9 +13,10 @@ import { Button } from '@/components/ui/button';
 import { printOrder } from '@/services/thermalPrinter';
 import { supabase } from '@/integrations/supabase/client';
 import { ReceiptReview } from './ReceiptReview';
-import { ReceiptRegistration } from './ReceiptRegistration';
 import { DeliveryDeparture } from './DeliveryDeparture';
 import { CancelOrderButton } from './CancelOrderButton';
+import { ManualPaymentDialog } from './ManualPaymentDialog';
+import { openCloud } from '@/lib/pdv-cloud';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -32,17 +32,18 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
   const settings = useStore((s) => s.settings);
   const cashOpen = useStore((s) => s.cash.open);
   const [paying, setPaying] = useState<Order | null>(null);
-  const [receiptOrders,setReceiptOrders]=useState<string[]>([]);
-  useEffect(()=>{const load=async()=>{const r=await supabase.from('payment_receipts').select('order_id').eq('state','review');if(!r.error)setReceiptOrders(r.data.flatMap(x=>x.order_id?[x.order_id]:[]));};void load();const timer=setInterval(()=>void load(),4000);return()=>clearInterval(timer);},[]);
+  const [search,setSearch]=useState('');
   // Comanda paga sai daqui; a etapa de cozinha/entrega continua nas telas próprias.
-  const open = orders.filter((o) => ["aberta", "cozinha", "pronto", "entrega"].includes(o.status) && o.paymentStatus !== "pago");
+  const open = orders.filter((o) => o.status !== 'cancelado' && o.status !== 'pago' && o.paymentStatus !== 'pago' && totals(o,settings.serviceFeePct).total-paid(o)>0.004);
+  const visible=open.filter(o=>`${o.number} ${o.customer} ${tableLabel(o)}`.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-6">
-      <Header title="Comandas abertas" sub={`${open.length} em andamento`} />
-      {!open.length && <Empty text="Nenhuma comanda aberta. Use “Cozinha (F8)” no PDV para abrir uma." />}
+      <Header title="Pagamentos pendentes" sub={`${open.length} pedidos · ${brl(open.reduce((sum,o)=>sum+Math.max(0,totals(o,settings.serviceFeePct).total-paid(o)),0))} a receber`} />
+      <input aria-label="Buscar pagamento" className="field w-full sm:max-w-sm" placeholder="Pedido, cliente ou mesa" value={search} onChange={e=>setSearch(e.target.value)}/>
+      {!visible.length && <Empty text="Nenhum pagamento pendente neste filtro." />}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {open.map((o) => {
+        {visible.map((o) => {
           const t = totals(o, settings.serviceFeePct).total;
           return (
             <div key={o.id} className="rounded-2xl border bg-card p-4">
@@ -50,31 +51,27 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
                 <div><div className="font-display text-2xl font-bold">#{o.number}</div><div className="text-sm font-semibold text-primary">{tableLabel(o)}</div>{o.customer&&<div className="text-xs text-muted-foreground">{o.customer}</div>}</div>
                 <StatusPill s={o.status} />
               </div>
-              {o.paymentStatus==='pago'&&<p className="text-sm text-warning">{o.payments.some(p=>p.verification==='unverified')?'Pago — conferir comprovante':'Pago'}</p>}
-              {receiptOrders.includes(o.id)&&<p className="text-sm text-warning">Comprovante precisa de conferência</p>}
+              <ReceiptReview orderId={o.id} viewOnly/>
               <ul className="my-3 space-y-0.5 text-sm">{o.items.map((i) => <li key={i.uid} className="flex justify-between"><span>{i.qty}× {i.name}</span><span className="font-mono text-muted-foreground">{brl(i.qty * i.price)}</span></li>)}</ul>
               <div className="flex items-center justify-between border-t pt-3">
                 <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock size={12} />{mins(o.createdAt)} min</span>
-                <span className="font-display text-xl font-bold">{brl(t)}</span>
+                <span className="font-display text-xl font-bold">{brl(Math.max(0,t-paid(o)))}</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {admin&&<ReceiptRegistration orderId={o.id}/>}
                 {admin&&o.type==='Delivery'&&<DeliveryDeparture orderId={o.id}/>}
                 <button className="btn btn-ghost text-xs" onClick={() => { loadOrderToDraft(o); goSell(); }}><Pencil size={13} />Editar</button>
                 <button className="btn btn-ghost text-xs" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={13} />Imprimir</button>
                 {admin && <CancelOrderButton orderId={o.id} number={o.number} hadPayment={o.payments.length>0}/>}
-                <Button size="sm" disabled={o.paymentStatus==='pago'||o.payments.length>0||receiptOrders.includes(o.id)} onClick={() => cashOpen ? setPaying(o) : toast.error("Abra o caixa primeiro.")}>{o.paymentStatus==='pago'?'Pago':receiptOrders.includes(o.id)?'Em conferência':'Cobrar'}</Button>
+                {admin&&<Button size="sm" disabled={o.payments.length>0} onClick={() => cashOpen ? setPaying(o) : toast.error("Caixa fechado. Abra o caixa na aba Caixa antes de dar baixa.")}>Dar baixa</Button>}
               </div>
             </div>
           );
         })}
       </div>
 
-      <SalesHistory />
+      <details><summary className="cursor-pointer text-sm font-semibold">Pagamentos recebidos e histórico</summary><SalesHistory /></details>
 
-      <Checkout open={!!paying} onClose={() => setPaying(null)} methods={settings.paymentMethods}
-        total={paying ? totals(paying, settings.serviceFeePct).total : 0} title={`Cobrar comanda #${paying?.number ?? ""}`}
-        onConfirm={(p) => { if (paying) { markPaid(paying.id, p); toast.success(`Comanda #${paying.number} paga`); } setPaying(null); }} />
+      {paying&&<ManualPaymentDialog order={{id:paying.id,number:paying.number,total:totals(paying,settings.serviceFeePct).total}} onClose={()=>setPaying(null)} methods={settings.paymentMethods} onPaid={openCloud}/>}
     </div>
   );
 }
