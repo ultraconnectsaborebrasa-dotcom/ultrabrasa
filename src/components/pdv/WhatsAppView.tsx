@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Send, RefreshCw, CheckCheck, Check, AlertTriangle, Settings2, History, UserRound, FileText, ArrowLeft, Search } from 'lucide-react';
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button as UIButton, type ButtonProps } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { brl, useStore, type Order } from '@/lib/pdv-store';
 import { normalizePhone } from '@/lib/pdv-customers';
@@ -16,6 +17,19 @@ import {ReceiptReview} from './ReceiptReview';
 import {ReceiptRegistration} from './ReceiptRegistration';
 import {retryReceiptAnalysis} from '@/lib/receipt-actions.functions';
 import { isStoreToday, storeDayStart } from '@/lib/daily-inbox';
+
+// Padroniza todos os botões desta tela com a paleta clara do WhatsApp.
+function Button({ variant = 'default', className, ...props }: ButtonProps) {
+  const palette = {
+    default: 'border border-[#16a34a] bg-[#16a34a] text-white shadow-sm hover:bg-[#15803d] hover:text-white',
+    destructive: 'border border-[#dc2626] bg-[#dc2626] text-white hover:bg-[#b91c1c] hover:text-white',
+    outline: 'border border-[#d1e7dc] bg-white text-[#374151] shadow-sm hover:bg-[#f0fdf4] hover:text-[#166534]',
+    secondary: 'border border-[#dcfce7] bg-[#f0fdf4] text-[#166534] hover:bg-[#dcfce7] hover:text-[#14532d]',
+    ghost: 'border border-transparent bg-transparent text-[#374151] hover:bg-[#f0fdf4] hover:text-[#166534]',
+    link: 'text-[#15803d] underline-offset-4 hover:text-[#166534] hover:underline',
+  } as const;
+  return <UIButton {...props} variant={variant} className={cn(palette[variant], className)} />;
+}
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status:string; assigned_name:string|null; automation_paused:boolean; awaiting_since:string|null };
 type Msg = { id: string; direction: string; source: string; kind: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
