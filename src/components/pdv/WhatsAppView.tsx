@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageCircle, Send, RefreshCw, CheckCheck, Check, AlertTriangle, Settings2, History, UserRound, FileText } from 'lucide-react';
+import { MessageCircle, Send, RefreshCw, CheckCheck, Check, AlertTriangle, Settings2, History, UserRound, FileText, ArrowLeft, Search } from 'lucide-react';
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -126,20 +126,34 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
     {requests.filter(r=>period==='history'||isStoreToday(r.created_at)).length>0&&<div className="space-y-2 border-l-2 border-warning p-3"><h2 className="font-semibold text-warning">Aguardando aceite da loja · {requests.filter(r=>period==='history'||isStoreToday(r.created_at)).length}</h2>{requests.filter(r=>period==='history'||isStoreToday(r.created_at)).map(r=><div key={r.id} className="flex flex-wrap items-center gap-2 text-sm"><Button variant="ghost" onClick={()=>setActive(r.phone)}>{r.public_code?`Catálogo ${r.public_code} · `:''}{convs.find(c=>c.phone===r.phone)?.name||`+${r.phone}`} · {brl(r.quoted_total)}</Button><span className="text-muted-foreground">{Math.floor((Date.now()-Date.parse(r.created_at))/60000)} min</span><Button size="sm" disabled={busy} onClick={()=>void accept(r.id,true)}>Aceitar e enviar à cozinha</Button><Button size="sm" variant="outline" disabled={busy} onClick={()=>void accept(r.id,false)}>Recusar</Button><details className="w-full"><summary>Resumo</summary><pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(r.request,null,2)}</pre></details></div>)}</div>}
     <div className="flex flex-wrap items-center gap-2"><Button size="sm" variant={period==='today'?'default':'outline'} onClick={()=>{setPeriod('today');setActive(null);setFilter('new');setConvs([]);}}>Hoje</Button><Button size="sm" variant={period==='history'?'default':'outline'} onClick={()=>{setPeriod('history');setActive(null);setFilter('archived');setConvs([]);}}><History size={14}/>Histórico</Button><span className="ml-auto text-sm text-muted-foreground">{period==='today'?'Atendimentos de hoje':'Histórico preservado'}</span></div>
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">{TABS.map(([key,label])=>{const n=convs.filter(c=>(period==='history'||isStoreToday(c.last_message_at))&&situation(c)===key).length;return <Button key={key} variant={filter===key?'default':'outline'} className={`h-auto justify-between py-2 ${key==='new'&&n?'border-success':''}`} onClick={()=>setFilter(key)}><span>{label}</span><span className="rounded-full bg-elevated px-2 text-xs font-bold text-foreground">{n}</span></Button>;})}</div>
-    <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_240px]">
-      <ul className="min-h-0 overflow-y-auto rounded-lg border">
-        <li className="p-2"><input aria-label="Buscar conversa" className="field" placeholder="Nome ou WhatsApp" value={search} onChange={e=>setSearch(e.target.value)}/></li>
+    <div className="grid min-h-0 flex-1 gap-3 grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_260px]">
+      <ul className={`min-h-0 overflow-y-auto rounded-lg border bg-background ${active ? 'hidden md:block' : 'block'}`}>
+        <li className="sticky top-0 z-10 border-b bg-background p-3">
+          <div className="mb-2 flex items-center justify-between"><span className="font-semibold">Conversas</span><span className="text-xs text-muted-foreground">{visibleConvs.length} atendimento(s)</span></div>
+          <div className="relative"><Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"/><input aria-label="Buscar conversa" className="field pl-9" placeholder="Buscar nome ou WhatsApp" value={search} onChange={e=>setSearch(e.target.value)}/></div>
+        </li>
         {!visibleConvs.length && <li className="p-4 text-sm text-muted-foreground">Nenhuma conversa {period==='today'?'de hoje ':''}neste filtro.</li>}
         {[...visibleConvs].sort((a,b)=>Date.parse(b.last_message_at)-Date.parse(a.last_message_at)).map(c => <li key={c.phone}><Button variant="ghost" onClick={() => setActive(c.phone)} className={`h-auto w-full flex-col items-stretch border-b p-3 text-left ${active === c.phone ? 'bg-primary/10' : 'hover:bg-elevated'}`}>
-          <div className="flex justify-between gap-2"><span className="truncate font-semibold">{c.name || `+${c.phone}`}</span>{c.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-success px-1 text-[10px] text-background">{c.unread}</span>}</div>
-          <div className="truncate text-xs text-muted-foreground">{c.last_message}</div>
+          <div className="flex items-center gap-2">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{(c.name || c.phone).trim().slice(0,1).toUpperCase()}</span>
+            <span className="min-w-0 flex-1">
+              <span className="flex justify-between gap-2"><span className="truncate font-semibold">{c.name || `+${c.phone}`}</span><span className="shrink-0 text-[10px] text-muted-foreground">{new Date(c.last_message_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></span>
+              <span className="mt-1 flex items-center justify-between gap-2"><span className="truncate text-xs text-muted-foreground">{c.last_message || 'Nenhuma mensagem'}</span>{c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-success px-1 text-[10px] text-background">{c.unread}</span>}</span>
+            </span>
+          </div>
           <div className="flex flex-wrap justify-between gap-1 text-[10px] text-muted-foreground"><span className={c.assigned_name?'font-semibold text-foreground':''}>{c.assigned_name?`Responsável: ${c.assigned_name}`:'Sem responsável'}</span>{c.attendance_status==='needs_reply'&&c.assigned_name&&<span className="rounded bg-warning/20 px-1 font-semibold text-warning">Precisa de resposta</span>}{c.awaiting_since&&<span className={Date.now()-Date.parse(c.awaiting_since)>(cfg?.business.reminderMinutes??5)*60000?'text-warning':''}>{Math.floor((Date.now()-Date.parse(c.awaiting_since))/60000)} min aguardando</span>}</div>
         </Button></li>)}
       </ul>
-      <div className="flex min-h-[360px] flex-col rounded-lg border">
-        {!active ? <div className="m-auto text-sm text-muted-foreground">Escolha uma conversa</div> : <>
-          <div className="space-y-2 border-b p-3"><div className="font-semibold">{conv?.name || `+${active}`}</div><div className="text-xs text-muted-foreground">+{active} · {windowOpen ? 'Janela de atendimento aberta' : 'Fora da janela de 24 h: somente modelos aprovados'}</div><div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={()=>void action('take')}><UserRound size={14}/>Assumir atendimento</Button><Button size="sm" variant="outline" onClick={()=>void action('resume')}>Retomar robô</Button><Button size="sm" variant="outline" onClick={()=>void action('waiting')}>Aguardar cliente</Button><Button size="sm" variant="outline" onClick={()=>{void action('finish');setActive(null);}}>Arquivar</Button>{onBuildOrder&&<Button size="sm" onClick={()=>onBuildOrder(active,conv?.name??'')}>Montar pedido</Button>}<select aria-label="Transferir para" className="field h-8 text-xs" value={transferTo} onChange={e=>setTransferTo(e.target.value)}><option value="">Transferir para…</option>{staff.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select><Button size="sm" variant="outline" disabled={!transferTo} onClick={()=>void action('transfer')}>Transferir</Button></div><div className="text-xs text-muted-foreground">{conv?.assigned_name||'Sem responsável'} · Robô {conv?.automation_paused?'pausado':'disponível'}</div></div>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+      <div className={`min-h-[min(70vh,680px)] min-w-0 flex-col overflow-hidden rounded-lg border bg-background ${active ? 'flex' : 'hidden md:flex'}`}>
+        {!active ? <div className="m-auto hidden text-sm text-muted-foreground md:block">Escolha uma conversa</div> : <>
+          <div className="sticky top-0 z-10 space-y-2 border-b bg-background p-3">
+            <div className="flex items-center gap-2">
+              <Button size="icon" variant="ghost" className="md:hidden" aria-label="Voltar para conversas" onClick={()=>setActive(null)}><ArrowLeft/></Button>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{(conv?.name || active).trim().slice(0,1).toUpperCase()}</span>
+              <div className="min-w-0 flex-1"><div className="truncate font-semibold">{conv?.name || `+${active}`}</div><div className="truncate text-xs text-muted-foreground">+{active}</div></div>
+              <span className={`hidden rounded-full px-2 py-1 text-[10px] sm:inline-flex ${windowOpen?'bg-success/10 text-success':'bg-warning/10 text-warning'}`}>{windowOpen ? 'Atendimento aberto' : 'Fora da janela de 24 h'}</span>
+            </div><div className="text-xs text-muted-foreground">+{active} · {windowOpen ? 'Janela de atendimento aberta' : 'Fora da janela de 24 h: somente modelos aprovados'}</div><div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={()=>void action('take')}><UserRound size={14}/>Assumir atendimento</Button><Button size="sm" variant="outline" onClick={()=>void action('resume')}>Retomar robô</Button><Button size="sm" variant="outline" onClick={()=>void action('waiting')}>Aguardar cliente</Button><Button size="sm" variant="outline" onClick={()=>{void action('finish');setActive(null);}}>Arquivar</Button>{onBuildOrder&&<Button size="sm" onClick={()=>onBuildOrder(active,conv?.name??'')}>Montar pedido</Button>}<select aria-label="Transferir para" className="field h-8 text-xs" value={transferTo} onChange={e=>setTransferTo(e.target.value)}><option value="">Transferir para…</option>{staff.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select><Button size="sm" variant="outline" disabled={!transferTo} onClick={()=>void action('transfer')}>Transferir</Button></div><div className="text-xs text-muted-foreground">{conv?.assigned_name||'Sem responsável'} · Robô {conv?.automation_paused?'pausado':'disponível'}</div></div>
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-muted/20 p-3 sm:p-4">
             {msgs.map(m => <div key={m.id} className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.direction === 'in' ? 'bg-elevated' : 'ml-auto bg-primary/15'}`}>
               <div className="whitespace-pre-wrap break-words">{m.body}</div>
               <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
@@ -163,7 +177,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
           </div>
         </>}
       </div>
-      <aside className="space-y-2 rounded-lg border p-3 text-sm md:col-span-2 xl:col-span-1">
+      <aside className="hidden space-y-2 rounded-lg border p-3 text-sm xl:block">
         {active&&<WhatsAppCustomerCard phone={active}/>}
         <div className="font-semibold">Notas internas</div>{notes.map(n=><div key={n.id} className="border-l-2 border-warning pl-2 text-xs">{n.body}<span className="block text-muted-foreground">{n.author_name}</span></div>)}<textarea aria-label="Nota interna" className="field" value={note} onChange={e=>setNote(e.target.value)} placeholder="Somente para a equipe"/><Button size="sm" variant="outline" disabled={!note.trim()||!active} onClick={()=>void action('note')}>Salvar nota interna</Button>
         <div className="font-semibold">Pedidos deste cliente</div>
