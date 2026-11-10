@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Limpeza solicitada e arquivo de atendimento
+- [ ] Limpar contadores de mensagens não lidas e reconhecer avisos de erro sem reenviar mensagens.
+- [ ] Revisar com o usuário os pedidos antigos ainda na cozinha, preservando pagamentos e etapas reais.
+- [ ] Reorganizar o atendimento humano e montagem de pedidos conforme o arquivo enviado; implementar após a limpeza imediata.
+
 ## Organização diária
 - [x] WhatsApp: mostrar somente conversas e mensagens do dia de Eunápolis por padrão, com histórico separado e sem exclusão.
 - [x] Pagamentos: lista de pendentes com busca e total, incluindo entregues não pagos, e janela de baixa manual compartilhada; valores parciais continuam sujeitos à limitação existente do recebimento.
