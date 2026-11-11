@@ -84,6 +84,11 @@ export function KitchenView() {
   return (
     <div className="space-y-4">
       <Header title="Cozinha · Preparação" sub={`${orders.filter(o=>o.status==='cozinha').length} preparando · ${orders.filter(o=>o.status==='pronto').length} prontos · ${new Date().toLocaleDateString("pt-BR")}`} />
+      {orders.some(o=>o.status==='cozinha') && (
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={() => { const list = orders.filter(o=>o.status==='cozinha'); if (window.confirm(`Marcar ${list.length} pedido(s) como prontos?`)) list.forEach(o => setOrderStatus(o.id, "pronto")); }}>Marcar todos como prontos ({orders.filter(o=>o.status==='cozinha').length})</Button>
+        </div>
+      )}
       {!orders.length && <Empty text="Cozinha livre 🔥" />}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[...orders].reverse().map((o) => {
