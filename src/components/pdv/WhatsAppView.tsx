@@ -64,7 +64,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
   const[requests,setRequests]=useState<{id:string;phone:string;quoted_total:number;request:unknown;created_at:string;public_code:string|null}[]>([]);
   const[drafts,setDrafts]=useState<Record<string,string>>({});
   const [period,setPeriod]=useState<'today'|'history'>('today');
-  const [day,setDay]=useState(()=>storeDayStart());
+  const [day,setDay]=useState(()=>storeDayStart());const[clearedAt,setClearedAt]=useState(0);useEffect(()=>{setClearedAt(Number(localStorage.getItem('ultrabrasa-wa-cleared-at'))||0);},[]);const since=()=>new Date(Math.max(Date.parse(day),clearedAt)).toISOString();
   useEffect(()=>{try{setDrafts(JSON.parse(localStorage.getItem('ultrabrasa-wa-drafts')??'{}'));}catch{}},[]);
   useEffect(()=>{if(openPhone)setActive(openPhone);},[openPhone]);
   useEffect(()=>{if(active)setText(drafts[active]??'');},[active]);
@@ -75,13 +75,13 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
   async function accept(id:string,yes:boolean){const reason=yes?undefined:window.prompt('Motivo da recusa');if(!yes&&!reason?.trim())return;setBusy(true);try{await requestFn({data:{id,accept:yes,reason:reason??undefined}});toast.success(yes?'Pedido aceito e enviado à cozinha':'Pedido recusado');await loadRequests();await loadConvs();void refreshWhatsAppConversations();}catch(e){toast.error(e instanceof Error?e.message:'Falha');}finally{setBusy(false);}}
 
   const checkStatus = () => statusFn().then(setStatus).catch(e => setStatus({ connected: false, reason: String(e?.message ?? e) }));
-  const loadConvs = async () => { let q = supabase.from('whatsapp_conversations').select('phone,name,last_message,last_message_at,unread,last_inbound_at,attendance_status,assigned_name,automation_paused,awaiting_since');if(period==='today')q=q.gte('last_message_at',day);const r=await q.order('last_message_at', { ascending: false }).limit(500); if (!r.error) setConvs(r.data); };
-  const loadMsgs = async (phone: string) => { let q = supabase.from('whatsapp_messages').select('id,direction,source,kind,body,status,error,provider_at,order_id,sent_by_name').eq('phone', phone);if(period==='today')q=q.gte('provider_at',day);const r=await q.order('provider_at',{ascending:false}).limit(500); if (!r.error) setMsgs([...r.data].reverse()); };
+  const loadConvs = async () => { let q = supabase.from('whatsapp_conversations').select('phone,name,last_message,last_message_at,unread,last_inbound_at,attendance_status,assigned_name,automation_paused,awaiting_since');if(period==='today')q=q.gte('last_message_at',since());const r=await q.order('last_message_at', { ascending: false }).limit(500); if (!r.error) setConvs(r.data); };
+  const loadMsgs = async (phone: string) => { let q = supabase.from('whatsapp_messages').select('id,direction,source,kind,body,status,error,provider_at,order_id,sent_by_name').eq('phone', phone);if(period==='today')q=q.gte('provider_at',since());const r=await q.order('provider_at',{ascending:false}).limit(500); if (!r.error) setMsgs([...r.data].reverse()); };
   const loadCfg = async () => { const r = await supabase.from('whatsapp_settings').select('auto_reply_enabled,auto_reply_text,quick_replies,account_state,account_event,business').eq('id', 1).single(); if (!r.error) setCfg({ ...r.data,business:businessSchema.parse(r.data.business), quick_replies: Array.isArray(r.data.quick_replies) ? r.data.quick_replies as string[] : [] }); };
 
   useEffect(() => { void checkStatus(); void loadConvs(); void loadCfg();void loadRequests();void staffFn().then(setStaff).catch(()=>{}); const t = setInterval(() => {void loadRequests();}, 5000); return () => clearInterval(t); }, []);
-  useEffect(()=>{void loadConvs();const t=setInterval(()=>{setDay(storeDayStart());void loadConvs();},5000);return()=>clearInterval(t);},[period,day]);
-  useEffect(() => { if (!active) return;setMsgs([]); void loadMsgs(active);void loadNotes(active);void actionFn({data:{phone:active,action:'read'}}).catch(()=>{}); const t = setInterval(() => void loadMsgs(active), 4000); return () => clearInterval(t); }, [active,period,day]);
+  useEffect(()=>{void loadConvs();const t=setInterval(()=>{setDay(storeDayStart());void loadConvs();},5000);return()=>clearInterval(t);},[period,day,clearedAt]);
+  useEffect(() => { if (!active) return;setMsgs([]); void loadMsgs(active);void loadNotes(active);void actionFn({data:{phone:active,action:'read'}}).catch(()=>{}); const t = setInterval(() => void loadMsgs(active), 4000); return () => clearInterval(t); }, [active,period,day,clearedAt]);
 
   const paidSet=useMemo(()=>new Set([...(paidIds??[]),...orders.filter(o=>o.paymentStatus==='pago').map(o=>o.id)]),[paidIds,orders]);
   const situation=(c:Conv):Tab=>{const q=queueOf(c);if(q==='finished'||!isStoreToday(c.last_message_at))return'archived';const reqs=recent.filter(r=>r.phone===c.phone&&r.status==='accepted');if(recent.some(r=>r.phone===c.phone&&r.status==='awaiting_acceptance')||reqs.some(r=>r.order_id&&!paidSet.has(r.order_id)))return'ordered';if(paidPhones.includes(c.phone)||reqs.some(r=>r.order_id&&paidSet.has(r.order_id)))return'paid';if(reqs.length)return'ordered';if(q==='new')return'new';return'in_service';};
@@ -143,6 +143,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
       <div className="mr-2 min-w-0"><p className="text-sm font-semibold text-slate-800">Período</p><p className="text-xs text-slate-500">Escolha quais conversas deseja visualizar</p></div>
       <Button size="sm" variant="ghost" className={period==='today'?'border border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800':'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900'} onClick={()=>{setPeriod('today');setActive(null);setFilter('new');setConvs([]);}}>Hoje</Button>
       <Button size="sm" variant="ghost" className={period==='history'?'border border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800':'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900'} onClick={()=>{setPeriod('history');setActive(null);setFilter('archived');setConvs([]);}}><History size={14}/> Histórico</Button>
+      {period==='today'&&<Button size="sm" variant="outline" onClick={()=>{if(!window.confirm('Esconder todas as mensagens de hoje da tela? Elas continuam no Histórico.'))return;const now=Date.now();localStorage.setItem('ultrabrasa-wa-cleared-at',String(now));setClearedAt(now);setActive(null);setConvs([]);setMsgs([]);}}>Limpar mensagens</Button>}
       <span className="ml-auto text-xs text-slate-500">{period==='today'?'Atendimentos de hoje':'Histórico preservado'}</span>
     </div>
     <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">

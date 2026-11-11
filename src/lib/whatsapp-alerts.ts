@@ -20,6 +20,7 @@ function saveAcked(){try{localStorage.setItem(ACK_KEY,JSON.stringify([...acked].
 export function getRepeatSeconds(){try{const v=Number(localStorage.getItem(REPEAT_KEY));return [15,30,60].includes(v)?v:30;}catch{return 30;}}
 export function setRepeatSeconds(s:number){try{localStorage.setItem(REPEAT_KEY,String(s));}catch{}}
 export function acknowledgeOrderAlert(id:string){acked.add(id);saveAcked();orderAlerts=orderAlerts.filter(a=>a.id!==id);emit();}
+export function acknowledgeAllOrderAlerts(){for(const a of orderAlerts)acked.add(a.id);saveAcked();orderAlerts=[];emit();}
 export function pruneAcked(ackedIds:Set<string>,pendingIds:Set<string>){const next=new Set([...ackedIds].filter(id=>pendingIds.has(id)));return next;}
 export function orderAlertFromRequest(r:RequestRow,name:string|null):OrderAlert{
  const req=(r.request??{}) as {type?:string|null;items?:{productId?:string;qty?:number;note?:string}[];delivery?:{paymentMethod?:string|null};payment?:string|null};
