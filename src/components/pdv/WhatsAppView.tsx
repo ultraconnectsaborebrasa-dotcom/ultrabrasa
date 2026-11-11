@@ -28,7 +28,7 @@ function Button({ variant = 'default', className, ...props }: ButtonProps) {
     ghost: 'border border-transparent bg-transparent text-[#374151] hover:bg-[#f0fdf4] hover:text-[#166534]',
     link: 'text-[#15803d] underline-offset-4 hover:text-[#166534] hover:underline',
   } as const;
-  return <UIButton {...props} variant={variant} className={cn(palette[variant], className)} />;
+  return <UIButton {...props} variant={variant} className={cn(palette[variant ?? "default"], className)} />;
 }
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status:string; assigned_name:string|null; automation_paused:boolean; awaiting_since:string|null };
