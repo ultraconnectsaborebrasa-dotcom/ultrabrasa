@@ -87,6 +87,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
   const situation=(c:Conv):Tab=>{const q=queueOf(c);if(q==='finished'||!isStoreToday(c.last_message_at))return'archived';const reqs=recent.filter(r=>r.phone===c.phone&&r.status==='accepted');if(recent.some(r=>r.phone===c.phone&&r.status==='awaiting_acceptance')||reqs.some(r=>r.order_id&&!paidSet.has(r.order_id)))return'ordered';if(paidPhones.includes(c.phone)||reqs.some(r=>r.order_id&&paidSet.has(r.order_id)))return'paid';if(reqs.length)return'ordered';if(q==='new')return'new';return'in_service';};
   const visibleConvs=convs.filter(c=>(period==='history'||isStoreToday(c.last_message_at))&&(search.trim()?true:situation(c)===filter)&&`${c.name} ${c.phone}`.toLowerCase().includes(search.toLowerCase()));
   const conv = convs.find(c => c.phone === active);
+  const activeRequest = requests.find(r => r.phone === active);
   const linked: Order[] = useMemo(() => active ? orders.filter(o => o.customerPhone && normalizePhone(o.customerPhone) === active).sort((a, b) => b.createdAt - a.createdAt).slice(0, 8) : [], [orders, active]);
   const windowOpen = conv?.last_inbound_at ? Date.now() - new Date(conv.last_inbound_at).getTime() < 24 * 3600_000 : false;
 
@@ -120,8 +121,8 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
     }finally{setBusy(false);}
   }
 
-  return <section className="mx-auto flex h-full max-w-7xl flex-col gap-4 bg-white p-2 text-slate-800 sm:p-4">
-    <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white pb-4">
+  return <section className="mx-auto flex h-full min-h-0 max-w-[1600px] flex-col gap-3 bg-[#f7faf8] p-2 text-slate-800 sm:gap-4 sm:p-4">
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
       <MessageCircle className="text-success"/><h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">WhatsApp</h1>
       {status === null ? <span className="text-sm text-slate-500">Verificando…</span> : status.connected
         ? <span className="text-sm text-success">● Conectado · {status.phone}{status.coexistence ? ' · também no celular' : ''}</span>
@@ -148,8 +149,8 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
       <div><h2 className="text-sm font-semibold text-slate-900">Etapas do atendimento</h2><p className="text-xs text-slate-500">As conversas ficam separadas conforme o andamento de cada cliente.</p></div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">{TABS.map(([key,label])=>{const n=convs.filter(c=>(period==='history'||isStoreToday(c.last_message_at))&&situation(c)===key).length;const selected=filter===key;return <Button key={key} variant="ghost" className={`h-auto min-h-14 justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${selected?'border-emerald-500 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900':'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900'}`} onClick={()=>setFilter(key)}><span className="min-w-0 whitespace-normal text-xs font-semibold sm:text-sm">{label}</span><span className={`grid h-7 min-w-7 shrink-0 place-items-center rounded-full px-2 text-xs font-bold ${selected?'bg-emerald-600 text-white':'bg-slate-200 text-slate-700'}`}>{n}</span></Button>;})}</div>
     </section>
-    <div className="grid min-h-0 flex-1 gap-3 grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_260px]">
-      <ul className={`min-h-0 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm ${active ? 'hidden md:block' : 'block'}`}>
+    <div className="grid min-h-0 flex-1 gap-3 grid-cols-1 md:grid-cols-[minmax(250px,0.82fr)_minmax(0,1.8fr)] xl:grid-cols-[minmax(270px,0.85fr)_minmax(420px,1.8fr)_minmax(250px,0.8fr)]">
+      <ul className={`min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm ${active ? 'hidden md:block' : 'block'}`}>
         <li className="sticky top-0 z-10 border-b border-slate-200 bg-white p-3">
           <div className="mb-2 flex items-center justify-between"><span className="font-semibold">Conversas</span><span className="text-xs text-slate-500">{visibleConvs.length} atendimento(s)</span></div>
           <div className="relative"><Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input aria-label="Buscar conversa" className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100" placeholder="Buscar nome ou WhatsApp" value={search} onChange={e=>setSearch(e.target.value)}/></div>
@@ -166,7 +167,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
           <div className="flex flex-wrap justify-between gap-1 text-[10px] text-slate-500"><span className={c.assigned_name?'font-semibold text-foreground':''}>{c.assigned_name?`Responsável: ${c.assigned_name}`:'Sem responsável'}</span>{c.attendance_status==='needs_reply'&&c.assigned_name&&<span className="rounded bg-warning/20 px-1 font-semibold text-warning">Precisa de resposta</span>}{c.awaiting_since&&<span className={Date.now()-Date.parse(c.awaiting_since)>(cfg?.business.reminderMinutes??5)*60000?'text-warning':''}>{Math.floor((Date.now()-Date.parse(c.awaiting_since))/60000)} min aguardando</span>}</div>
         </Button></li>)}
       </ul>
-      <div className={`min-h-[min(70vh,680px)] min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ${active ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`min-h-[min(72vh,760px)] min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${active ? 'flex' : 'hidden md:flex'}`} >
         {!active ? <div className="m-auto hidden text-sm text-slate-500 md:block">Escolha uma conversa</div> : <>
           <div className="sticky top-0 z-10 space-y-3 border-b border-slate-200 bg-white p-4">
             <div className="flex items-center gap-2">
@@ -175,7 +176,8 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
               <div className="min-w-0 flex-1"><div className="truncate font-semibold">{conv?.name || `+${active}`}</div><div className="truncate text-xs text-slate-500">+{active}</div></div>
               <span className={`hidden rounded-full px-2 py-1 text-[10px] sm:inline-flex ${windowOpen?'bg-success/10 text-success':'bg-warning/10 text-warning'}`}>{windowOpen ? 'Atendimento aberto' : 'Fora da janela de 24 h'}</span>
             </div><div className="text-xs text-slate-500">+{active} · {windowOpen ? 'Janela de atendimento aberta' : 'Fora da janela de 24 h: somente modelos aprovados'}</div><div className="flex flex-wrap gap-1"><Button size="sm" variant="outline" onClick={()=>void action('take')}><UserRound size={14}/>Assumir atendimento</Button><Button size="sm" variant="outline" onClick={()=>void action('resume')}>Retomar robô</Button><Button size="sm" variant="outline" onClick={()=>void action('waiting')}>Aguardar cliente</Button><Button size="sm" variant="outline" onClick={()=>{void action('finish');setActive(null);}}>Arquivar</Button>{onBuildOrder&&<Button size="sm" className="border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" onClick={()=>onBuildOrder(active,conv?.name??'')}>Montar pedido</Button>}<select aria-label="Transferir para" className="field h-8 text-xs" value={transferTo} onChange={e=>setTransferTo(e.target.value)}><option value="">Transferir para…</option>{staff.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select><Button size="sm" variant="outline" disabled={!transferTo} onClick={()=>void action('transfer')}>Transferir</Button></div><div className="text-xs text-slate-500">{conv?.assigned_name||'Sem responsável'} · Robô {conv?.automation_paused?'pausado':'disponível'}</div></div>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3 sm:p-5">
+          {activeRequest && <div className="mx-3 mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 shadow-sm sm:mx-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-bold text-amber-950">Pedido pronto para conferência</p><p className="text-xs text-amber-800">O cliente já confirmou o resumo. Confira os dados antes de enviar à cozinha.</p></div><span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900">{brl(activeRequest.quoted_total)}</span></div><details className="mt-2"><summary className="cursor-pointer text-xs font-semibold text-amber-900">Conferir dados do pedido</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-white/80 p-2 text-xs text-slate-700">{JSON.stringify(activeRequest.request,null,2)}</pre></details><div className="mt-3 flex flex-wrap gap-2"><Button disabled={busy} onClick={()=>void accept(activeRequest.id,true)}>Confirmar e enviar para cozinha</Button><Button variant="outline" disabled={busy} onClick={()=>void accept(activeRequest.id,false)}>Recusar pedido</Button></div></div>}
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#f3f7f5] p-3 sm:p-5">
             {msgs.map(m => <div key={m.id} className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.direction === 'in' ? 'border border-slate-200 bg-white text-slate-800 shadow-sm' : 'ml-auto border border-emerald-100 bg-emerald-50 text-slate-800 shadow-sm'}`}>
               <div className="whitespace-pre-wrap break-words">{m.body}</div>
               <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-500">
@@ -199,7 +201,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
           </div>
         </>}
       </div>
-      <aside className="hidden space-y-2 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm xl:block">
+      <aside className="hidden min-h-0 space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm xl:block">
         {active&&<WhatsAppCustomerCard phone={active}/>}
         <div className="font-semibold">Notas internas</div>{notes.map(n=><div key={n.id} className="border-l-2 border-warning pl-2 text-xs">{n.body}<span className="block text-slate-500">{n.author_name}</span></div>)}<textarea aria-label="Nota interna" className="field" value={note} onChange={e=>setNote(e.target.value)} placeholder="Somente para a equipe"/><Button size="sm" variant="outline" disabled={!note.trim()||!active} onClick={()=>void action('note')}>Salvar nota interna</Button>
         <div className="font-semibold">Pedidos deste cliente</div>
