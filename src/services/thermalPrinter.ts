@@ -88,7 +88,10 @@ export function formatReceipt(order: Order, serviceFeePct: number): string {
   if (order.serviceFee && sum.service) lines.push(pair('SERVICO:', money(sum.service)));
  }
  lines.push(pair('TOTAL:', money(sum.total)), line);
- if (order.payments?.length) lines.push(...wrap('PAGAMENTO: ' + order.payments.map(p => p.method).join(', ')), line);
+ const paymentMethods = order.payments?.length
+  ? order.payments.map(p => p.method).join(', ')
+  : isDeliveryOrder(order) ? order.delivery?.paymentMethod : '';
+ if (paymentMethods) lines.push(...wrap('PAGAMENTO: ' + paymentMethods), line);
  if (order.note) lines.push(...wrap('OBS: ' + order.note), line);
  lines.push(center('FIM DO PEDIDO'), '', '', '', '');
  return lines.join('\n') + '\n';
