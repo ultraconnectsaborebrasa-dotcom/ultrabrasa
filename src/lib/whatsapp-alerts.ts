@@ -16,7 +16,7 @@ export function useWhatsAppPendingOrders(){return useSyncExternalStore(subscribe
 export function useWhatsAppOrderAlerts(){return useSyncExternalStore(subscribe,()=>orderAlerts,()=>emptyAlerts);}
 export function useWhatsAppReceiptAlerts(){return useSyncExternalStore(subscribe,()=>receiptAlerts,()=>emptyReceipts);}
 function loadAcked(){try{acked=new Set(JSON.parse(localStorage.getItem(ACK_KEY)??'[]'));}catch{acked=new Set();}}
-function saveAcked(){try{localStorage.setItem(ACK_KEY,JSON.stringify([...acked].slice(-200)));}catch{}}
+function saveAcked(){try{localStorage.setItem(ACK_KEY,JSON.stringify([...acked].slice(-1000)));}catch{}}
 export function getRepeatSeconds(){try{const v=Number(localStorage.getItem(REPEAT_KEY));return [15,30,60].includes(v)?v:30;}catch{return 30;}}
 export function setRepeatSeconds(s:number){try{localStorage.setItem(REPEAT_KEY,String(s));}catch{}}
 export function acknowledgeOrderAlert(id:string){acked.add(id);saveAcked();orderAlerts=orderAlerts.filter(a=>a.id!==id);emit();}
@@ -44,7 +44,6 @@ export async function refreshWhatsAppConversations(){
   const pending=await supabase.from('whatsapp_order_requests').select('id,phone,created_at,quoted_total,public_code,order_number,request').eq('status','awaiting_acceptance');
   if(!pending.error){
    const rows=pending.data as RequestRow[];
-   acked=pruneAcked(acked,new Set(rows.map(x=>x.id)));
    const alerts=rows.map(x=>orderAlertFromRequest(x,nameOf(x.phone))).filter(a=>!acked.has(a.id)).sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
    const grew=baseline&&alerts.length>orderAlerts.length;
    orderAlerts=alerts;pendingOrders=rows.length;

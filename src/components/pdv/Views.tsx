@@ -1,3 +1,4 @@
+import { confirmAction } from '@/lib/confirm-action';
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Clock, Pencil, Plus, Printer, Star } from "lucide-react";
@@ -86,7 +87,7 @@ export function KitchenView() {
       <Header title="Cozinha · Preparação" sub={`${orders.filter(o=>o.status==='cozinha').length} preparando · ${orders.filter(o=>o.status==='pronto').length} prontos · ${new Date().toLocaleDateString("pt-BR")}`} />
       {orders.some(o=>o.status==='cozinha') && (
         <div className="flex justify-end">
-          <Button variant="outline" onClick={() => { const list = orders.filter(o=>o.status==='cozinha'); if (window.confirm(`Marcar ${list.length} pedido(s) como prontos?`)) list.forEach(o => setOrderStatus(o.id, "pronto")); }}>Marcar todos como prontos ({orders.filter(o=>o.status==='cozinha').length})</Button>
+          <Button variant="outline" onClick={async () => { const list = orders.filter(o=>o.status==='cozinha'); if (await confirmAction(`Marcar ${list.length} pedido(s) como prontos?`)) list.forEach(o => setOrderStatus(o.id, "pronto")); }}>Marcar todos como prontos ({orders.filter(o=>o.status==='cozinha').length})</Button>
         </div>
       )}
       {!orders.length && <Empty text="Cozinha livre 🔥" />}

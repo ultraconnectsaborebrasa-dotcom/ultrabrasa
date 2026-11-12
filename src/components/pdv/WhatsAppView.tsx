@@ -1,3 +1,4 @@
+import { confirmAction } from '@/lib/confirm-action';
 import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Send, RefreshCw, CheckCheck, Check, AlertTriangle, Settings2, History, UserRound, FileText, ArrowLeft, Search } from 'lucide-react';
 import { useServerFn } from '@tanstack/react-start';
@@ -143,7 +144,7 @@ export function WhatsAppView({openPhone,isAdmin=true,externalOrders,onBuildOrder
       <div className="mr-2 min-w-0"><p className="text-sm font-semibold text-slate-800">Período</p><p className="text-xs text-slate-500">Escolha quais conversas deseja visualizar</p></div>
       <Button size="sm" variant="ghost" className={period==='today'?'border border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800':'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900'} onClick={()=>{setPeriod('today');setActive(null);setFilter('new');setConvs([]);}}>Hoje</Button>
       <Button size="sm" variant="ghost" className={period==='history'?'border border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800':'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900'} onClick={()=>{setPeriod('history');setActive(null);setFilter('archived');setConvs([]);}}><History size={14}/> Histórico</Button>
-      {period==='today'&&<Button size="sm" variant="outline" onClick={()=>{if(!window.confirm('Esconder todas as mensagens de hoje da tela? Elas continuam no Histórico.'))return;const now=Date.now();localStorage.setItem('ultrabrasa-wa-cleared-at',String(now));setClearedAt(now);setActive(null);setConvs([]);setMsgs([]);}}>Limpar mensagens</Button>}
+      {period==='today'&&<Button size="sm" variant="outline" onClick={async()=>{if(!await confirmAction('Esconder todas as mensagens de hoje da tela? Elas continuam no Histórico.'))return;const now=Date.now();localStorage.setItem('ultrabrasa-wa-cleared-at',String(now));setClearedAt(now);setActive(null);setConvs([]);setMsgs([]);}}>Limpar mensagens</Button>}
       <span className="ml-auto text-xs text-slate-500">{period==='today'?'Atendimentos de hoje':'Histórico preservado'}</span>
     </div>
     <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
