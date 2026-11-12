@@ -23,3 +23,26 @@ export function confirmAction(message: string, confirmLabel = 'Confirmar'): Prom
     );
   });
 }
+
+// In-app text prompt: window.prompt is blocked inside the desktop app.
+export function promptAction(message: string, confirmLabel = 'Confirmar'): Promise<string | null> {
+  return new Promise(resolve => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    let value = '';
+    const done = (v: string | null) => { resolve(v); root.unmount(); host.remove(); };
+    root.render(
+      <Dialog open onOpenChange={o => { if (!o) done(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{message}</DialogTitle></DialogHeader>
+          <textarea autoFocus className="min-h-20 w-full rounded-md border p-2 text-sm" onChange={e => { value = e.target.value; }} />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => done(null)}>Voltar</Button>
+            <Button onClick={() => done(value.trim() ? value : null)}>{confirmLabel}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  });
+}
