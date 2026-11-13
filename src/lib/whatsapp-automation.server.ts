@@ -91,7 +91,7 @@ async function interpret(db:Admin,j:Job){
   if(!d.items.length&&!previous.items.length&&!parsed.wantsMenu&&!parsed.genericPrice&&!parsed.wantsPdf&&!parsed.answer.trim()&&messages.some(m=>m.direction==='out')&&!presented)reply='Que bom! 😊 Como posso te ajudar hoje?';
   const addrDone=(a:typeof d.address)=>!!(a.street&&a.number&&a.neighborhood);
   if(!ready&&d.type==='Delivery'&&addrDone(d.address)&&!addrDone(previous.address)&&missing.length)reply=`${addressAck(d.address)} ${followUpMessage(missing)}`;
-  if(ready){d.quotedTotal=total;reply=orderSummary(d,d.items.map(i=>{const p=catalog.find(p=>p.id===i.productId)!;return{name:i.productId===b.lunchProductId?(i.qty>1?'marmitas completas':'marmita completa'):p.name,qty:i.qty,price:p.price,note:i.note};}),total,b.pixKey);}
+  if(ready){d.quotedTotal=total;reply=orderSummary(d,d.items.map(i=>{const p=catalog.find(p=>p.id===i.productId)!;return{name:i.productId===b.lunchProductId?(i.qty>1?'marmitas completas':'marmita completa'):p.name,qty:i.qty,price:p.price,note:i.note};}),total,b.pixKey,false);d.summarySent=true;}
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
   const hadAuto=messages.some(m=>m.direction==='out');
@@ -129,7 +129,12 @@ async function interpret(db:Admin,j:Job){
   // Pergunta específica: responde direto e só depois pede o que falta, sem repetir a apresentação.
   if(period!=='night'&&!nightAsk)answer=answer.replace(/https?:\/\/\S*cardapio\S*/gi,'').trim();
   if(answer)reply=`${answer}${missing.length&&!d.items.length?'':`\n\n${reply}`}`.trim();
-  await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,...(ready?{summaryVersion:c.draft_version+1,summaryTotal:total}:{})});
+  await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true});
+  // Pedido completo: envia direto para a cozinha, sem esperar resposta do cliente nem aceite manual.
+  if(ready){
+    const rid=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version+1,_total:total,_request:{customer:d.customer,type:d.type,items:d.items.map(i=>({...i,quotedPrice:catalog.find(p=>p.id===i.productId)?.price})),note:[d.requestedTime?`Horário solicitado: ${d.requestedTime}`:'',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento: ${paymentLabel(d.payment!,d.type==='Delivery')}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}}}));
+    if(rid){const acc=await db.rpc('wa_auto_accept_request',{_id:rid});if(acc.error)await handoff(db,j.phone,`Pedido aguardando aceite: ${acc.error.message}`);}
+  }
 }
 export async function processJobs(db:Admin,limit=2){
   for(let n=0;n<limit;n++){

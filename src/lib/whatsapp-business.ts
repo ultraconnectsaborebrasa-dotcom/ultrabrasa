@@ -181,11 +181,11 @@ export const titleAddr=(t:string)=>t.trim().toLowerCase().split(/\s+/).map((w,i)
 export const addressAck=(a:{street:string;number:string;neighborhood:string})=>`Entrega na ${titleAddr(a.street)}, ${a.number.trim()}, ${titleAddr(a.neighborhood)}, combinado!`;
 export const paymentLabel=(p:'Pix'|'Dinheiro'|'Cartão',delivery:boolean)=>p==='Pix'?'Pix — aguardando pagamento':p==='Cartão'?`Cartão${delivery?' na entrega':''} — a receber`:`Dinheiro${delivery?' na entrega':''} — a receber`;
 /** Resumo final; só chamar quando summaryReady for verdadeiro. */
-export function orderSummary(d: ConversationDraft, lines: {name:string;qty:number;price:number;note?:string}[], total: number, pixKey='') {
+export function orderSummary(d: ConversationDraft, lines: {name:string;qty:number;price:number;note?:string}[], total: number, pixKey='', ask=true) {
   const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const delivery=d.type==='Delivery';
   const items=lines.map(l=>`${l.qty} ${l.name}${l.note?` (${l.note})`:''} — ${brl(l.price*l.qty)}`).join('\n');
   const where=delivery?`Entrega: ${titleAddr(d.address.street)}, ${d.address.number.trim()} — ${titleAddr(d.address.neighborhood)}`:'Retirada no local';
   const troco=d.payment==='Dinheiro'?(d.cashFor?` · troco para ${brl(d.cashFor)}`:' · sem troco'):'';
-  return `Confere pra mim 😊\n\n${items}\n${where}\nPagamento: ${paymentLabel(d.payment!,delivery)}${troco}${delivery?'\nEntrega grátis':''}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}\nTotal: ${brl(total)}${d.payment==='Pix'&&pixKey?`\nChave Pix: ${pixKey}`:''}\n\nPosso confirmar seu pedido?`;
+  return `Confere pra mim 😊\n\n${items}\n${where}\nPagamento: ${paymentLabel(d.payment!,delivery)}${troco}${delivery?'\nEntrega grátis':''}${d.requestedTime?`\nHorário solicitado: ${d.requestedTime} (a confirmar pela loja)`:''}\nTotal: ${brl(total)}${d.payment==='Pix'&&pixKey?`\nChave Pix: ${pixKey}`:''}${ask?'\n\nPosso confirmar seu pedido?':'\n\nPedido anotado! Já estou mandando para a cozinha 😊'}`;
 }

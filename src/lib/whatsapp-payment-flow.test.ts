@@ -12,6 +12,7 @@ describe('pagamento antes do resumo', () => {
     const d = { ...withAddr, payment: 'Pix' as const };
     expect(summaryReady(d, 19.9)).toBe(true);
     expect(orderSummary(d, line, 19.9)).toBe('Confere pra mim 😊\n\n1 marmita completa — R$\u00a019,90\nEntrega: Rua das Flores, 12 — Encanto das Águas\nPagamento: Pix — aguardando pagamento\nEntrega grátis\nTotal: R$\u00a019,90\n\nPosso confirmar seu pedido?');
+    expect(orderSummary(d, line, 19.9, '', false)).toContain('Já estou mandando para a cozinha');
   });
   it('Cartão: a receber na entrega', () => expect(orderSummary({ ...withAddr, payment: 'Cartão' }, line, 19.9)).toContain('Pagamento: Cartão na entrega — a receber'));
   it('Dinheiro pergunta troco antes do resumo', () => {

@@ -1092,6 +1092,7 @@ export type Database = {
         Args: { _at: string; _errors: Json; _id: string; _status: string }
         Returns: boolean
       }
+      wa_auto_accept_request: { Args: { _id: string }; Returns: Json }
       wa_claim_job: {
         Args: never
         Returns: {
