@@ -64,10 +64,11 @@ export function initialLunchMessage(b: Business, now = new Date(), price = b.lun
   const dep=b.departureFrom.replace(/^0?(\d+):00$/,'$1h');
   const before=spTime(now)<b.departureFrom;
   const delivery=[b.freeDelivery?'Entrega grátis para qualquer bairro de Eunápolis!':'',before?`As entregas começam a sair às ${dep}.`:''].filter(Boolean).join(' ');
-  return `Hoje temos marmita com ${b.lunchMenu}, por ${brl} 😋${delivery?`\n\n${delivery}`:''}\n\nQuer deixar seu pedido adiantado? Me fala quantas marmitas e o bairro da entrega 😊`;
+  const greet=spTime(now)<'12:00'?'Bom dia':'Olá';
+  return `${greet}, tudo bem? 😊 Nossa marmita está em promoção: ${brl}${b.freeDelivery?' com frete grátis para qualquer bairro de Eunápolis':''}!\n\nHoje de cardápio temos ${b.lunchMenu}.${before?`\n\nAs entregas começam a sair às ${dep}.`:''}\n\nOs pedidos são limitados e, pela alta procura, acabam rápido. Garanta a sua! Me fala quantas marmitas, seu endereço completo, a forma de pagamento e seu nome 😉`;
 }
 /** Detecta se a apresentação da marmita já foi enviada na conversa. */
-export const lunchPresented = (outBodies: string[], b: Business) => outBodies.some(t => t.includes(b.lunchMenu) || /Hoje temos marmita|Nossa marmita/.test(t));
+export const lunchPresented = (outBodies: string[], b: Business) => outBodies.some(t => t.includes(b.lunchMenu) || /Hoje temos marmita|Nossa marmita|Hoje de cardápio temos/.test(t));
 const qtyWords=['','Uma','Duas','Três','Quatro','Cinco','Seis','Sete','Oito','Nove','Dez'];
 export const lunchQtyAck = (qty: number) => `${qtyWords[qty] ?? qty} marmita${qty>1?'s':''}, combinado! 😊`;
 /** Pergunta curta só pelo que falta, em ordem natural: itens/endereço, pagamento, nome. */

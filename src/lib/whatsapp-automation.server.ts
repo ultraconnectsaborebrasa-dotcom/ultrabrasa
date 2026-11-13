@@ -56,7 +56,7 @@ async function interpret(db:Admin,j:Job){
   const newest=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id').eq('phone',j.phone).eq('direction','in').order('provider_at',{ascending:false}).limit(1));
   if(newest?.[0]?.wa_message_id!==payload.inboundId)return;
   if(parsed.unavailableId&&!parsed.needsHuman){
-    const gone=allProducts.find(p=>p.id===parsed.unavailableId);
+    const gone=allProducts.find(p=>p.id===parsed.unavailableId&&p.stock!==null&&p.stock<=0);
     if(gone){
       let msg:string;
       if(gone.id===b.lunchProductId){const day=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Sao_Paulo'})).getDay();const night=b.hours.find(h=>h.day===day)?.nightStart;const next=nextLunchInfo(b);msg=`Poxa, as marmitas de hoje já acabaram. Obrigado pela paciência!${next?` A próxima leva sai ${next}.`:''}${night?` Hoje, a partir das ${night}, tem hambúrguer e espetinho.`:''}`;}
