@@ -915,6 +915,10 @@ export type Database = {
         Args: { new_status: string; order_id: string }
         Returns: undefined
       }
+      bulk_advance_pdv_cashier_orders: {
+        Args: { action: string }
+        Returns: number
+      }
       cancel_pdv_cashier_order: {
         Args: { order_id: string }
         Returns: undefined

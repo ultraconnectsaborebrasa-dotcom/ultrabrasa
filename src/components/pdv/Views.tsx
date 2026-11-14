@@ -18,6 +18,7 @@ import { DeliveryDeparture } from './DeliveryDeparture';
 import { CancelOrderButton } from './CancelOrderButton';
 import { ManualPaymentDialog } from './ManualPaymentDialog';
 import { openCloud } from '@/lib/pdv-cloud';
+import { runKitchenBulkAction } from '@/lib/kitchen-bulk';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -82,12 +83,26 @@ export function KitchenView() {
   useTick();
   const settings = useStore(s => s.settings);
   const orders = useStore((s) => s.orders).filter((o) => o.status === "cozinha" || o.status === "pronto");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  async function markAllReady() {
+    const count = orders.filter(o => o.status === 'cozinha').length;
+    if (!count || !await confirmAction(`Marcar ${count} pedido(s) como prontos?`)) return;
+    setBulkBusy(true);
+    try {
+      const changed = await runKitchenBulkAction('ready');
+      await openCloud();
+      if (changed) toast.success(`${changed} pedido(s) marcados como prontos de uma vez`);
+      else toast.info('Nenhum pedido da cozinha precisava ser atualizado.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao marcar pedidos como prontos');
+    } finally { setBulkBusy(false); }
+  }
   return (
     <div className="space-y-4">
       <Header title="Cozinha · Preparação" sub={`${orders.filter(o=>o.status==='cozinha').length} preparando · ${orders.filter(o=>o.status==='pronto').length} prontos · ${new Date().toLocaleDateString("pt-BR")}`} />
       {orders.some(o=>o.status==='cozinha') && (
         <div className="flex justify-end">
-          <Button variant="outline" onClick={async () => { const list = orders.filter(o=>o.status==='cozinha'); if (await confirmAction(`Marcar ${list.length} pedido(s) como prontos?`)) list.forEach(o => setOrderStatus(o.id, "pronto")); }}>Marcar todos como prontos ({orders.filter(o=>o.status==='cozinha').length})</Button>
+          <Button variant="outline" disabled={bulkBusy} onClick={() => void markAllReady()}>{bulkBusy ? 'Salvando…' : `Marcar todos como prontos (${orders.filter(o=>o.status==='cozinha').length})`}</Button>
         </div>
       )}
       {!orders.length && <Empty text="Cozinha livre 🔥" />}
