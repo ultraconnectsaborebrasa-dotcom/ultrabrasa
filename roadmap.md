@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## WhatsApp em kanban funcional
+- [x] Reorganizar o quadro de hoje com busca, colunas legíveis e ações rápidas.
+- [x] Abrir a conversa em painel sobre o quadro, preservando pedidos, notas e comprovantes.
+- [x] Permitir mover conversas para atendimento ou arquivo sem alterar pedidos e pagamentos.
+- [x] Verificar no navegador em computador e celular; busca, conversa, detalhes e eventos de arrastar testados sem alterar atendimentos reais.
+
 ## Confirmação por qualquer interação
 - [x] Após o resumo, aceitar texto, emoji ou anexo como confirmação do pedido apresentado, sem exigir “sim”.
 - [x] Testar interação de texto e anexo e ausência de confirmação antes do resumo: 242 testes aprovados, sem pedidos reais.

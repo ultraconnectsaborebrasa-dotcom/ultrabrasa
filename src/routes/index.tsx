@@ -118,8 +118,10 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
           </Button>
         </div>
       </header>
-      <NewOrderAlerts orders={orders} onOpen={() => setTab('cozinha')}/>
-      {admin&&<WhatsAppNotifications onOpen={phone=>{setWhatsAppPhone(phone);setTab('whatsapp');}} onAccept={acceptWhatsAppOrder} productName={id=>products.find(p=>p.id===id)?.name??'item'}/>}
+      <div className={tab==='whatsapp'?'hidden':''}>
+        <NewOrderAlerts orders={orders} onOpen={() => setTab('cozinha')}/>
+        {admin&&<WhatsAppNotifications onOpen={phone=>{setWhatsAppPhone(phone);setTab('whatsapp');}} onAccept={acceptWhatsAppOrder} productName={id=>products.find(p=>p.id===id)?.name??'item'}/>}
+      </div>
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
         {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin} onDelivery={()=>setTab('rotas')}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
           : tab === "whatsapp" && admin ? <WhatsAppView openPhone={whatsappPhone}/> : tab === "cardapio" && admin ? <CatalogAdmin/> : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
