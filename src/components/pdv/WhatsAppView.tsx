@@ -22,6 +22,7 @@ import { ReceiptReview } from './ReceiptReview';
 import { ReceiptRegistration } from './ReceiptRegistration';
 import { retryReceiptAnalysis } from '@/lib/receipt-actions.functions';
 import { isStoreToday, storeDayStart } from '@/lib/daily-inbox';
+import { needsStaffReply, sortQueue, type QueueOrder } from '@/lib/whatsapp-queue';
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status: string; assigned_name: string | null; automation_paused: boolean; awaiting_since: string | null };
 type Msg = { id: string; direction: string; source: string; kind: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
@@ -65,6 +66,8 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
   const [busy, setBusy] = useState(false);
   const [cardBusy, setCardBusy] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [queueOrder, setQueueOrder] = useState<QueueOrder>('arrival');
+  const [waitingOnly, setWaitingOnly] = useState(false);
   const [note, setNote] = useState('');
   const [jobErrors, setJobErrors] = useState<{ id: string; phone: string; processing_error: string | null; state: string }[]>([]);
   const [notes, setNotes] = useState<{ id: string; body: string; author_name: string | null }[]>([]);
@@ -224,8 +227,9 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
   };
   const matches = (c: Conv) => `${c.name ?? ''} ${c.phone} ${c.last_message ?? ''}`.toLowerCase().includes(search.trim().toLowerCase());
   const columns = TABS.filter(t => period === 'today' || t.key === 'archived');
-  const itemsFor = (key: Tab) => convs.filter(c => situation(c) === key && matches(c)).sort((a, b) => Date.parse(b.last_message_at) - Date.parse(a.last_message_at));
+  const itemsFor = (key: Tab) => sortQueue(convs.filter(c => situation(c) === key && matches(c) && (!waitingOnly || needsStaffReply(c))), period === 'history' ? 'recent' : queueOrder);
   const totalVisible = columns.reduce((n, column) => n + itemsFor(column.key).length, 0);
+  const waiting = sortQueue(convs.filter(c => columns.some(column => column.key === situation(c)) && situation(c) !== 'archived' && matches(c) && needsStaffReply(c)), 'arrival');
   const conv = convs.find(c => c.phone === active);
   const activeRequest = requests.find(r => r.phone === active);
   const linked: Order[] = useMemo(() => active ? orders.filter(o => o.customerPhone && normalizePhone(o.customerPhone) === active).sort((a, b) => b.createdAt - a.createdAt).slice(0, 8) : [], [orders, active]);
@@ -269,6 +273,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
     setActive(null);
     setConvs([]);
     setSearch('');
+    setWaitingOnly(false);
   }
 
   return <section className="mx-auto flex min-h-full max-w-[1800px] flex-col gap-4 text-foreground">
@@ -322,10 +327,14 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
       {period === 'today' && <Button className="ml-auto" size="sm" variant="ghost" onClick={async () => { if (!await confirmAction('Esconder todas as mensagens de hoje da tela? Elas continuam no Histórico.')) return; const now = Date.now(); localStorage.setItem('ultrabrasa-wa-cleared-at', String(now)); setClearedAt(now); setActive(null); setConvs([]); setMsgs([]); }}>Limpar visualização</Button>}
     </div>
 
-    <div className="flex items-center justify-between gap-3 px-1 text-xs text-muted-foreground">
-      <p><strong className="font-semibold text-foreground">Como usar:</strong> abra o cartão para responder ou arraste para assumir e arquivar.</p>
-      <p className="hidden shrink-0 md:block">Pedidos e pagamentos mudam de coluna automaticamente.</p>
-    </div>
+    {period === 'today' && <div className="flex flex-wrap items-center gap-3 px-1">
+      <div className="flex flex-wrap gap-1" role="group" aria-label="Ordem das conversas">
+        <Button size="sm" variant={queueOrder === 'arrival' ? 'secondary' : 'ghost'} aria-pressed={queueOrder === 'arrival'} onClick={() => setQueueOrder('arrival')}><Clock3 /> Ordem de chegada</Button>
+        <Button size="sm" variant={queueOrder === 'recent' ? 'secondary' : 'ghost'} aria-pressed={queueOrder === 'recent'} onClick={() => setQueueOrder('recent')}>Mais recentes</Button>
+      </div>
+      <label className="flex cursor-pointer items-center gap-2 text-xs font-medium"><input type="checkbox" className="h-4 w-4 accent-primary" checked={waitingOnly} onChange={e => setWaitingOnly(e.target.checked)} /> Aguardando resposta · {waiting.length}</label>
+      <Button size="sm" className="ml-auto" disabled={!waiting.length} onClick={() => { const next = waiting[0]; if (next) openConversation(next.phone); }}>Abrir próximo <ArrowRight /></Button>
+    </div>}
 
     <div className="flex min-h-[560px] snap-x gap-3 overflow-x-auto pb-3">
       {columns.map(column => {
@@ -338,7 +347,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
             <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{column.hint}</p>
           </header>
           <div className="max-h-[calc(100dvh-300px)] min-h-[420px] flex-1 space-y-2.5 overflow-y-auto p-2.5">
-            {loadingConvs && !convs.length ? <p className="p-4 text-center text-xs text-muted-foreground">Carregando conversas…</p> : !items.length ? <div className="grid min-h-36 place-items-center rounded-xl border border-dashed p-4 text-center"><div><Icon className="mx-auto mb-2 text-muted-foreground/50" size={22} /><p className="text-xs text-muted-foreground">{search ? 'Nenhum resultado nesta etapa.' : highlighted ? 'Solte a conversa aqui.' : 'Nenhuma conversa nesta etapa.'}</p></div></div> : items.map(c => {
+            {loadingConvs && !convs.length ? <p className="p-4 text-center text-xs text-muted-foreground">Carregando conversas…</p> : !items.length ? <div className="grid min-h-36 place-items-center rounded-xl border border-dashed p-4 text-center"><div><Icon className="mx-auto mb-2 text-muted-foreground/50" size={22} /><p className="text-xs text-muted-foreground">{search ? 'Nenhum resultado nesta etapa.' : highlighted ? 'Solte a conversa aqui.' : 'Nenhuma conversa nesta etapa.'}</p></div></div> : items.map((c, index) => {
               const req = requests.find(r => r.phone === c.phone);
               const wait = waitingTime(c.awaiting_since);
               return <article key={c.phone} draggable={column.key !== 'archived'} onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.phone); setDragPhone(c.phone); }} onDragEnd={() => { setDragPhone(null); setDropTarget(null); }} className={cn('group rounded-xl border bg-card p-3 shadow-sm transition hover:border-primary/40 hover:shadow-md', cardBusy === c.phone && 'pointer-events-none opacity-60')}>
@@ -350,6 +359,8 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
                   </div>
                   <p className="mt-2.5 line-clamp-2 min-h-8 text-xs leading-4 text-muted-foreground">{c.last_message || 'Nenhuma mensagem'}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
+                    {queueOrder === 'arrival' && period === 'today' && <span className="rounded-md bg-secondary px-1.5 py-1 text-[10px] font-semibold text-secondary-foreground">{index + 1}º na coluna</span>}
+                    {needsStaffReply(c) && <span className="rounded-md bg-warning/10 px-1.5 py-1 text-[10px] font-semibold text-warning">Aguardando resposta</span>}
                     {c.assigned_name && <span className="rounded-md bg-secondary px-1.5 py-1 text-[10px] text-secondary-foreground">{c.assigned_name}</span>}
                     {c.automation_paused ? <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-1 text-[10px] text-muted-foreground"><Bot size={11} /> Robô pausado</span> : <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-1.5 py-1 text-[10px] text-success"><Bot size={11} /> Robô ativo</span>}
                     {wait && <span className="inline-flex items-center gap-1 rounded-md bg-warning/10 px-1.5 py-1 text-[10px] text-warning"><Clock3 size={11} /> {wait}</span>}

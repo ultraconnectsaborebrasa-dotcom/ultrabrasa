@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Ordem de chegada das conversas
+- [x] Priorizar clientes aguardando resposta em ordem de chegada, sem usar respostas do robô como chegada.
+- [x] Adicionar filtro de espera, posição na coluna, opção de recentes e acesso ao próximo cliente.
+- [x] Cinco testes aprovados; ordenação, filtro e abertura do próximo cliente verificados na conta autorizada em 1280×1800 e 890×674, sem enviar mensagens reais; conversa disponível sem mensagens no período.
+
 ## WhatsApp em kanban funcional
 - [x] Reorganizar o quadro de hoje com busca, colunas legíveis e ações rápidas.
 - [x] Abrir a conversa em painel sobre o quadro, preservando pedidos, notas e comprovantes.
