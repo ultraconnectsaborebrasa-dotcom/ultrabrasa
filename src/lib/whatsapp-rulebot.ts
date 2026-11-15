@@ -95,6 +95,7 @@ export function faqReply(text: string, b: Business, price: number, now = new Dat
 const cap = (t: string) => t.trim().toLowerCase().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 const norm = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const WORDS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10 };
+const NOT_NAME = /\b(sim|nao|ok|quero|marmit|quentinh|pix|cartao|dinheiro|entrega|hoje|sem|com|tem|bom|boa|dia|tarde|noite|oi|ola|obrigad|valeu|pode|certo|isso|beleza|so|uma|um|duas|dois|rua|bairro|cardapio|preco|quanto|vale|top|show|blz|kkk+|rs)\b/;
 export type Parsed = { draft: ConversationDraft; extracted: boolean; confirms: boolean; wantsHuman: boolean; greeting: boolean; thanks: boolean };
 
 /** Extrai quantidade, nome, endereço e pagamento por palavras-chave/regex, preservando dados anteriores. */
@@ -111,7 +112,12 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
   const m1 = /(\d{1,2})\s*(?:x\s*)?(?:marmit|quentinh|unidade)/.exec(n) ?? /\bquero\s+(\d{1,2})\b/.exec(n);
   const m2 = /\b(um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)\s+(?:marmit|quentinh)/.exec(n);
   if (m1) qty = Number(m1[1]); else if (m2) qty = WORDS[m2[1] ?? ''] ?? null;
-  else if (/^\d{1,2}$/.test(simple) && missing.includes('itens e quantidades')) qty = Number(simple);
+  else if (missing.includes('itens e quantidades')) {
+    const q = /\b(?:quero|querer|seria|somente|so|apenas|manda|pode ser|vou de|sao|serao)\s+(?:somente\s+|so\s+|apenas\s+)?(\d{1,2}|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)\b/.exec(simple)
+      ?? /^(?:so |somente |apenas )?(\d{1,2}|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)(?: so| somente| apenas| por favor| pfv)?$/.exec(simple);
+    if (q?.[1]) qty = /^\d+$/.test(q[1]) ? Number(q[1]) : WORDS[q[1]] ?? null;
+  }
+  if (qty === null && /^\d{1,2}$/.test(simple) && missing.includes('itens e quantidades')) qty = Number(simple);
   else if (/^(uma|duas|tres|quatro|cinco)$/.test(simple) && missing.includes('itens e quantidades')) qty = WORDS[simple] ?? null;
   if (qty && qty > 0 && qty <= 50 && lunchProductId) { d.items = [{ productId: lunchProductId, qty, note: '' }]; extracted = true; }
   if (/\bpix\b/.test(n)) d.payment = 'Pix';
@@ -147,8 +153,9 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
   if (/\b(retirar|retiro|vou buscar|buscar ai|buscar a[ií]|retirada)\b/.test(n)) { d.type = 'Retirada'; extracted = true; }
   if (!extracted && !confirms && !greeting && !thanks) {
     if (missing.includes('número') && /^(?:n[º°o.]?\s*)?(\d{1,5}[a-z]?)$/i.test(simple)) { d.address.number = simple.replace(/\D+$/, '').replace(/^\D+/, ''); extracted = true; }
-    else if (missing.includes('bairro') && !missing.includes('rua') && /^[a-zà-ú0-9 .'-]{2,60}$/i.test(raw) && !/\d{3,}/.test(raw)) { d.address.neighborhood = raw.replace(/^bairro\s*/i, '').trim(); extracted = true; }
-    else if (missing.length === 1 && missing[0] === 'nome' && /^[a-zà-ú]+(?:\s+[a-zà-ú]+){0,3}$/i.test(raw)) { d.customer = cap(raw); extracted = true; }
+    else if (missing.includes('bairro') && !missing.includes('rua') && /^[a-zà-ú0-9 .'-]{2,60}$/i.test(raw) && !/\d{3,}/.test(raw) && !NOT_NAME.test(simple)) { d.address.neighborhood = raw.replace(/^(?:bairro|no|na)\s+/i, '').trim(); extracted = true; }
+    else if (missing.includes('bairro') && /^(?:no|na|bairro)\s+([a-zà-ú][a-zà-ú .'-]{1,58})$/i.test(raw)) { d.address.neighborhood = raw.replace(/^(?:no|na|bairro)\s+/i, '').trim(); d.type = d.type ?? 'Delivery'; extracted = true; }
+    else if (missing.includes('nome') && (prev.items.length > 0 || !!prev.address.street || !!prev.payment) && /^[a-zà-ú]+(?:\s+[a-zà-ú]+){0,2}$/i.test(raw) && !NOT_NAME.test(simple)) { d.customer = cap(raw); extracted = true; }
   }
   if (d.address.street || d.address.neighborhood) { d.type = d.type ?? 'Delivery'; d.address.city = 'Eunápolis'; }
   return { draft: d, extracted, confirms, wantsHuman, greeting, thanks };

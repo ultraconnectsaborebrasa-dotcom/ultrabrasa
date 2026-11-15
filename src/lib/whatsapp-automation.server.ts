@@ -43,7 +43,14 @@ async function interpret(db:Admin,j:Job){
   if(openReq?.length){await handoff(db,j.phone,'Cliente escreveu com pedido aguardando aceite');return;}
   const inProgress=previous.items.length>0||!!previous.address.street||!!previous.payment;
   const missingBefore=missingOrderFields(previous);
-  const parsed=ruleParse(text,previous,lunchP?.id??'',missingBefore);
+  // Fold every text sent today, line by line, so messages that arrived while the bot was sending (and were skipped as non-latest) are not lost.
+  const sinceMs=Date.parse(since);
+  const chunks=previous.summarySent?[text]:messages.filter(m=>m.direction==='in'&&m.kind==='text'&&Date.parse(m.created_at)>=sinceMs).flatMap(m=>(m.body??'').split(/\n+/)).map(s=>s.trim()).filter(Boolean);
+  let folded=previous;
+  for(let pass=0;pass<2;pass++)for(const chunk of chunks){folded=ruleParse(chunk,folded,lunchP?.id??'',missingOrderFields(folded)).draft;}
+  const whole=ruleParse(text,previous,lunchP?.id??'',missingBefore);
+  const foldedChanged=JSON.stringify(folded)!==JSON.stringify(previous);
+  const parsed={...whole,draft:foldedChanged?folded:whole.draft,extracted:whole.extracted||foldedChanged};
   const previousTotal=previous.items.reduce((sum,item)=>sum+(lunchP?.price??b.lunchPrice)*item.qty,0);
   const interactionConfirms=previous.summarySent&&summaryReady(previous,previousTotal)&&previous.quotedTotal===previousTotal;
   if(parsed.wantsHuman&&!interactionConfirms){await handoff(db,j.phone,'Cliente pediu atendente',payload.inboundId,true);return;}
@@ -119,7 +126,7 @@ async function interpret(db:Admin,j:Job){
     }
   } else if(parsed.thanks&&!parsed.extracted){reply='Imagina! 😊 '+followUpMessage(missing);}
   else if(!parsed.extracted&&!parsed.greeting&&inProgress&&previous.summarySent){reply=CONFIRM_HINT;}
-  else if(!parsed.extracted&&!parsed.greeting&&!inProgress&&campaignSeen&&!messages.slice(0,-1).every(m=>m.direction==='out'||m.wa_message_id===payload.inboundId)&&!LUNCH_INTEREST.test(text)){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
+  else if(!lunchMenuOpen(now)&&!parsed.extracted&&!parsed.greeting&&!inProgress&&campaignSeen&&!messages.slice(0,-1).every(m=>m.direction==='out'||m.wa_message_id===payload.inboundId)&&!LUNCH_INTEREST.test(text)){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
   else{
     const ack=d.items[0]&&!previous.items.length?`${lunchQtyAck(d.items[0].qty)} `:d.type==='Delivery'&&d.address.street&&d.address.number&&d.address.neighborhood&&!(previous.address.street&&previous.address.number&&previous.address.neighborhood)?`${addressAck(d.address)} `:'';
     const ask=missing.length>1?`Para finalizar, me fala ${missing.map(f=>f==='itens e quantidades'?'quantas marmitas':f==='entrega ou retirada'?'o endereço completo':f==='rua'?'a rua':f==='número'?'o número da casa':f==='forma de pagamento'?'a forma de pagamento (Pix, cartão ou dinheiro)':f==='troco (ou sem troco)'?'se precisa de troco':`o ${f}`).filter((v,i,a)=>a.indexOf(v)===i).join(', ').replace(/, ([^,]*)$/,' e $1')} 😊`:followUpMessage(missing);
