@@ -414,6 +414,13 @@
       "when": 1794716292056,
       "tag": "0058_bulk_depart_ready_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1794718611073,
+      "tag": "0059_catalog_category_schedule",
+      "breakpoints": true
     }
   ]
 }

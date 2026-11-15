@@ -4,7 +4,7 @@ export type CatalogProduct = {
 };
 export type CatalogSettings = {
   lunchStart?: string; lunchEnd?: string; nightStart?: string; nightEnd?: string;
-  deliveryStart?: string; freeDeliveryEunapolis?: boolean;
+  deliveryStart?: string; preparationStart?: string; freeDeliveryEunapolis?: boolean;
 };
 export type PublicCatalog = { settings: CatalogSettings | null; products: CatalogProduct[] };
 
@@ -40,11 +40,21 @@ export function bahiaMinutes(now = new Date()) {
 export type Period = 'lunch' | 'night' | 'closed';
 export function currentPeriod(s: CatalogSettings | null, now = new Date()): Period {
   const t = bahiaMinutes(now);
-  if (t >= toMin(s?.lunchStart ?? '10:00') && t < toMin(s?.lunchEnd ?? '15:00')) return 'lunch';
-  const ns = toMin(s?.nightStart ?? '18:00'), ne = toMin(s?.nightEnd ?? '23:30');
+  if (t >= toMin(s?.lunchStart ?? '10:00') && t < 14 * 60) return 'lunch';
+  const ns = 17 * 60, ne = toMin(s?.nightEnd ?? '23:30');
   if (ns <= ne ? t >= ns && t < ne : t >= ns || t < ne) return 'night';
   return 'closed';
 }
+
+export function catalogScheduleAvailable(category: string, s: CatalogSettings | null, now = new Date()) {
+  const c = normalizeCategory(category);
+  const t = bahiaMinutes(now);
+  if (c === 'Marmitas') return t >= toMin(s?.lunchStart ?? '10:00') && t < 14 * 60;
+  if (['Hambúrgueres', 'Acompanhamentos'].includes(c)) return t >= 17 * 60;
+  return true;
+}
+
+export const catalogPreparationMinutes = () => 18 * 60;
 
 export const HIGHLIGHT: Record<Exclude<Period, 'closed'>, string[]> = {
   lunch: ['Marmitas'],

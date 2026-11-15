@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Clock, Plus, Truck } from 'lucide-react';
 import { CatalogCheckout } from '@/components/catalog/CatalogCheckout';
 import { getPublicCatalog } from '@/lib/catalog.functions';
-import { currentPeriod, groupCatalog, HIGHLIGHT, type CartLine, type CatalogProduct, type Period } from '@/lib/catalog';
+import { catalogScheduleAvailable, currentPeriod, groupCatalog, HIGHLIGHT, type CartLine, type CatalogProduct, type Period } from '@/lib/catalog';
+import { Button } from '@/components/ui/button';
 import { Brand } from '@/components/pdv/Brand';
 import { brl } from '@/lib/pdv-store';
 
@@ -32,7 +33,8 @@ const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+
 function CardapioPage() {
   const { data } = useSuspenseQuery(catalogQuery);
   const [period, setPeriod] = useState<Period | null>(null);
-  useEffect(() => { const f = () => setPeriod(currentPeriod(data.settings)); f(); const i = setInterval(f, 60_000); return () => clearInterval(i); }, [data.settings]);
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => { const f = () => { const time = new Date(); setNow(time); setPeriod(currentPeriod(data.settings, time)); }; f(); const i = setInterval(f, 1000); return () => clearInterval(i); }, [data.settings]);
   const groups = useMemo(() => {
     const g = groupCatalog(data.products);
     if (!period || period === 'closed') return g;
@@ -42,7 +44,7 @@ function CardapioPage() {
   const s = data.settings;
   const [cart, setCart] = useState<CartLine[]>([]);
   const [open, setOpen] = useState(false);
-  const add = (p: CatalogProduct) => setCart((c) => c.some((l) => l.productId === p.id) ? c.map((l) => l.productId === p.id ? { ...l, qty: Math.min(99, l.qty + 1) } : l) : [...c, { productId: p.id, name: p.name, price: p.price, qty: 1, note: '' }]);
+  const add = (p: CatalogProduct) => { if (!p.available || !catalogScheduleAvailable(p.category, s)) return; setCart((c) => c.some((l) => l.productId === p.id) ? c.map((l) => l.productId === p.id ? { ...l, qty: Math.min(99, l.qty + 1) } : l) : [...c, { productId: p.id, name: p.name, price: p.price, qty: 1, note: '' }]); };
   const inCart = (id: string) => cart.find((l) => l.productId === id)?.qty ?? 0;
 
   return (
@@ -68,6 +70,7 @@ function CardapioPage() {
           {period === 'lunch' && <p className="font-bold text-primary">Almoço: marmitas em destaque.</p>}
           {period === 'night' && <p className="font-bold text-primary">Noite: hambúrgueres e espetinhos em destaque.</p>}
           <p className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" />Pedidos a partir das {s?.lunchStart ?? '10:00'} · entregas começam a sair às {s?.deliveryStart ?? '11:00'}</p>
+          <p>Marmitas até 14:00 · Hambúrgueres e acompanhamentos a partir das 17:00 · Preparo a partir das 18:00</p>
           {s?.freeDeliveryEunapolis && <p className="flex items-center gap-2 text-success"><Truck className="h-4 w-4" />Entrega grátis para qualquer bairro de Eunápolis</p>}
         </section>
 
@@ -75,7 +78,7 @@ function CardapioPage() {
           <section key={cat} id={slug(cat)} className="scroll-mt-32 pt-8">
             <h2 className="mb-3 font-display text-2xl font-bold">{cat}</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              {items.map((p) => <ProductCard key={p.id} p={p} qty={inCart(p.id)} onAdd={() => add(p)} />)}
+              {items.map((p) => <ProductCard key={p.id} p={p} scheduled={now !== null && catalogScheduleAvailable(p.category, s, now)} qty={inCart(p.id)} onAdd={() => add(p)} />)}
             </div>
           </section>
         ))}
@@ -85,9 +88,9 @@ function CardapioPage() {
   );
 }
 
-function ProductCard({ p, qty, onAdd }: { p: CatalogProduct; qty: number; onAdd: () => void }) {
+function ProductCard({ p, scheduled, qty, onAdd }: { p: CatalogProduct; scheduled: boolean; qty: number; onAdd: () => void }) {
   return (
-    <article className={`flex gap-3 rounded-lg border border-border bg-card p-3 ${p.available ? '' : 'opacity-60'}`}>
+    <article className={`flex gap-3 rounded-lg border border-border bg-card p-3 ${p.available && scheduled ? '' : 'opacity-60'}`}>
       <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-md bg-muted">
         {p.image
           ? <img src={p.image} alt={p.name} loading="lazy" width={112} height={112} className="h-full w-full object-cover" />
@@ -98,8 +101,8 @@ function ProductCard({ p, qty, onAdd }: { p: CatalogProduct; qty: number; onAdd:
         {p.description && <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{p.description}</p>}
         <div className="mt-auto flex items-center justify-between pt-2">
           <span className="text-lg font-bold text-primary">{brl(p.price)}</span>
-          {!p.available ? <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">Esgotado</span>
-            : <button onClick={onAdd} aria-label={`Adicionar ${p.name}`} className="flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"><Plus className="h-4 w-4" />{qty ? qty : 'Adicionar'}</button>}
+          {!scheduled ? <span className="text-xs font-bold text-muted-foreground">Indisponível neste horário</span> : !p.available ? <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">Esgotado</span>
+            : <Button onClick={onAdd} aria-label={`Adicionar ${p.name}`} size="sm"><Plus className="h-4 w-4" />{qty ? qty : 'Adicionar'}</Button>}
         </div>
       </div>
     </article>

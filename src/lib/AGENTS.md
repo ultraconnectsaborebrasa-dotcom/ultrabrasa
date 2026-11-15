@@ -1,0 +1,1 @@
+- Digital-menu time restrictions live in the browser-safe catalog helper and are revalidated by catalog_place_order using the store timezone; PDV stock and WhatsApp schedules remain independent.

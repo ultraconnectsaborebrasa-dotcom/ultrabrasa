@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Horários do cardápio digital
+- [x] Indisponibilizar marmitas às 14h e liberar hambúrgueres/acompanhamentos às 17h, com aviso de preparo às 18h.
+- [x] Validar horários na compra; 10 testes aprovados e navegador verificado às 13h59, 14h, 16h59 e 17h, com carrinho aberto sem criar pedido real. Roteiro do WhatsApp preservado; publicação pendente para atualizar a tela pública.
+
 ## Comprovantes sem leitura automática
 - [x] Remover análise por IA e reanálise, preservando arquivos privados e vínculo ao pedido.
 - [x] Manter resumo do pedido e baixa exclusivamente manual; 51 testes aprovados e registro manual de anexo verificado na conta autorizada. Sem comandas pendentes para testar baixa real; publicação necessária para aplicar ao WhatsApp em produção.
