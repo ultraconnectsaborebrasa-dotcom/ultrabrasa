@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Endereços e nomes no atendimento automático
+- [x] Impedir que nome, rua, número e bairro sejam trocados ou adivinhados em sequências de mensagens.
+- [x] Bloquear resumo e solicitação ao PDV quando nome ou endereço estiverem ambíguos, inclusive na validação do banco.
+- [x] Testar os erros reais do período de alta demanda sem criar pedidos ou enviar mensagens: 145 testes aprovados, tipagem e build verificados; conversa real no WhatsApp não testada.
+
 ## Horários do cardápio digital
 - [x] Incluir espetinhos no horário dos hambúrgueres: pedidos às 17h e preparo às 18h, com validação na compra; 11 testes aprovados e navegador verificado às 16h59 e 17h sem criar pedido real. Publicação da tela pendente.
 - [x] Indisponibilizar marmitas às 14h e liberar hambúrgueres/acompanhamentos às 17h, com aviso de preparo às 18h.

@@ -25,12 +25,31 @@ export const defaultBusiness = businessSchema.parse({});
 export const addressSchema = z.object({ street: z.string().max(200).default(''), number: z.string().max(30).default(''), neighborhood: z.string().max(120).default(''), city: z.string().max(100).default(''), reference: z.string().max(300).default(''), complement: z.string().max(200).default('') });
 export const conversationDraftSchema = z.object({ customer: z.string().max(120).default(''), items: z.array(z.object({ productId: z.string().max(100), qty: z.number().int().min(1).max(99), note: z.string().max(500).default('') })).max(30).default([]), type: z.enum(['Delivery','Retirada']).nullable().default(null), address: addressSchema.default({}), payment: z.enum(['Pix','Dinheiro','Cartão']).nullable().default(null), cashFor: z.number().min(0).max(100000).nullable().default(null), requestedTime: z.string().max(100).default(''), summarySent: z.boolean().default(false), quotedTotal: z.number().min(0).default(0) });
 export type ConversationDraft = z.infer<typeof conversationDraftSchema>;
+const plainWords = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const placeWords = (value: string) => plainWords(value).replace(/(?:\s+eunapolis)$/, '').trim();
+const blockedIdentity = /\b(?:pagamento|pix|cartao|credito|debito|dinheiro|marmit\w*|quentinh\w*|entrega|delivery|cardapio|por favor|vcs|voces)\b|^(?:a|o|no|na|aqui)\b/;
+export function validCustomerName(value: string) {
+  const v = value.trim();
+  return v.length >= 2 && v.length <= 120 && /[a-zà-ú]{2}/i.test(v) && !blockedIdentity.test(plainWords(v));
+}
+export function validAddressField(field: 'street' | 'number' | 'neighborhood', value: string, d: ConversationDraft) {
+  const v = value.trim();
+  if (field === 'number') return /^(?:\d{1,5}[a-z]?|s\/n)$/i.test(v);
+  if (field === 'street') {
+    const body = v.replace(/^(?:rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s*/i, '').trim();
+    return /^(?:rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s+\S/i.test(v)
+      && body.length > 0 && !/\b(fica|depois|em cima|perto|em frente|ao lado|esquerda|direita)\b/i.test(body);
+  }
+  return v.length >= 2 && v.length <= 120 && /[a-zà-ú]{2}/i.test(v) && !/^(?:de|da|do|n[º°o.])\b/i.test(v)
+    && !blockedIdentity.test(plainWords(v)) && placeWords(v) !== placeWords(d.customer) && placeWords(v) !== placeWords(d.address.street);
+}
+export const deliveryAddressComplete = (d: ConversationDraft) => (['street', 'number', 'neighborhood'] as const).every(field => validAddressField(field, d.address[field], d));
 export function missingOrderFields(d: ConversationDraft) {
   const missing: string[] = [];
-  if (!d.customer) missing.push('nome');
+  if (!validCustomerName(d.customer)) missing.push('nome');
   if (!d.items.length) missing.push('itens e quantidades');
   if (!d.type) missing.push('entrega ou retirada');
-  if (d.type === 'Delivery') { for (const [field,label] of [['street','rua'],['number','número'],['neighborhood','bairro']] as const) if (!d.address[field]) missing.push(label); }
+  if (d.type === 'Delivery') { for (const [field,label] of [['street','rua'],['number','número'],['neighborhood','bairro']] as const) if (!validAddressField(field, d.address[field], d)) missing.push(label); }
   if (!d.payment) missing.push('forma de pagamento');
   if (d.payment === 'Dinheiro' && d.cashFor === null) missing.push('troco (ou sem troco)');
   return missing;
@@ -45,7 +64,7 @@ export function normalizeDraft(d: ConversationDraft): ConversationDraft {
 export function summaryReady(d: ConversationDraft, total: number, missing = missingOrderFields(d)) {
   return missing.length === 0 && d.items.length > 0 && d.items.every(i => Number.isFinite(i.qty) && i.qty > 0 && !!i.productId)
     && Number.isFinite(total) && total > 0 && !!d.type && !!d.payment
-    && (d.type !== 'Delivery' || !!(d.address.street && d.address.number && d.address.neighborhood));
+    && (d.type !== 'Delivery' || deliveryAddressComplete(d));
 }
 export const inEunapolis = (city: string) => city.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase() === 'eunapolis';
 export function businessPeriod(b: Business, now = new Date()) {

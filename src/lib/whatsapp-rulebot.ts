@@ -1,4 +1,5 @@
 import type { Business, ConversationDraft } from './whatsapp-business';
+import { validAddressField, validCustomerName } from './whatsapp-business';
 
 /** Bot tradicional (sem IA): textos fixos, janelas de horário e extração por regras. */
 export const GREETING_MESSAGE = 'Olá, tudo bem?';
@@ -95,8 +96,17 @@ export function faqReply(text: string, b: Business, price: number, now = new Dat
 const cap = (t: string) => t.trim().toLowerCase().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 const norm = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const WORDS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10 };
-const NOT_NAME = /\b(sim|nao|ok|quero|marmit|quentinh|pix|cartao|dinheiro|entrega|hoje|sem|com|tem|bom|boa|dia|tarde|noite|oi|ola|obrigad|valeu|pode|certo|isso|beleza|so|uma|um|duas|dois|rua|bairro|cardapio|preco|quanto|vale|top|show|blz|kkk+|rs)\b/;
 export type Parsed = { draft: ConversationDraft; extracted: boolean; confirms: boolean; wantsHuman: boolean; greeting: boolean; thanks: boolean };
+export type RulebotMessage = { direction: string; body: string | null; kind: string; wa_message_id: string | null; created_at: string };
+/** Lê só a sequência atual: mensagens antigas não podem sobrescrever uma correção posterior. */
+export function recentInboundChunks(messages: RulebotMessage[], currentId: string | undefined, since: string) {
+  const current = messages.find(m => m.wa_message_id === currentId);
+  const lastOut = messages.filter(m => m.direction === 'out' && (!current || m.created_at < current.created_at)).at(-1);
+  const sinceMs = Date.parse(since);
+  const chunks = messages.filter(m => m.direction === 'in' && m.kind === 'text' && Date.parse(m.created_at) >= sinceMs && (!lastOut || m.created_at > lastOut.created_at))
+    .flatMap(m => (m.body ?? '').split(/\n+/)).map(s => s.trim()).filter(Boolean);
+  return chunks.length ? chunks : current?.kind === 'text' ? (current.body ?? '').split(/\n+/).map(s => s.trim()).filter(Boolean) : [];
+}
 
 /** Extrai quantidade, nome, endereço e pagamento por palavras-chave/regex, preservando dados anteriores. */
 export function ruleParse(text: string, prev: ConversationDraft, lunchProductId: string, missing: string[]): Parsed {
@@ -133,7 +143,7 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
   }
   const nm = /(?:meu nome [eé]|meu nome eh|me chamo|nome:|aqui [eé] (?:o|a))\s+([a-zà-ú]+(?:\s+[a-zà-ú]+){0,3})/i.exec(raw.normalize('NFC'));
   const stop = /\s+(?:e|moro|vou|pago|quero|rua|av|avenida|no|na|pix|cart[aã]o|dinheiro)\b.*$/i;
-  if (nm?.[1]) { const v = nm[1].replace(stop, '').trim(); if (v.length >= 2) { d.customer = cap(v); extracted = true; } }
+  if (nm?.[1]) { const v = nm[1].replace(stop, '').trim(); if (validCustomerName(v)) { d.customer = cap(v); extracted = true; } }
   const reference = /(?:ponto de refer[eê]ncia|refer[eê]ncia)\s*:?\s*([^\n,;]+)/i.exec(raw);
   if (reference?.[1]) { d.address.reference = reference[1].trim(); extracted = true; }
   const NUMW = '(\\d{1,5}[a-z]?|um|uma|dois|duas|tres|três|quatro|cinco|seis|sete|oito|nove|dez)';
@@ -142,26 +152,41 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
   if (addr) {
     const rest = `${addr[1]} ${addr[2]}`.replace(/\s*,?\s*(?:vou pagar|pago|pagamento|meu nome|me chamo|no pix|pix|cart[aã]o|dinheiro|ponto de refer[eê]ncia|refer[eê]ncia)\b.*$/i, '').trim();
     const bairro = /bairro:?\s*([^,.\n]+)/i.exec(rest) ?? /bairro:?\s*([^,.\n]+)/i.exec(raw);
-    if (bairro?.[1]) { d.address.neighborhood = bairro[1].trim(); }
-    const cleaned0 = rest.replace(/[,\-–]?\s*bairro:?\s*[^,.\n]+/i, '').trim();
-    const cleaned = cleaned0.replace(new RegExp(`\\b(?:casa|n[º°o.]?|numero|número)\\s*${NUMW}\\b`, 'i'), (_m, v: string) => `nº ${houseNum(v)}`);
-    const num = /(?:,|\s)\s*(?:n[º°o.]?\s*|numero\s*|número\s*)?(\d{1,5}[a-z]?)\b/i.exec(cleaned);
+    const cleaned = rest.replace(/[,\-–]?\s*bairro:?\s*[^,.\n]+/i, '').trim();
+    const explicit = new RegExp(`(?:n[º°o.]?|casa|numero|número)\\s*${NUMW}\\b`, 'i').exec(cleaned);
+    const comma = /,\s*(?:n[º°o.]?\s*|numero\s*|número\s*)?(\d{1,5}[a-z]?)\b/i.exec(cleaned);
+    const digits = [...cleaned.matchAll(/\b(\d{1,5}[a-z]?)\b/gi)];
+    const last = digits.at(-1);
+    const numberedStreet = !explicit && !comma && digits.length === 1 && last && new RegExp(`^(?:rua|r\\.|av\\.?|avenida|travessa|tv\\.?)\\s*${last[0]}\\s+(?:de|da|do|dos|das)\\b`, 'i').test(cleaned);
+    const num = explicit ?? comma ?? (numberedStreet ? null : last);
     let street = cleaned;
-    if (num?.[1]) { d.address.number = num[1]; const after = cleaned.slice((num.index ?? 0) + num[0].length).replace(/^[\s,\-–]+/, '').trim(); street = cleaned.slice(0, num.index).replace(/[\s,]+$/, ''); if (after && !d.address.neighborhood) d.address.neighborhood = (after.split(/[,.\n]/)[0] ?? '').trim(); }
-    else if (/\b(s\/n|sn|sem numero|sem número)\b/i.test(cleaned)) d.address.number = 'S/N';
-    if (missing.includes('nome') && !d.customer) { const lead = raw.slice(0, addr.index).trim().replace(/[,\-–]+$/, '').trim(); if (/^[a-zà-ú]+(?:\s+[a-zà-ú]+){0,3}$/i.test(lead) && !NOT_NAME.test(norm(lead))) d.customer = cap(lead); }
-    d.address.street = street.replace(/[\s,\-–]+$/, '').slice(0, 200); d.type = 'Delivery'; extracted = true;
+    if (num?.[1]) {
+      d.address.number = houseNum(num[1]);
+      street = cleaned.slice(0, num.index).replace(/[\s,]+$/, '');
+    } else if (/\b(s\/n|sn|sem numero|sem número)\b/i.test(cleaned)) d.address.number = 'S/N';
+    if (missing.includes('nome') && !validCustomerName(d.customer)) {
+      const lead = raw.slice(0, addr.index).trim().replace(/[,\-–]+$/, '').trim();
+      if (/^[a-zà-ú]+(?:\s+[a-zà-ú]+){0,3}$/i.test(lead) && validCustomerName(lead)) d.customer = cap(lead);
+    }
+    d.address.street = street.replace(/[\s,\-–]+$/, '').slice(0, 200);
+    const trailing = num?.[1] ? cleaned.slice((num.index ?? 0) + num[0].length).replace(/^[\s,\-–]+/, '').split(/[,.\n]/)[0]?.trim() : '';
+    const neighborhood = bairro?.[1]?.trim() || trailing || '';
+    if (neighborhood && (bairro?.[1] || validAddressField('neighborhood', neighborhood, d))) d.address.neighborhood = neighborhood;
+    d.type = 'Delivery'; extracted = true;
   } else {
-    const bairro = /bairro:?\s*([^,.\n]+)/i.exec(raw); if (bairro?.[1]) { d.address.neighborhood = bairro[1].trim(); d.type = 'Delivery'; extracted = true; }
+    const bairro = /bairro:?\s*([^,.\n]+)/i.exec(raw) ?? /^(?:no|na)\s+([a-zà-ú][a-zà-ú .'-]{1,58})$/i.exec(raw);
+    if (bairro?.[1]) { d.address.neighborhood = bairro[1].trim(); d.type = 'Delivery'; extracted = true; }
   }
   if (/\b(retirar|retiro|vou buscar|buscar ai|buscar a[ií]|retirada)\b/.test(n)) { d.type = 'Retirada'; extracted = true; }
   if (!extracted && !confirms && !greeting && !thanks) {
     const hn = new RegExp(`^(?:casa|n|no|numero|e|e o)?\\s*${NUMW}$`).exec(simple);
     if (missing.includes('número') && hn?.[1] && houseNum(hn[1])) { d.address.number = houseNum(hn[1]); extracted = true; }
     else if (missing.includes('número') && /^(?:n[º°o.]?\s*)?(\d{1,5}[a-z]?)$/i.test(simple)) { d.address.number = simple.replace(/\D+$/, '').replace(/^\D+/, ''); extracted = true; }
-    else if (missing.includes('bairro') && !missing.includes('rua') && /^[a-zà-ú0-9 .'-]{2,60}$/i.test(raw) && !/\d{3,}/.test(raw) && !NOT_NAME.test(simple)) { d.address.neighborhood = raw.replace(/^(?:bairro|no|na)\s+/i, '').trim(); extracted = true; }
-    else if (missing.includes('bairro') && /^(?:no|na|bairro)\s+([a-zà-ú][a-zà-ú .'-]{1,58})$/i.test(raw)) { d.address.neighborhood = raw.replace(/^(?:no|na|bairro)\s+/i, '').trim(); d.type = d.type ?? 'Delivery'; extracted = true; }
-    else if (missing.includes('nome') && (prev.items.length > 0 || !!prev.address.street || !!prev.payment) && /^[a-zà-ú]+(?:\s+[a-zà-ú]+){0,2}$/i.test(raw) && !NOT_NAME.test(simple)) { d.customer = cap(raw); extracted = true; }
+    else if (missing.includes('bairro') && !missing.includes('rua') && !missing.includes('número') && /^[a-zà-ú0-9 .'-]{2,60}$/i.test(raw) && !/\d{3,}/.test(raw)) {
+      const neighborhood = raw.replace(/^(?:bairro|no|na)\s+/i, '').trim();
+      if (validAddressField('neighborhood', neighborhood, d)) { d.address.neighborhood = neighborhood; extracted = true; }
+    }
+    else if (missing.length === 1 && missing[0] === 'nome' && /^[a-zà-ú]+(?:\s+[a-zà-ú]+){0,3}$/i.test(raw) && validCustomerName(raw)) { d.customer = cap(raw); extracted = true; }
   }
   if (d.address.street || d.address.neighborhood) { d.type = d.type ?? 'Delivery'; d.address.city = 'Eunápolis'; }
   return { draft: d, extracted, confirms, wantsHuman, greeting, thanks };

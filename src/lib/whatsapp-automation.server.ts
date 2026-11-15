@@ -1,9 +1,9 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
 // Delivery or lunch questions start the scripted lunch flow instead of a human handoff.
 const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
-import { botWindow,windowStart,ruleParse,GREETING_MESSAGE,NIGHT_MESSAGE,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,isEarlyLunch,lunchMenuOpen,faqReply } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,NIGHT_MESSAGE,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,isEarlyLunch,lunchMenuOpen,faqReply } from './whatsapp-rulebot';
 import { z } from 'zod';
-import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr } from './whatsapp-business';
+import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-attachments';
 import { ORDER_CONFIRMED_MESSAGE, isOrderConfirmationJob, canSendOrderConfirmation } from './whatsapp-confirmation';
@@ -44,11 +44,10 @@ async function interpret(db:Admin,j:Job){
   if(openReq?.length){await handoff(db,j.phone,'Cliente escreveu com pedido aguardando aceite');return;}
   const inProgress=previous.items.length>0||!!previous.address.street||!!previous.payment;
   const missingBefore=missingOrderFields(previous);
-  // Fold every text sent today, line by line, so messages that arrived while the bot was sending (and were skipped as non-latest) are not lost.
-  const sinceMs=Date.parse(since);
-  const chunks=previous.summarySent?[text]:messages.filter(m=>m.direction==='in'&&m.kind==='text'&&Date.parse(m.created_at)>=sinceMs).flatMap(m=>(m.body??'').split(/\n+/)).map(s=>s.trim()).filter(Boolean);
+  // Lê a sequência atual sem reprocesar mensagens antigas nem sobrescrever correções do cliente.
+  const chunks=previous.summarySent?[text]:recentInboundChunks(messages,payload.inboundId,since);
   let folded=previous;
-  for(let pass=0;pass<2;pass++)for(const chunk of chunks){folded=ruleParse(chunk,folded,lunchP?.id??'',missingOrderFields(folded)).draft;}
+  for(const chunk of chunks){folded=ruleParse(chunk,folded,lunchP?.id??'',missingOrderFields(folded)).draft;}
   const whole=ruleParse(text,previous,lunchP?.id??'',missingBefore);
   const foldedChanged=JSON.stringify(folded)!==JSON.stringify(previous);
   const parsed={...whole,draft:foldedChanged?folded:whole.draft,extracted:whole.extracted||foldedChanged};
@@ -127,7 +126,7 @@ async function interpret(db:Admin,j:Job){
   else if(!parsed.extracted&&!parsed.greeting&&inProgress&&previous.summarySent){reply=CONFIRM_HINT;}
   else if(!lunchMenuOpen(now)&&!parsed.extracted&&!parsed.greeting&&!inProgress&&campaignSeen&&!messages.slice(0,-1).every(m=>m.direction==='out'||m.wa_message_id===payload.inboundId)&&!LUNCH_INTEREST.test(text)){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
   else{
-    const ack=d.items[0]&&!previous.items.length?`${lunchQtyAck(d.items[0].qty)} `:d.type==='Delivery'&&d.address.street&&d.address.number&&d.address.neighborhood&&!(previous.address.street&&previous.address.number&&previous.address.neighborhood)?`${addressAck(d.address)} `:'';
+    const ack=d.items[0]&&!previous.items.length?`${lunchQtyAck(d.items[0].qty)} `:d.type==='Delivery'&&deliveryAddressComplete(d)&&!deliveryAddressComplete(previous)?`${addressAck(d.address)} `:'';
     const ask=missing.length>1?`Para finalizar, me fala ${missing.map(f=>f==='itens e quantidades'?'quantas marmitas':f==='entrega ou retirada'?'o endereço completo':f==='rua'?'a rua':f==='número'?'o número da casa':f==='forma de pagamento'?'a forma de pagamento (Pix, cartão ou dinheiro)':f==='troco (ou sem troco)'?'se precisa de troco':`o ${f}`).filter((v,i,a)=>a.indexOf(v)===i).join(', ').replace(/, ([^,]*)$/,' e $1')} 😊`:followUpMessage(missing);
     reply=`${ack}${ask}`.trim();
   }
