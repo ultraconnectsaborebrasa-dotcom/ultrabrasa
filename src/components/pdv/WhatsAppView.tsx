@@ -20,7 +20,7 @@ import { WhatsAppCustomerCard } from './WhatsAppCustomerCard';
 import { refreshWhatsAppConversations } from '@/lib/whatsapp-alerts';
 import { ReceiptReview } from './ReceiptReview';
 import { ReceiptRegistration } from './ReceiptRegistration';
-import { retryReceiptAnalysis } from '@/lib/receipt-actions.functions';
+import { recoverReceiptAttachment } from '@/lib/receipt-actions.functions';
 import { isStoreToday, storeDayStart } from '@/lib/daily-inbox';
 import { needsStaffReply, sortQueue, type QueueOrder } from '@/lib/whatsapp-queue';
 
@@ -89,7 +89,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
   const actionFn = useServerFn(whatsappAction);
   const requestFn = useServerFn(whatsappRequestAction);
   const pdfFn = useServerFn(whatsappSendPdf);
-  const retryFn = useServerFn(retryReceiptAnalysis);
+  const retryFn = useServerFn(recoverReceiptAttachment);
   const staffFn = useServerFn(whatsappStaff);
   const storeOrders = useStore(s => s.orders);
   const orders = externalOrders ?? storeOrders;

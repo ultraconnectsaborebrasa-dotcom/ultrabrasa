@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { z } from 'zod';
 
-export const retryReceiptAnalysis = createServerFn({ method: 'POST' })
+export const recoverReceiptAttachment = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ messageId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {

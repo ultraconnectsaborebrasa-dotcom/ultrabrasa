@@ -40,7 +40,7 @@ Subdirectories may have their own AGENTS.md (desktop rules: electron/AGENTS.md);
 - Automated replies run right after an inbound event is stored (src/lib/background.ts) with per-conversation job serialization, so no reply waits on the scheduler.
 - Digital catalog metadata (photos, descriptions, publish/sort) lives in catalog tables keyed by PDV product id and is read publicly only through an allowlisted security-definer RPC; prices, stock and availability always come from the shared PDV snapshot so the menu never diverges from the PDV.
 - WhatsApp contacts deduplicate normalized phones; provisional names never overwrite confirmed names; corrections are audited and external sync requires admin authorization.
-- Receipts use private media, atomic deduplication and audited provisional payments; unknown files stay reviewable without pausing automation, while bank confirmation stays manual and delivery-independent.
+- Receipt processing and attachment recovery only store private media and deduplicate/link files; neither invokes AI nor creates payments. Cashier confirmation uses order totals and remains manual and delivery-independent.
 - Delivery departure uses an authorized RPC and deduplicated job; only known failed sends allow explicit retry.
 - Locked closure RPCs and terminal guards close linked requests/jobs, preserving history without assuming refunds.
 - PDV order stage (`status`: aberta→cozinha→pronto→entrega→entregue/retirado) is separate from payment (`paymentStatus`/`payments`); `pay_pdv_cashier` never changes `status`, stage RPCs never touch payments.

@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Comprovantes sem leitura automática
+- [x] Remover análise por IA e reanálise, preservando arquivos privados e vínculo ao pedido.
+- [x] Manter resumo do pedido e baixa exclusivamente manual; 51 testes aprovados e registro manual de anexo verificado na conta autorizada. Sem comandas pendentes para testar baixa real; publicação necessária para aplicar ao WhatsApp em produção.
+
 ## Saída para entrega em lote
 - [x] Adicionar saída de todos os Delivery prontos em uma gravação, preservando pagamentos e avisos únicos; botão compartilhado na cozinha e caixa.
 - [x] Oito testes aprovados e confirmação da cozinha verificada em 890×674; 17 pedidos reais preservados. Execução efetiva do lote não verificada para não despachar clientes reais.
