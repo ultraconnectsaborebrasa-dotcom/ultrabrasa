@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { conversationDraftSchema, defaultBusiness } from '@/lib/whatsapp-business';
+import { NIGHT_MESSAGE, CLOSING_MESSAGE, LUNCH_CLOSED_MESSAGE, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
 vi.mock('@/lib/whatsapp.server', () => ({ gateway: vi.fn(), sendText: vi.fn(), sendTyping: vi.fn(), digits: (s: string) => s }));
 vi.mock('@lovable.dev/ai-gateway', () => ({ generateResponse: vi.fn(), GatewayError: class GatewayError extends Error {} }));
 import { generateResponse } from '@lovable.dev/ai-gateway';
@@ -89,7 +90,7 @@ describe('marmitas: atendimento por regras', () => {
     vi.useFakeTimers();
     const flow = attendance();
     await flow.receive('Bom dia', '10:00', 'in-1');
-    expect(flow.queued.filter(job => job.dedup_key.startsWith('campaign:'))).toHaveLength(3);
+    expect(flow.queued.filter(job => job.dedup_key.startsWith('campaign:'))).toHaveLength(5);
     expect(generateResponse).not.toHaveBeenCalled();
   });
   it('não cria pedido de marmita às 14h20, mesmo com rascunho anterior', async () => {
@@ -100,5 +101,42 @@ describe('marmitas: atendimento por regras', () => {
     await flow.receive('Sim', '14:20', 'in-2');
     expect(flow.requests).toEqual([]);
     expect(flow.draft().items[0]?.qty).toBe(2);
+    expect(flow.queued.at(-1)?.payload.text).toBe(LUNCH_CLOSED_MESSAGE);
+  });
+  it('apresenta a noite a partir das 17h e encerra às 22h10', async () => {
+    vi.useFakeTimers();
+    const night = attendance();
+    await night.receive('Olá', '17:00', 'night-1');
+    expect(night.queued[0]?.payload.text).toBe(NIGHT_MESSAGE);
+    const closed = attendance();
+    await closed.receive('Olá', '22:10', 'closed-1');
+    expect(closed.queued[0]?.payload.text).toBe(CLOSING_MESSAGE);
+  });
+  it('transfere para atendente sem gerar resposta por IA ou pedido', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Quero falar com um atendente', '11:00', 'human-1');
+    expect(flow.queued[0]?.payload.text).toBe(HANDOFF_MESSAGE);
+    expect(flow.requests).toEqual([]);
+    expect(generateResponse).not.toHaveBeenCalled();
+  });
+  it('responde o prazo antes de continuar o atendimento', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Qual é o prazo de entrega?', '11:00', 'faq-1');
+    expect(flow.queued).toHaveLength(1);
+    expect(flow.queued[0]?.payload.text).toContain('30 a 45 minutos após o pedido sair');
+    expect(flow.queued[0]?.payload.text).not.toContain('Não tenho um prazo');
+  });
+  it('não divulga quando não compreende e transfere pedidos humanos também à noite', async () => {
+    vi.useFakeTimers();
+    const unknown = attendance();
+    await unknown.receive('Xyzz desconhecido', '08:30', 'unknown-1');
+    expect(unknown.queued[0]?.payload.text).toBe(HANDOFF_MESSAGE);
+    expect(unknown.queued.some(job => job.dedup_key.startsWith('campaign:'))).toBe(false);
+    const humanAtNight = attendance();
+    await humanAtNight.receive('Quero falar com um atendente', '17:00', 'human-night-1');
+    expect(humanAtNight.queued[0]?.payload.text).toBe(HANDOFF_MESSAGE);
+    expect(humanAtNight.queued[0]?.payload.text).not.toBe(NIGHT_MESSAGE);
   });
 });

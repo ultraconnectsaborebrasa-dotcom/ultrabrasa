@@ -1,4 +1,4 @@
-export const ATTACHMENT_ACK = 'Agradecemos pelo envio do anexo! ❤️ Recebemos certinho. Muito obrigado!';
+export const ATTACHMENT_ACK = 'Agradeçamos pelo anexo!';
 export const ATTACHMENT_GROUP_MS = 60_000;
 
 export function isAttachment(kind: string, mediaId?: string | null): boolean {

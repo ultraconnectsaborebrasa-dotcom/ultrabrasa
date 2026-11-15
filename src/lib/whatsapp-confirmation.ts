@@ -1,4 +1,4 @@
-export const ORDER_CONFIRMED_MESSAGE = 'Pedido confirmado! ❤️😊\n\nJá deixamos tudo organizado por aqui!\n\nA partir das 11h começaremos as montagens dos pedidos.\n\nNosso prazo estimado de entrega é de 30 a 45 minutos.\n\nAgradecemos pela preferência e confiança! Será um prazer atender você. 🙏❤️';
+export const ORDER_CONFIRMED_MESSAGE = 'Prontinho! Seu pedido foi confirmado!\n\nJá deixamos tudo organizado por aqui.\n\nNossos pedidos começam a sair a partir das 11:00.\n\nO prazo estimado de entrega é de 30 a 45 minutos após a saída do pedido para entrega.\n\nAgradecemos pela preferência e confiança. Será um prazer atender você!';
 
 /** Only the atomic acceptance job owns the confirmation; Pix-key jobs are separate. */
 export function isOrderConfirmationJob(key: string): boolean {

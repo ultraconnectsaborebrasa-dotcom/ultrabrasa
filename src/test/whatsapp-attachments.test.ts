@@ -1,11 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { isAttachment, hasRecentReply } from '@/lib/whatsapp-attachments';
+import { isAttachment, hasRecentReply, ATTACHMENT_ACK } from '@/lib/whatsapp-attachments';
 import { processEvent } from '@/lib/whatsapp.server';
 
 const { queueJob } = vi.hoisted(() => ({ queueJob: vi.fn() }));
 vi.mock('@/lib/whatsapp-automation.server', () => ({ queueJob }));
 
 describe('Attachment acknowledgment rules', () => {
+  it('uses the single predefined acknowledgment', () => {
+    expect(ATTACHMENT_ACK).toBe('Agradeçamos pelo anexo!');
+  });
   it.each(['image', 'document', 'video', 'audio', 'sticker', 'file'])('acknowledges %s attachments', kind => {
     expect(isAttachment(kind)).toBe(true);
   });

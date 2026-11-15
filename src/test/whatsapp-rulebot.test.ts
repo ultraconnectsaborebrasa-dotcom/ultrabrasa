@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { botWindow, ruleParse, isEarlyLunch, windowStart } from '@/lib/whatsapp-rulebot';
-import { conversationDraftSchema, missingOrderFields } from '@/lib/whatsapp-business';
+import { botWindow, ruleParse, isEarlyLunch, windowStart, lunchMenuOpen, earlyLunchMessages, regularLunchMessages, faqReply, LUNCH_CLOSED_MESSAGE, NIGHT_MESSAGE, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
+import { conversationDraftSchema, missingOrderFields, defaultBusiness } from '@/lib/whatsapp-business';
 const empty = conversationDraftSchema.parse({});
 const at = (hm: string) => new Date(`2026-11-16T${hm}:00-03:00`);
 describe('bot tradicional', () => {
@@ -8,6 +8,8 @@ describe('bot tradicional', () => {
     expect(botWindow(at('09:00'))).toBe('lunch');
     expect(botWindow(at('13:59'))).toBe('lunch');
     expect(botWindow(at('14:00'))).toBe('lunch');
+    expect(botWindow(at('16:59'))).toBe('afterLunch');
+    expect(botWindow(at('17:00'))).toBe('night');
     expect(botWindow(at('18:00'))).toBe('night');
     expect(botWindow(at('22:09'))).toBe('night');
     expect(botWindow(at('22:10'))).toBe('closed');
@@ -58,5 +60,40 @@ describe('bot tradicional', () => {
   });
   it('confirmação com sim', () => {
     expect(ruleParse('Sim', empty, 'm', []).confirms).toBe(true);
+  });
+  it('disponibiliza o cardápio até 14h e os pedidos até 14h20', () => {
+    expect(lunchMenuOpen(at('13:59'))).toBe(true);
+    expect(lunchMenuOpen(at('14:00'))).toBe(false);
+    expect(botWindow(at('14:19'))).toBe('lunch');
+  });
+  it('usa cinco partes no roteiro normal e remove escassez quando ela não está ativa', () => {
+    expect(regularLunchMessages(defaultBusiness, 19.9)).toHaveLength(5);
+    const semEscassez = { ...defaultBusiness, highDemand: false };
+    expect(regularLunchMessages(semEscassez, 19.9)).toHaveLength(4);
+    expect(earlyLunchMessages(semEscassez, 19.9).join(' ')).not.toContain('limitad');
+  });
+  it('responde preço, cardápio, entrega e horários com os dados cadastrados', () => {
+    expect(faqReply('Qual o preço da marmita?', defaultBusiness, 19.9, at('11:00'))?.replace(/\s/g, ' ')).toContain('R$ 19,90');
+    expect(faqReply('O que tem hoje?', defaultBusiness, 19.9, at('11:00'))).toContain(defaultBusiness.lunchMenu);
+    expect(faqReply('A entrega é grátis?', defaultBusiness, 19.9, at('11:00'))).toContain('qualquer lugar de Eunápolis');
+    expect(faqReply('Qual o prazo de entrega?', defaultBusiness, 19.9, at('11:00'))).toContain('30 a 45 minutos após o pedido sair');
+    expect(faqReply('Qual o horário noturno?', defaultBusiness, 19.9, at('17:00'))).toContain('preparos começam às 18:00');
+    expect(faqReply('O que tem hoje?', defaultBusiness, 19.9, at('14:20'))).toBe(LUNCH_CLOSED_MESSAGE);
+    expect(NIGHT_MESSAGE).toContain('A partir das 17:00');
+    expect(HANDOFF_MESSAGE).toContain('um atendente');
+  });
+  it('registra troco no dinheiro e não pede troco no cartão ou Pix', () => {
+    const base = ruleParse('Quero 1 marmita, meu nome é Ana, Rua A, 12, bairro Centro', empty, 'm', missingOrderFields(empty));
+    const dinheiro = ruleParse('Dinheiro, troco para 50', base.draft, 'm', missingOrderFields(base.draft));
+    expect(dinheiro.draft.cashFor).toBe(50);
+    expect(missingOrderFields(dinheiro.draft)).toEqual([]);
+    const pix = ruleParse('Pix', base.draft, 'm', missingOrderFields(base.draft));
+    expect(missingOrderFields(pix.draft)).toEqual([]);
+    const cartao = ruleParse('Cartão', base.draft, 'm', missingOrderFields(base.draft));
+    expect(missingOrderFields(cartao.draft)).toEqual([]);
+  });
+  it('encaminha reclamações e problemas para atendente', () => {
+    expect(ruleParse('Meu pedido errado, quero falar com alguém', empty, 'm', []).wantsHuman).toBe(true);
+    expect(ruleParse('Tive problema com pagamento', empty, 'm', []).wantsHuman).toBe(true);
   });
 });

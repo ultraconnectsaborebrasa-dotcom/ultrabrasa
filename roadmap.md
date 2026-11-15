@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Roteiro geral do atendimento automático
+- [x] Aplicar horários, textos, respostas frequentes, sequências com 3 segundos e interrupção por nova resposta.
+- [x] Testar cenários fictícios das 08h, 11h, pagamentos, anexos, noite, encerramento e transferência humana, sem criar pedidos reais: 239 testes aprovados.
+- [ ] Verificar uma conversa real no WhatsApp após publicar; envio real não faz parte dos testes automatizados.
+
 ## Início do atendimento em mensagens menores
 - [x] Separar a abertura das 08h em saudação, promoção, cardápio e perguntas, preservando a continuidade e a prevenção de repetição.
 - [x] 30 testes aprovados: abertura em quatro mensagens, continuidade e passagem das 10h sem repetição; envio real depende da publicação.

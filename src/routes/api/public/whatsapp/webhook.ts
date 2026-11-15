@@ -30,7 +30,7 @@ export const Route = createFileRoute('/api/public/whatsapp/webhook')({
         await recoverPending(db, 3);
         await runAfterResponse(request, 'WhatsApp processing', async () => {
           const { processJobs } = await import('@/lib/whatsapp-automation.server');
-          await processJobs(db, 4);
+          await processJobs(db, 8);
         });
         return new Response('ok');
       },
