@@ -52,7 +52,7 @@ async function interpret(db:Admin,j:Job){
   const whole=ruleParse(text,previous,lunchP?.id??'',missingBefore);
   const foldedChanged=JSON.stringify(folded)!==JSON.stringify(previous);
   const parsed={...whole,draft:foldedChanged?folded:whole.draft,extracted:whole.extracted||foldedChanged};
-  const previousTotal=previous.items.reduce((sum,item)=>sum+(lunchP?.price??b.lunchPrice)*item.qty,0);
+  const previousTotal=Math.round(previous.items.reduce((sum,item)=>sum+(lunchP?.price??b.lunchPrice)*item.qty,0)*100)/100;
   const interactionConfirms=previous.summarySent&&summaryReady(previous,previousTotal)&&previous.quotedTotal===previousTotal;
   if(parsed.wantsHuman&&!interactionConfirms){await handoff(db,j.phone,'Cliente pediu atendente',payload.inboundId,true);return;}
   const say=async(key:string,t:string)=>queueJob(db,`${key}:${payload.inboundId}`,j.phone,'text',{text:t,automatic:true});
@@ -99,7 +99,7 @@ async function interpret(db:Admin,j:Job){
     if(!parsed.extracted)return;
   }
   const d=interactionConfirms?previous:parsed.draft;
-  const total=interactionConfirms?previousTotal:d.items.reduce((s,i)=>s+lunchP.price*i.qty,0);
+  const total=interactionConfirms?previousTotal:Math.round(d.items.reduce((s,i)=>s+lunchP.price*i.qty,0)*100)/100;
   if(d.payment==='Pix'&&!b.pixKey){await handoff(db,j.phone,'Chave Pix não configurada');return;}
   const missing=missingOrderFields(d);
   const changed=!interactionConfirms&&JSON.stringify({...d,summarySent:false,quotedTotal:0})!==JSON.stringify({...previous,summarySent:false,quotedTotal:0});
