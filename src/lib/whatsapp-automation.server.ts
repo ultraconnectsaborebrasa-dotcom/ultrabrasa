@@ -1,4 +1,6 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
+// Delivery or lunch questions start the scripted lunch flow instead of a human handoff.
+const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
 import { botWindow,windowStart,ruleParse,GREETING_MESSAGE,NIGHT_MESSAGE,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,isEarlyLunch,lunchMenuOpen,faqReply } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr } from './whatsapp-business';
@@ -74,7 +76,7 @@ async function interpret(db:Admin,j:Job){
   const earlyCampaign=earlyLunchMessages(b,lunchP.price);
   const regularCampaign=regularLunchMessages(b,lunchP.price);
   const campaignSeen=already(GREETING_MESSAGE)||already(earlyMessage)||earlyCampaign.some(already)||regularCampaign.some(already);
-  const lunchInterest=parsed.greeting||/marmit|quentinh|quero|pedido|card[aá]pio|hoje/i.test(text);
+  const lunchInterest=parsed.greeting||LUNCH_INTEREST.test(text);
   if(!inProgress&&!campaignSeen&&!parsed.extracted&&!lunchInterest){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
   // Split the opening; do not restart legacy or split campaigns at the boundary.
   if(lunchMenuOpen(now)&&!inProgress&&!campaignSeen&&!parsed.extracted){
@@ -117,7 +119,7 @@ async function interpret(db:Admin,j:Job){
     }
   } else if(parsed.thanks&&!parsed.extracted){reply='Imagina! 😊 '+followUpMessage(missing);}
   else if(!parsed.extracted&&!parsed.greeting&&inProgress&&previous.summarySent){reply=CONFIRM_HINT;}
-  else if(!parsed.extracted&&!parsed.greeting&&!inProgress&&campaignSeen&&!messages.slice(0,-1).every(m=>m.direction==='out'||m.wa_message_id===payload.inboundId)&&!/marmit|quero|pedido|card[aá]pio|hoje/i.test(text)){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
+  else if(!parsed.extracted&&!parsed.greeting&&!inProgress&&campaignSeen&&!messages.slice(0,-1).every(m=>m.direction==='out'||m.wa_message_id===payload.inboundId)&&!LUNCH_INTEREST.test(text)){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
   else{
     const ack=d.items[0]&&!previous.items.length?`${lunchQtyAck(d.items[0].qty)} `:d.type==='Delivery'&&d.address.street&&d.address.number&&d.address.neighborhood&&!(previous.address.street&&previous.address.number&&previous.address.neighborhood)?`${addressAck(d.address)} `:'';
     const ask=missing.length>1?`Para finalizar, me fala ${missing.map(f=>f==='itens e quantidades'?'quantas marmitas':f==='entrega ou retirada'?'o endereço completo':f==='rua'?'a rua':f==='número'?'o número da casa':f==='forma de pagamento'?'a forma de pagamento (Pix, cartão ou dinheiro)':f==='troco (ou sem troco)'?'se precisa de troco':`o ${f}`).filter((v,i,a)=>a.indexOf(v)===i).join(', ').replace(/, ([^,]*)$/,' e $1')} 😊`:followUpMessage(missing);
