@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Anexos sem respostas duplicadas
+- [x] Unificar agradecimento, deduplicar eventos e agrupar anexos próximos sem alterar pagamentos.
+- [x] Testar recebimentos repetidos e pausa por atendimento humano: 54 testes aprovados; envio real de anexo ainda não verificado.
+
 ## Limpeza solicitada e arquivo de atendimento
 - [x] Limpar contadores de mensagens não lidas e reconhecer avisos de erro sem reenviar mensagens.
 - [x] Finalizar pedidos da cozinha após confirmação explícita do responsável, preservando pagamentos e histórico.

@@ -1,5 +1,5 @@
 import { generateResponse } from '@lovable.dev/ai-gateway';
-import { assessReceipt, canRecordProvisional, receiptLinkCandidate, receiptReply, receiptEvidenceSchema, type ReceiptCandidate } from './payment-receipts';
+import { assessReceipt, canRecordProvisional, receiptLinkCandidate, receiptEvidenceSchema, type ReceiptCandidate } from './payment-receipts';
 import { businessSchema } from './whatsapp-business';
 import { downloadWhatsAppMedia } from './whatsapp.server';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
@@ -9,10 +9,7 @@ export async function processReceipt(db: Admin, messageId: string, retry = false
   const exists=await db.from('payment_receipts').select('*').eq('message_id',m.data.id).maybeSingle();
   if(exists.error)throw new Error(exists.error.message);
   if(exists.data && (!retry || ['unverified','confirmed','corrected'].includes(exists.data.state))) {
-    // Recover acknowledgment after persistence succeeded but enqueue failed, without changing payment.
-    const {queueJob}=await import('./whatsapp-automation.server');
-    const recognized=(exists.data.evidence as {isPixReceipt?:boolean})?.isPixReceipt===true;
-    await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:receiptReply(!!exists.data.storage_path&&!!(exists.data.order_id||exists.data.request_id),recognized),automatic:false});
+    // Acknowledgment belongs to the inbound job, not receipt analysis or retries.
     return;
   }
   const config=await db.from('whatsapp_settings').select('business').eq('id',1).single();
@@ -65,6 +62,4 @@ export async function processReceipt(db: Admin, messageId: string, retry = false
   if(!receiptId)throw new Error('Comprovante não registrado');
   const final=await db.from('payment_receipts').select('state,request_id,order_id,storage_path').eq('id',receiptId).single();
   if(final.error)throw new Error(final.error.message);
-  const {queueJob}=await import('./whatsapp-automation.server');
-  await queueJob(db,`receipt-ack:${messageId}`,m.data.phone,'text',{text:receiptReply(!!final.data.storage_path&&!!(final.data.order_id||final.data.request_id),canRecordProvisional(evidence),candidates.filter(c=>['accepted','awaiting_acceptance'].includes(c.status)&&!c.paid).length>1),automatic:false});
 }

@@ -1,4 +1,5 @@
 // Server-only WhatsApp helpers. Import only inside server handlers.
+import { ATTACHMENT_ACK, isAttachment } from './whatsapp-attachments';
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/whatsapp';
 
 function keys() {
@@ -135,9 +136,10 @@ export async function processEvent(db: Admin, event: string, payload: any) {
       const phone = digits(m.from ?? '');
       if (!phone) continue;
       await storeMessage(db, m, 'in', 'customer', phone, names.get(m.from));
-      if(['image','document'].includes(m.type)){
+      if(isAttachment(m.type,describe(m).media)){
         const {queueJob}=await import('./whatsapp-automation.server');
-        await queueJob(db,`receipt:${m.id}`,phone,'receipt',{inboundId:m.id,automatic:false});
+        await queueJob(db,`attachment-ack:${m.id}`,phone,'text',{text:ATTACHMENT_ACK,inboundId:m.id,automatic:true});
+        if(['image','document'].includes(m.type))await queueJob(db,`receipt:${m.id}`,phone,'receipt',{inboundId:m.id,automatic:false});
       }else await maybeAutoReply(db, phone, m.id);
     }
   } else if (event === 'whatsapp.status') {

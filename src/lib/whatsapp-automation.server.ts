@@ -3,6 +3,7 @@ import { botWindow,windowStart,ruleParse,LUNCH_CAMPAIGN,NIGHT_MESSAGE,CLOSING_ME
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
+import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-attachments';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
 const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
@@ -50,12 +51,11 @@ async function interpret(db:Admin,j:Job){
   // Campanha: 3 mensagens em sequência, 2 s entre elas, uma vez por período.
   if(!inProgress&&!already(LUNCH_CAMPAIGN[0])){
     for(let i=0;i<LUNCH_CAMPAIGN.length;i++){
-      const msg=LUNCH_CAMPAIGN[i]!;
+      const msg=LUNCH_CAMPAIGN[i];
+      if(!msg)continue;
       const dup=checkEmpty(await db.from('whatsapp_messages').select('id').eq('phone',j.phone).eq('direction','out').gte('created_at',since).like('body',`${msg.slice(0,30)}%`).limit(1));
       if(dup?.length)continue;
-      if(i>0)await new Promise(r=>setTimeout(r,2000));
-      await sendTyping(j.phone,payload.inboundId??'');
-      await sendText(db,j.phone,msg,{source:'auto'});
+      await queueJob(db,`campaign:${since}:${i}:${j.phone}`,j.phone,'text',{text:msg,automatic:true,inboundId:payload.inboundId});
     }
     if(!parsed.extracted)return;
   }
@@ -105,6 +105,7 @@ export async function processJobs(db:Admin,limit=2){
     const claimed=check(await db.rpc('wa_claim_job'));const j=claimed?.[0];if(!j)return;
     try{
       const p=jobPayload.parse(j.payload);
+      if(j.dedup_key.startsWith('receipt-ack:')){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
       if(j.kind!=='receipt'&&(businessSchema.parse(cfg.business).circuitPaused||cfg.account_state!=='ok')){
         checkEmpty(await db.from('whatsapp_jobs').update({state:'pending',lease_until:null,next_attempt_at:new Date(Date.now()+60000).toISOString()}).eq('id',j.id));continue;
       }
@@ -140,8 +141,22 @@ export async function processJobs(db:Admin,limit=2){
         if(j.kind==='text'){
           const text=p.text??'';
           if(p.automatic){
+            const recent=checkEmpty(await db.from('whatsapp_messages').select('body,created_at,status').eq('phone',j.phone).eq('direction','out').gte('created_at',new Date(Date.now()-ATTACHMENT_GROUP_MS).toISOString()))??[];
+            let duplicate=hasRecentReply(recent,text);
+            if(text===ATTACHMENT_ACK&&p.inboundId){
+              const inbound=checkEmpty(await db.from('whatsapp_messages').select('media_id,created_at').eq('wa_message_id',p.inboundId).maybeSingle());
+              if(inbound?.media_id){
+                const earlier=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id').eq('phone',j.phone).eq('direction','in').eq('media_id',inbound.media_id).lt('created_at',inbound.created_at).limit(1));
+                duplicate=duplicate||Boolean(earlier?.length);
+              }
+            }
+            if(duplicate){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
+          }
+          if(p.automatic){
             await sendTyping(j.phone,String(j.dedup_key??'').split(':').slice(1).join(':'));
             await new Promise(r=>setTimeout(r,1500+Math.min(1500,text.length*8)));
+            const live=check(await db.from('whatsapp_conversations').select('automation_paused').eq('phone',j.phone).single());
+            if(live.automation_paused){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
           }
           providerId=await sendText(db,j.phone,text,{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
         }
