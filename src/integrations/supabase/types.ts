@@ -919,6 +919,7 @@ export type Database = {
         Args: { action: string }
         Returns: number
       }
+      bulk_depart_ready_orders: { Args: never; Returns: number }
       cancel_pdv_cashier_order: {
         Args: { order_id: string }
         Returns: undefined

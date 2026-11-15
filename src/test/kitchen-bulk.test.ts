@@ -7,6 +7,27 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
 beforeEach(() => rpc.mockReset());
 
 describe('Baixa da cozinha em lote', () => {
+  it('envia para entrega somente Delivery prontos sem finalizar', () => {
+    expect(kitchenBulkDestination({ status: 'pronto', type: 'Delivery' }, 'depart')).toBe('entrega');
+    for (const status of ['aberta', 'cozinha', 'entrega', 'entregue', 'cancelado']) {
+      expect(kitchenBulkDestination({ status, type: 'Delivery' }, 'depart')).toBeNull();
+    }
+    for (const type of ['Mesa', 'Balcão', 'Retirada']) {
+      expect(kitchenBulkDestination({ status: 'pronto', type }, 'depart')).toBeNull();
+    }
+  });
+
+  it('envia todos para entrega em uma única chamada', async () => {
+    rpc.mockResolvedValue({ data: 30, error: null });
+    await expect(runKitchenBulkAction('depart')).resolves.toBe(30);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('bulk_depart_ready_orders');
+  });
+
+  it('propaga falha sem retornar uma baixa bem-sucedida', async () => {
+    rpc.mockResolvedValue({ data: null, error: new Error('Sem permissão') });
+    await expect(runKitchenBulkAction('depart')).rejects.toThrow('Sem permissão');
+  });
   it('marca como prontos somente os pedidos que estão na cozinha', () => {
     expect(kitchenBulkDestination({ status: 'cozinha', type: 'Mesa' }, 'ready')).toBe('pronto');
     expect(kitchenBulkDestination({ status: 'aberta', type: 'Mesa' }, 'ready')).toBeNull();

@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Saída para entrega em lote
+- [x] Adicionar saída de todos os Delivery prontos em uma gravação, preservando pagamentos e avisos únicos; botão compartilhado na cozinha e caixa.
+- [x] Oito testes aprovados e confirmação da cozinha verificada em 890×674; 17 pedidos reais preservados. Execução efetiva do lote não verificada para não despachar clientes reais.
+
 ## Ordem de chegada das conversas
 - [x] Priorizar clientes aguardando resposta em ordem de chegada, sem usar respostas do robô como chegada.
 - [x] Adicionar filtro de espera, posição na coluna, opção de recentes e acesso ao próximo cliente.

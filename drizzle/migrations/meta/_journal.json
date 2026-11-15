@@ -407,6 +407,13 @@
       "when": 1794685483260,
       "tag": "0057_bulk_kitchen_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1794716292056,
+      "tag": "0058_bulk_depart_ready_orders",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,7 @@ import { CancelOrderButton } from './CancelOrderButton';
 import { ManualPaymentDialog } from './ManualPaymentDialog';
 import { openCloud } from '@/lib/pdv-cloud';
 import { runKitchenBulkAction } from '@/lib/kitchen-bulk';
+import { BulkDeliveryDeparture } from './BulkDeliveryDeparture';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -100,11 +101,10 @@ export function KitchenView() {
   return (
     <div className="space-y-4">
       <Header title="Cozinha · Preparação" sub={`${orders.filter(o=>o.status==='cozinha').length} preparando · ${orders.filter(o=>o.status==='pronto').length} prontos · ${new Date().toLocaleDateString("pt-BR")}`} />
-      {orders.some(o=>o.status==='cozinha') && (
-        <div className="flex justify-end">
-          <Button variant="outline" disabled={bulkBusy} onClick={() => void markAllReady()}>{bulkBusy ? 'Salvando…' : `Marcar todos como prontos (${orders.filter(o=>o.status==='cozinha').length})`}</Button>
-        </div>
-      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" disabled={bulkBusy || !orders.some(o=>o.status==='cozinha')} onClick={() => void markAllReady()}>{bulkBusy ? 'Salvando…' : `Marcar todos como prontos (${orders.filter(o=>o.status==='cozinha').length})`}</Button>
+        <BulkDeliveryDeparture count={orders.filter(o=>o.status==='pronto' && o.type==='Delivery').length} disabled={bulkBusy} onSaved={openCloud} />
+      </div>
       {!orders.length && <Empty text="Cozinha livre 🔥" />}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[...orders].reverse().map((o) => {

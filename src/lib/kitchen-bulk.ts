@@ -1,15 +1,18 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export type KitchenBulkAction = 'ready' | 'finish';
+export type KitchenBulkAction = 'ready' | 'finish' | 'depart';
 
 export function kitchenBulkDestination(order: { status: string; type: string }, action: KitchenBulkAction) {
   if (action === 'ready') return order.status === 'cozinha' ? 'pronto' : null;
+  if (action === 'depart') return order.status === 'pronto' && order.type === 'Delivery' ? 'entrega' : null;
   if (!['aberta', 'cozinha', 'pronto', 'entrega'].includes(order.status)) return null;
   return order.type === 'Delivery' ? 'entregue' : 'retirado';
 }
 
 export async function runKitchenBulkAction(action: KitchenBulkAction) {
-  const { data, error } = await supabase.rpc('bulk_advance_pdv_cashier_orders' as never, { action } as never);
+  const { data, error } = action === 'depart'
+    ? await supabase.rpc('bulk_depart_ready_orders')
+    : await supabase.rpc('bulk_advance_pdv_cashier_orders' as never, { action } as never);
   if (error) throw error;
   return Number(data ?? 0);
 }
