@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS receipt_payment_guard ON public.pdv_state;

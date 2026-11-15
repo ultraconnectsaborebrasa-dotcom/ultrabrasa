@@ -435,6 +435,13 @@
       "when": 1794750607743,
       "tag": "0061_pix_key_full_message",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1794750881937,
+      "tag": "0062_allow_manual_payment_with_receipt",
+      "breakpoints": true
     }
   ]
 }
