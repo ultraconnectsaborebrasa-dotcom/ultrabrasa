@@ -1,5 +1,5 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
-import { botWindow,windowStart,ruleParse,LUNCH_CAMPAIGN,NIGHT_MESSAGE,CLOSING_MESSAGE,CONFIRM_HINT } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,LUNCH_CAMPAIGN,NIGHT_MESSAGE,CLOSING_MESSAGE,CONFIRM_HINT,earlyLunchMessage,isEarlyLunch } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
@@ -15,7 +15,7 @@ export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'
 }
 async function handoff(db:Admin,phone:string,reason:string){checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,attendance_status:'needs_reply'}).eq('phone',phone));return reason;}
 async function interpret(db:Admin,j:Job){
-  // Bot tradicional: nenhuma chamada de IA, nenhum crédito consumido.
+  // Static/rule-based attendance: no AI generation calls in this flow.
   const payload=jobPayload.parse(j.payload);
   const cfg=check(await db.from('whatsapp_settings').select('business,auto_reply_enabled,account_state').eq('id',1).single());
   const b=businessSchema.parse(cfg.business??{});
@@ -39,8 +39,8 @@ async function interpret(db:Admin,j:Job){
   if(openReq?.length){await handoff(db,j.phone,'Cliente escreveu com pedido aguardando aceite');return;}
   const inProgress=previous.items.length>0||!!previous.address.street||!!previous.payment;
   const say=async(key:string,t:string)=>queueJob(db,`${key}:${payload.inboundId}`,j.phone,'text',{text:t,automatic:true});
-  if(!inProgress&&win!=='lunch'){
-    const fixed=win==='night'?NIGHT_MESSAGE:CLOSING_MESSAGE;
+  if(win!=='lunch'){
+    const fixed=win==='night'&&!inProgress&&!/marmit|quentinh/i.test(text)?NIGHT_MESSAGE:CLOSING_MESSAGE;
     if(!already(fixed)){await say(win==='night'?'night':'closing',fixed);return;}
     if(win==='night')await handoff(db,j.phone,'Cliente precisa de ajuda no atendimento da noite');
     return;
@@ -49,18 +49,21 @@ async function interpret(db:Admin,j:Job){
   if(lunchP.stock!==null&&lunchP.stock<=0){if(!already(CLOSING_MESSAGE))await say('closing',CLOSING_MESSAGE);return;}
   const missingBefore=missingOrderFields(previous);
   const parsed=ruleParse(text,previous,lunchP.id,missingBefore);
-  // Campanha: 3 mensagens em sequência, 2 s entre elas, uma vez por período.
-  if(!inProgress&&!already(LUNCH_CAMPAIGN[0])){
-    for(let i=0;i<LUNCH_CAMPAIGN.length;i++){
-      const msg=LUNCH_CAMPAIGN[i];
+  if(parsed.wantsHuman){await handoff(db,j.phone,'Cliente pediu atendente');return;}
+  const earlyMessage=earlyLunchMessage(b,lunchP.price);
+  const campaignSeen=already(LUNCH_CAMPAIGN[0])||already(earlyMessage);
+  // One early promotion; keep normal lunch scripts after 10h, without restarting at the boundary.
+  if(!inProgress&&!campaignSeen&&!parsed.extracted){
+    const campaign=isEarlyLunch(now)?[earlyMessage]:LUNCH_CAMPAIGN;
+    for(let i=0;i<campaign.length;i++){
+      const msg=campaign[i];
       if(!msg)continue;
       const dup=checkEmpty(await db.from('whatsapp_messages').select('id').eq('phone',j.phone).eq('direction','out').gte('created_at',since).like('body',`${msg.slice(0,30)}%`).limit(1));
       if(dup?.length)continue;
-      await queueJob(db,`campaign:${since}:${i}:${j.phone}`,j.phone,'text',{text:msg,automatic:true,inboundId:payload.inboundId});
+      await queueJob(db,`campaign:${since}:${isEarlyLunch(now)?'early:':''}${i}:${j.phone}`,j.phone,'text',{text:msg,automatic:true,inboundId:payload.inboundId});
     }
     if(!parsed.extracted)return;
   }
-  if(parsed.wantsHuman){await handoff(db,j.phone,'Cliente pediu atendente');return;}
   const d=parsed.draft;
   const total=d.items.reduce((s,i)=>s+lunchP.price*i.qty,0);
   if(d.payment==='Pix'&&!b.pixKey){await handoff(db,j.phone,'Chave Pix não configurada');return;}
@@ -83,16 +86,16 @@ async function interpret(db:Admin,j:Job){
     else{
       const brl=(v:number)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
       const qty=d.items[0]?.qty??0;
-      const where=d.type==='Delivery'?`${titleAddr(d.address.street)}, ${d.address.number} — ${titleAddr(d.address.neighborhood)}`:'Retirada no local';
+      const where=d.type==='Delivery'?[`${titleAddr(d.address.street)}, ${d.address.number} — ${titleAddr(d.address.neighborhood)}`,d.address.reference?`Referência: ${d.address.reference}`:''].filter(Boolean).join('\n'):'Retirada no local';
       const troco=d.payment==='Dinheiro'?(d.cashFor?` (troco para ${brl(d.cashFor)})`:' (sem troco)'):'';
       reply=`Perfeito! ❤️ Confira seu pedido:\n\nNome: ${d.customer}\nQuantidade: ${qty} marmita${qty>1?'s':''}\nValor unitário: ${brl(lunchP.price)}\nTotal: ${brl(total)}\nEndereço: ${where}\nPagamento: ${d.payment}${troco}\n\nEstá tudo certinho? Posso confirmar seu pedido?`;
       d.summarySent=true;d.quotedTotal=total;
     }
   } else if(parsed.thanks&&!parsed.extracted){reply='Imagina! 😊 '+followUpMessage(missing);}
   else if(!parsed.extracted&&!parsed.greeting&&inProgress&&previous.summarySent){reply=CONFIRM_HINT;}
-  else if(!parsed.extracted&&!parsed.greeting&&!inProgress&&already(LUNCH_CAMPAIGN[0])&&!messages.slice(0,-1).every(m=>m.direction==='out'||m.wa_message_id===payload.inboundId)&&!/marmit|quero|pedido|card[aá]pio|hoje/i.test(text)){await handoff(db,j.phone,'Mensagem não identificada pelo robô');return;}
+  else if(!parsed.extracted&&!parsed.greeting&&!inProgress&&campaignSeen&&!messages.slice(0,-1).every(m=>m.direction==='out'||m.wa_message_id===payload.inboundId)&&!/marmit|quero|pedido|card[aá]pio|hoje/i.test(text)){await handoff(db,j.phone,'Mensagem não identificada pelo robô');return;}
   else{
-    const ack=parsed.draft.items.length&&!previous.items.length?`${lunchQtyAck(d.items[0]!.qty)} `:d.type==='Delivery'&&d.address.street&&d.address.number&&d.address.neighborhood&&!(previous.address.street&&previous.address.number&&previous.address.neighborhood)?`${addressAck(d.address)} `:'';
+    const ack=d.items[0]&&!previous.items.length?`${lunchQtyAck(d.items[0].qty)} `:d.type==='Delivery'&&d.address.street&&d.address.number&&d.address.neighborhood&&!(previous.address.street&&previous.address.number&&previous.address.neighborhood)?`${addressAck(d.address)} `:'';
     const ask=missing.length>1?`Para finalizar, me fala ${missing.map(f=>f==='itens e quantidades'?'quantas marmitas':f==='entrega ou retirada'?'o endereço completo':f==='rua'?'a rua':f==='número'?'o número da casa':f==='forma de pagamento'?'a forma de pagamento (Pix, cartão ou dinheiro)':f==='troco (ou sem troco)'?'se precisa de troco':`o ${f}`).filter((v,i,a)=>a.indexOf(v)===i).join(', ').replace(/, ([^,]*)$/,' e $1')} 😊`:followUpMessage(missing);
     reply=`${ack}${ask}`.trim();
   }

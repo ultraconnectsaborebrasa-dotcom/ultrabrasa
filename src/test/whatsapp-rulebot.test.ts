@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { botWindow, ruleParse } from '@/lib/whatsapp-rulebot';
+import { botWindow, ruleParse, isEarlyLunch, windowStart } from '@/lib/whatsapp-rulebot';
 import { conversationDraftSchema, missingOrderFields } from '@/lib/whatsapp-business';
 const empty = conversationDraftSchema.parse({});
 const at = (hm: string) => new Date(`2026-11-16T${hm}:00-03:00`);
@@ -7,11 +7,38 @@ describe('bot tradicional', () => {
   it('janelas de horário de Brasília', () => {
     expect(botWindow(at('09:00'))).toBe('lunch');
     expect(botWindow(at('13:59'))).toBe('lunch');
-    expect(botWindow(at('14:00'))).toBe('afterLunch');
+    expect(botWindow(at('14:00'))).toBe('lunch');
     expect(botWindow(at('18:00'))).toBe('night');
     expect(botWindow(at('22:09'))).toBe('night');
     expect(botWindow(at('22:10'))).toBe('closed');
-    expect(botWindow(at('08:59'))).toBe('closed');
+    expect(botWindow(at('07:59'))).toBe('closed');
+  });
+  it('aceita pedidos antecipados a partir das 08h', () => {
+    expect(botWindow(at('07:59'))).toBe('closed');
+    expect(botWindow(at('08:00'))).toBe('lunch');
+  });
+  it('seleciona promoção somente das 08h às 10h', () => {
+    expect(isEarlyLunch(at('07:59'))).toBe(false);
+    expect(isEarlyLunch(at('08:00'))).toBe(true);
+    expect(isEarlyLunch(at('09:59'))).toBe(true);
+    expect(isEarlyLunch(at('10:00'))).toBe(false);
+  });
+  it('encerra marmitas às 14h20', () => {
+    expect(botWindow(at('14:19'))).toBe('lunch');
+    expect(botWindow(at('14:20'))).toBe('afterLunch');
+    expect(windowStart(at('14:20'))).toBe(at('14:20').toISOString());
+  });
+  it('não reinicia a campanha na passagem das 10h', () => {
+    expect(windowStart(at('08:00'))).toBe(at('08:00').toISOString());
+    expect(windowStart(at('10:00'))).toBe(windowStart(at('09:59')));
+  });
+  it('guarda referência e preserva informações nas respostas seguintes', () => {
+    const r = ruleParse('Quero 2 marmitas, meu nome é Ana, Rua A, 12, bairro Centro, referência: perto da escola', empty, 'm', missingOrderFields(empty));
+    const next = ruleParse('Pix', r.draft, 'm', missingOrderFields(r.draft));
+    expect(next.draft.items[0]?.qty).toBe(2);
+    expect(next.draft.customer).toBe('Ana');
+    expect(next.draft.address).toMatchObject({street:'Rua A',number:'12',neighborhood:'Centro',reference:'perto da escola'});
+    expect(missingOrderFields(next.draft)).toEqual([]);
   });
   it('extrai pedido completo numa mensagem', () => {
     const r = ruleParse('Quero 3 marmitas, meu nome é João, moro na Rua das Flores, 45, bairro Centro, vou pagar no Pix.', empty, 'm', missingOrderFields(empty));

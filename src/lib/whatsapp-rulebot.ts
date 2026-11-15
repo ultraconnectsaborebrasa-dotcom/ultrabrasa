@@ -1,4 +1,4 @@
-import type { ConversationDraft } from './whatsapp-business';
+import type { Business, ConversationDraft } from './whatsapp-business';
 
 /** Bot tradicional (sem IA): textos fixos, janelas de horário e extração por regras. */
 export const LUNCH_CAMPAIGN = [
@@ -10,13 +10,25 @@ export const NIGHT_MESSAGE = 'Oi! Tudo bem? 😊 Que bom ter você por aqui! Hoj
 export const CLOSING_MESSAGE = 'Infelizmente, hoje já encerramos nossos atendimentos! ❤️ Nossa demanda foi muito alta e todos os pedidos foram atendidos.\n\nAmanhã estaremos funcionando normalmente. Então, já garanta o seu pedido mais cedo para não ficar sem! 😋\n\nAgradecemos pela compreensão e preferência. Deus abençoe! 🙏';
 export const CONFIRM_HINT = 'É só responder *SIM* para eu confirmar seu pedido 😊 Se quiser mudar algo, me fala o que corrigir.';
 
+/** Early promotion uses registered menu, current PDV price and actual promotion settings. */
+export function earlyLunchMessage(b: Business, price: number): string {
+  const value = price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const demand = b.highDemand ? '\n\nTemos pedidos limitados devido à alta demanda, então é melhor garantir a sua antes que acabe!' : '';
+  return `Olá, tudo bem? ❤️\n\nNossa marmita está em promoção por apenas *${value}${b.freeDelivery ? ', com FRETE GRÁTIS!' : '!'}* 😍${demand}\n\n🍽️ *Hoje de cardápio temos:*\n\n${b.lunchMenu}\n\n*Confirme a sua! 😋*\n\nQuantas marmitas deseja?\nQual seu endereço completo?\nQual a forma de pagamento?\nQual seu nome?\n\nAssim já podemos adiantar e organizar seu pedido! ❤️`;
+}
+
+export const isEarlyLunch = (now = new Date()): boolean => {
+  const time = spHM(now);
+  return time >= '08:00' && time < '10:00';
+};
+
 export type BotWindow = 'lunch' | 'afterLunch' | 'night' | 'closed';
 const spHM = (now: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
-/** 09:00–14:00 marmitas · 14:00–18:00 encerramento do almoço · 18:00–22:10 noite · demais horários encerrado. */
+/** 08:00–14:20 marmitas · 14:20–18:00 encerramento do almoço · noite preservada. */
 export function botWindow(now = new Date()): BotWindow {
   const t = spHM(now);
-  if (t >= '09:00' && t < '14:00') return 'lunch';
-  if (t >= '14:00' && t < '18:00') return 'afterLunch';
+  if (t >= '08:00' && t < '14:20') return 'lunch';
+  if (t >= '14:20' && t < '18:00') return 'afterLunch';
   if (t >= '18:00' && t < '22:10') return 'night';
   return 'closed';
 }
@@ -26,8 +38,8 @@ export function windowStart(now = new Date()): string {
   const dayStart = (d: Date) => { const s = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d); return new Date(`${s}T00:00:00-03:00`).getTime(); };
   const base = dayStart(now);
   const at = (hm: string, offsetDays = 0) => new Date(base + offsetDays * 86400000 + (Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3))) * 60000).toISOString();
-  if (w === 'lunch') return at('09:00');
-  if (w === 'afterLunch') return at('14:00');
+  if (w === 'lunch') return at('08:00');
+  if (w === 'afterLunch') return at('14:20');
   if (w === 'night') return at('18:00');
   return t >= '22:10' ? at('22:10') : at('22:10', -1);
 }
@@ -51,7 +63,7 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
   let qty: number | null = null;
   const m1 = /(\d{1,2})\s*(?:x\s*)?(?:marmit|quentinh|unidade)/.exec(n) ?? /\bquero\s+(\d{1,2})\b/.exec(n);
   const m2 = /\b(um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)\s+(?:marmit|quentinh)/.exec(n);
-  if (m1) qty = Number(m1[1]); else if (m2) qty = WORDS[m2[1]!] ?? null;
+  if (m1) qty = Number(m1[1]); else if (m2) qty = WORDS[m2[1] ?? ''] ?? null;
   else if (/^\d{1,2}$/.test(simple) && missing.includes('itens e quantidades')) qty = Number(simple);
   else if (/^(uma|duas|tres|quatro|cinco)$/.test(simple) && missing.includes('itens e quantidades')) qty = WORDS[simple] ?? null;
   if (qty && qty > 0 && qty <= 50 && lunchProductId) { d.items = [{ productId: lunchProductId, qty, note: '' }]; extracted = true; }
@@ -70,20 +82,22 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
   // Nome
   const nm = /(?:meu nome [eé]|meu nome eh|me chamo|nome:|aqui [eé] (?:o|a))\s+([a-zà-ú]+(?:\s+[a-zà-ú]+){0,3})/i.exec(raw.normalize('NFC'));
   const stop = /\s+(?:e|moro|vou|pago|quero|rua|av|avenida|no|na|pix|cart[aã]o|dinheiro)\b.*$/i;
-  if (nm) { const v = nm[1]!.replace(stop, '').trim(); if (v.length >= 2) { d.customer = cap(v); extracted = true; } }
+  if (nm?.[1]) { const v = nm[1].replace(stop, '').trim(); if (v.length >= 2) { d.customer = cap(v); extracted = true; } }
   // Endereço
+  const reference = /(?:ponto de refer[eê]ncia|refer[eê]ncia)\s*:?\s*([^\n,;]+)/i.exec(raw);
+  if (reference?.[1]) { d.address.reference = reference[1].trim(); extracted = true; }
   const addr = /\b(rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s+([^\n]+)/i.exec(raw);
   if (addr) {
-    let rest = `${addr[1]} ${addr[2]}`.replace(/\s*,?\s*(?:vou pagar|pago|pagamento|meu nome|me chamo|no pix|pix|cart[aã]o|dinheiro)\b.*$/i, '').trim();
+    let rest = `${addr[1]} ${addr[2]}`.replace(/\s*,?\s*(?:vou pagar|pago|pagamento|meu nome|me chamo|no pix|pix|cart[aã]o|dinheiro|ponto de refer[eê]ncia|refer[eê]ncia)\b.*$/i, '').trim();
     const bairro = /bairro:?\s*([^,.\n]+)/i.exec(rest) ?? /bairro:?\s*([^,.\n]+)/i.exec(raw);
-    if (bairro) { d.address.neighborhood = bairro[1]!.trim(); rest = rest.replace(/[,\-–]?\s*bairro:?\s*[^,.\n]+/i, '').trim(); }
+    if (bairro?.[1]) { d.address.neighborhood = bairro[1].trim(); rest = rest.replace(/[,\-–]?\s*bairro:?\s*[^,.\n]+/i, '').trim(); }
     const num = /(?:,|\s)\s*(?:n[º°o.]?\s*|numero\s*|número\s*)?(\d{1,5}[a-z]?)\b/i.exec(rest);
     let street = rest;
-    if (num) { d.address.number = num[1]!; const after = rest.slice((num.index ?? 0) + num[0].length).replace(/^[\s,\-–]+/, '').trim(); street = rest.slice(0, num.index).replace(/[\s,]+$/, ''); if (after && !d.address.neighborhood) d.address.neighborhood = (after.split(/[,.\n]/)[0] ?? '').trim(); }
+    if (num?.[1]) { d.address.number = num[1]; const after = rest.slice((num.index ?? 0) + num[0].length).replace(/^[\s,\-–]+/, '').trim(); street = rest.slice(0, num.index).replace(/[\s,]+$/, ''); if (after && !d.address.neighborhood) d.address.neighborhood = (after.split(/[,.\n]/)[0] ?? '').trim(); }
     else if (/\b(s\/n|sn|sem numero|sem número)\b/i.test(rest)) d.address.number = 'S/N';
     d.address.street = street.replace(/[\s,\-–]+$/, '').slice(0, 200); d.type = 'Delivery'; extracted = true;
   } else {
-    const bairro = /bairro:?\s*([^,.\n]+)/i.exec(raw); if (bairro) { d.address.neighborhood = bairro[1]!.trim(); d.type = 'Delivery'; extracted = true; }
+    const bairro = /bairro:?\s*([^,.\n]+)/i.exec(raw); if (bairro?.[1]) { d.address.neighborhood = bairro[1].trim(); d.type = 'Delivery'; extracted = true; }
   }
   if (/\b(retirar|retiro|vou buscar|buscar ai|buscar a[ií]|retirada)\b/.test(n)) { d.type = 'Retirada'; extracted = true; }
   // Respostas curtas para o único dado que falta
