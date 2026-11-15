@@ -42,9 +42,9 @@ function attendance() {
   };
   return {
     queued, requests, draft: () => draft,
-    async receive(text: string, time: string, id: string) {
+    async receive(text: string, time: string, id: string, kind = 'text') {
       vi.setSystemTime(new Date(`2026-11-16T${time}:00-03:00`));
-      inbound = { body: text, wa_message_id: id, direction: 'in', kind: 'text', created_at: new Date().toISOString() };
+      inbound = { body: text, wa_message_id: id, direction: 'in', kind, created_at: new Date().toISOString() };
       claim = [{ id, phone: 'test', kind: 'interpret', dedup_key: `interpret:${id}`, payload: { inboundId: id, automatic: true } }];
       const before = queued.length;
       await processJobs(db as unknown as Parameters<typeof processJobs>[0], 1);
@@ -68,6 +68,16 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.draft().quotedTotal).toBe(19.9);
     expect(flow.requests).toEqual([]);
     await flow.receive('Sim', '08:03', 'in-4');
+    expect(flow.requests).toEqual(['wa_confirm_request', 'wa_auto_accept_request']);
+    expect(generateResponse).not.toHaveBeenCalled();
+  });
+  it.each([{ text: '👍', kind: 'text' }, { text: '[imagem]', kind: 'image' }])('qualquer interação após o resumo confirma: $kind', async ({ text, kind }) => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Quero 1 marmita, meu nome é Maria, Rua A, 12, bairro Centro, Pix', '08:00', 'summary-1');
+    expect(flow.draft().summarySent).toBe(true);
+    expect(flow.requests).toEqual([]);
+    await flow.receive(text, '08:01', 'interaction-1', kind);
     expect(flow.requests).toEqual(['wa_confirm_request', 'wa_auto_accept_request']);
     expect(generateResponse).not.toHaveBeenCalled();
   });

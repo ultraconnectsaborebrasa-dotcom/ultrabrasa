@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Confirmação por qualquer interação
+- [x] Após o resumo, aceitar texto, emoji ou anexo como confirmação do pedido apresentado, sem exigir “sim”.
+- [x] Testar interação de texto e anexo e ausência de confirmação antes do resumo: 242 testes aprovados, sem pedidos reais.
+- [ ] Verificar a confirmação por anexo em uma conversa real após a publicação.
+
 ## Roteiro geral do atendimento automático
 - [x] Aplicar horários, textos, respostas frequentes, sequências com 3 segundos e interrupção por nova resposta.
 - [x] Testar cenários fictícios das 08h, 11h, pagamentos, anexos, noite, encerramento e transferência humana, sem criar pedidos reais: 239 testes aprovados.

@@ -29,7 +29,6 @@ async function interpret(db:Admin,j:Job){
   const current=messages.find(m=>m.wa_message_id===payload.inboundId);
   const latestInbound=messages.filter(m=>m.direction==='in').at(-1);
   if(latestInbound?.wa_message_id!==payload.inboundId)return;
-  if(current&&current.kind!=='text'){await handoff(db,j.phone,'Mensagem com áudio ou mídia requer atendimento humano',payload.inboundId,true);return;}
   const text=(current?.body??'').trim();
   const now=new Date();const win=botWindow(now);const since=windowStart(now);
   const sentSince=checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').gte('created_at',since)) ?? [];
@@ -43,7 +42,9 @@ async function interpret(db:Admin,j:Job){
   const inProgress=previous.items.length>0||!!previous.address.street||!!previous.payment;
   const missingBefore=missingOrderFields(previous);
   const parsed=ruleParse(text,previous,lunchP?.id??'',missingBefore);
-  if(parsed.wantsHuman){await handoff(db,j.phone,'Cliente pediu atendente',payload.inboundId,true);return;}
+  const previousTotal=previous.items.reduce((sum,item)=>sum+(lunchP?.price??b.lunchPrice)*item.qty,0);
+  const interactionConfirms=previous.summarySent&&summaryReady(previous,previousTotal)&&previous.quotedTotal===previousTotal;
+  if(parsed.wantsHuman&&!interactionConfirms){await handoff(db,j.phone,'Cliente pediu atendente',payload.inboundId,true);return;}
   const say=async(key:string,t:string)=>queueJob(db,`${key}:${payload.inboundId}`,j.phone,'text',{text:t,automatic:true});
   if(win==='afterLunch'){
     if(!already(LUNCH_CLOSED_MESSAGE))await say('lunch-closed',LUNCH_CLOSED_MESSAGE);
@@ -65,8 +66,10 @@ async function interpret(db:Admin,j:Job){
   }
   if(!lunchP){await handoff(db,j.phone,'Marmita não configurada no PDV');return;}
   if(lunchP.stock!==null&&lunchP.stock<=0){await handoff(db,j.phone,'Disponibilidade da marmita precisa de conferência',payload.inboundId,true);return;}
+  // Depois do resumo válido, qualquer interação confirma exatamente o que foi apresentado.
+  if(current&&current.kind!=='text'&&!interactionConfirms){await handoff(db,j.phone,'Mensagem com áudio ou mídia requer atendimento humano',payload.inboundId,true);return;}
   const faq=faqReply(text,b,lunchP.price,now);
-  if(faq&&!parsed.extracted){if(!already(faq))await say('faq',faq);return;}
+  if(faq&&!parsed.extracted&&!interactionConfirms){if(!already(faq))await say('faq',faq);return;}
   const earlyMessage=earlyLunchMessage(b,lunchP.price);
   const earlyCampaign=earlyLunchMessages(b,lunchP.price);
   const regularCampaign=regularLunchMessages(b,lunchP.price);
@@ -85,12 +88,12 @@ async function interpret(db:Admin,j:Job){
     }
     if(!parsed.extracted)return;
   }
-  const d=parsed.draft;
-  const total=d.items.reduce((s,i)=>s+lunchP.price*i.qty,0);
+  const d=interactionConfirms?previous:parsed.draft;
+  const total=interactionConfirms?previousTotal:d.items.reduce((s,i)=>s+lunchP.price*i.qty,0);
   if(d.payment==='Pix'&&!b.pixKey){await handoff(db,j.phone,'Chave Pix não configurada');return;}
   const missing=missingOrderFields(d);
-  const changed=JSON.stringify({...d,summarySent:false,quotedTotal:0})!==JSON.stringify({...previous,summarySent:false,quotedTotal:0});
-  if(parsed.confirms&&previous.summarySent&&!changed&&summaryReady(d,total,missing)&&previous.quotedTotal===total){
+  const changed=!interactionConfirms&&JSON.stringify({...d,summarySent:false,quotedTotal:0})!==JSON.stringify({...previous,summarySent:false,quotedTotal:0});
+  if((parsed.confirms||interactionConfirms)&&previous.summarySent&&!changed&&summaryReady(d,total,missing)&&previous.quotedTotal===total){
     if(!d.payment)return;
     const req={customer:d.customer,type:d.type,items:d.items.map(i=>({...i,note:i.note||'',quotedPrice:lunchP.price})),note:['Origem: BOT AUTOMÁTICO',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento: ${paymentLabel(d.payment,d.type==='Delivery')}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}};
     const rid=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:req}));
