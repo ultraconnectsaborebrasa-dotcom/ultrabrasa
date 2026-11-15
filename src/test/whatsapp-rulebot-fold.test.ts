@@ -13,3 +13,7 @@ describe('rulebot reads separate customer messages', () => {
   });
   it('reads "vou querer duas"', () => { expect(fold(['Vou querer duas pra ser entregue meio dia']).items[0]?.qty).toBe(2); });
 });
+describe('quantity one', () => {
+  for (const t of ['1', 'uma', 'Uma só', 'Um só', 'só uma', 'uma marmita', '1 marmita'])
+    it(`"${t}" = 1 marmita`, () => { expect(fold([t]).items[0]?.qty).toBe(1); });
+});
