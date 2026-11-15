@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-attachments';
+import { ORDER_CONFIRMED_MESSAGE, isOrderConfirmationJob, canSendOrderConfirmation } from './whatsapp-confirmation';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
 const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
@@ -66,12 +67,13 @@ async function interpret(db:Admin,j:Job){
   const missing=missingOrderFields(d);
   const changed=JSON.stringify({...d,summarySent:false,quotedTotal:0})!==JSON.stringify({...previous,summarySent:false,quotedTotal:0});
   if(parsed.confirms&&previous.summarySent&&!changed&&summaryReady(d,total,missing)&&previous.quotedTotal===total){
-    const req={customer:d.customer,type:d.type,items:d.items.map(i=>({...i,note:i.note||'',quotedPrice:lunchP.price})),note:['Origem: BOT AUTOMÁTICO',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento: ${paymentLabel(d.payment!,d.type==='Delivery')}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}};
+    if(!d.payment)return;
+    const req={customer:d.customer,type:d.type,items:d.items.map(i=>({...i,note:i.note||'',quotedPrice:lunchP.price})),note:['Origem: BOT AUTOMÁTICO',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento: ${paymentLabel(d.payment,d.type==='Delivery')}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}};
     const rid=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:req}));
     if(!rid)return;
     const acc=await db.rpc('wa_auto_accept_request',{_id:rid});
     if(acc.error){await say('awaiting','Pode deixar! Seu pedido chegou por aqui 😊 Já vamos te confirmar.');await handoff(db,j.phone,`Pedido aguardando aceite: ${acc.error.message}`);return;}
-    await say('sent',`Pedido confirmado! ❤️ Já mandamos para a cozinha.${d.payment==='Pix'&&b.pixKey?`\n\nChave Pix: ${b.pixKey}\nAssim que pagar, é só mandar o comprovante por aqui 😊`:''}`);
+    // Acceptance atomically queues accepted:<order id>; never enqueue a second confirmation here.
     return;
   }
   let reply:string;
@@ -105,6 +107,7 @@ export async function processJobs(db:Admin,limit=2){
     const claimed=check(await db.rpc('wa_claim_job'));const j=claimed?.[0];if(!j)return;
     try{
       const p=jobPayload.parse(j.payload);
+      const confirmation=isOrderConfirmationJob(j.dedup_key);
       if(j.dedup_key.startsWith('receipt-ack:')){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
       if(j.kind!=='receipt'&&(businessSchema.parse(cfg.business).circuitPaused||cfg.account_state!=='ok')){
         checkEmpty(await db.from('whatsapp_jobs').update({state:'pending',lease_until:null,next_attempt_at:new Date(Date.now()+60000).toISOString()}).eq('id',j.id));continue;
@@ -112,8 +115,8 @@ export async function processJobs(db:Admin,limit=2){
       if(p.orderId||p.requestId){
         const q=db.from('whatsapp_order_requests').select('status,id').eq(p.requestId?'id':'order_id',p.requestId??p.orderId??'');
         const target=checkEmpty(await q.maybeSingle());
-        if(target&&['rejected','cancelled'].includes(target.status)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
-        if(p.pixPrompt){
+        if((confirmation&&!canSendOrderConfirmation(target?.status))||target&&['rejected','cancelled'].includes(target.status)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+        if(p.pixPrompt&&!confirmation){
           const receipts=checkEmpty(await db.from('payment_receipts').select('id').eq('phone',j.phone).in('state',['review','unverified','confirmed']).limit(1));
           const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
           const orders=z.object({orders:z.array(z.object({id:z.string(),payments:z.array(z.unknown()).default([])}))}).parse(snapshot.data).orders;
@@ -123,6 +126,7 @@ export async function processJobs(db:Admin,limit=2){
           }
         }
       }
+      if(confirmation&&!p.orderId&&!p.requestId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
       const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at,attendance_status,assigned_to').eq('phone',j.phone).single());
       // Pausa órfã: pedido já recusado/cancelado e ninguém atendendo — o robô volta a responder.
       if(p.automatic&&c.automation_paused&&c.attendance_status==='new'&&!c.assigned_to){
@@ -139,7 +143,7 @@ export async function processJobs(db:Admin,limit=2){
         if(pre)throw new Error('Envio anterior requer revisão');
         let providerId:string|undefined;
         if(j.kind==='text'){
-          const text=p.text??'';
+          const text=confirmation?ORDER_CONFIRMED_MESSAGE:p.text??'';
           if(p.automatic){
             const recent=checkEmpty(await db.from('whatsapp_messages').select('body,created_at,status').eq('phone',j.phone).eq('direction','out').gte('created_at',new Date(Date.now()-ATTACHMENT_GROUP_MS).toISOString()))??[];
             let duplicate=hasRecentReply(recent,text);

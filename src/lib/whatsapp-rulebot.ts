@@ -4,7 +4,7 @@ import type { ConversationDraft } from './whatsapp-business';
 export const LUNCH_CAMPAIGN = [
   'Olá, tudo bem? 😊 Nossa marmita está em promoção, apenas R$ 19,90 com frete grátis! Aproveite para garantir a sua.',
   'Hoje nosso cardápio está delicioso! 😋\n\nTemos carne assada e linguiça de frango assada, acompanhadas de arroz, farofa de feijão, macarrão e salada de alface.\n\nNossos pedidos são limitados devido à alta demanda, então aproveite porque acaba rapidinho!',
-  'E aí, vamos garantir a sua? ❤️\n\nMe fala quantas marmitas você deseja, seu nome, endereço completo e a forma de pagamento.\n\nAssim já deixamos seu pedido preparado!',
+  'E aí, vamos garantir a sua? ❤️\n\nMe fala quantas marmitas você deseja, seu nome, endereço completo e a forma de pagamento.\n\nAssim já deixamos seu pedido organizado!',
 ] as const;
 export const NIGHT_MESSAGE = 'Oi! Tudo bem? 😊 Que bom ter você por aqui! Hoje temos espetinhos, porções e hambúrgueres artesanais para deixar sua noite mais gostosa! 🔥\n\nE a entrega é por nossa conta para toda Eunápolis! 🛵\n\nÉ só clicar no catálogo, escolher o que você quer e finalizar seu pedido por lá 👇\n\nhttps://ultraconnectbrasa.com.br/cardapio';
 export const CLOSING_MESSAGE = 'Infelizmente, hoje já encerramos nossos atendimentos! ❤️ Nossa demanda foi muito alta e todos os pedidos foram atendidos.\n\nAmanhã estaremos funcionando normalmente. Então, já garanta o seu pedido mais cedo para não ficar sem! 😋\n\nAgradecemos pela compreensão e preferência. Deus abençoe! 🙏';

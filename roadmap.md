@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Mensagem após confirmação
+- [x] Usar somente o aviso único do pedido aceito, sem mensagem anterior à confirmação nem repetição por reenvio.
+- [x] 35 testes aprovados: bloqueio antes de confirmação, envio e repetição; entrega real ainda não verificada no WhatsApp.
+
 ## Anexos sem respostas duplicadas
 - [x] Unificar agradecimento, deduplicar eventos e agrupar anexos próximos sem alterar pagamentos.
 - [x] Testar recebimentos repetidos e pausa por atendimento humano: 54 testes aprovados; envio real de anexo ainda não verificado.
