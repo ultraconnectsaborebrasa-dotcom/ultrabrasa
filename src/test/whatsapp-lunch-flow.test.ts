@@ -68,7 +68,7 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.draft().quotedTotal).toBe(19.9);
     expect(flow.requests).toEqual([]);
     await flow.receive('Sim', '08:03', 'in-4');
-    expect(flow.requests).toEqual(['wa_confirm_request', 'wa_auto_accept_request']);
+    expect(flow.requests).toEqual(['wa_confirm_request']);
     expect(generateResponse).not.toHaveBeenCalled();
   });
   it.each([{ text: '👍', kind: 'text' }, { text: '[imagem]', kind: 'image' }])('qualquer interação após o resumo confirma: $kind', async ({ text, kind }) => {
@@ -78,7 +78,7 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.draft().summarySent).toBe(true);
     expect(flow.requests).toEqual([]);
     await flow.receive(text, '08:01', 'interaction-1', kind);
-    expect(flow.requests).toEqual(['wa_confirm_request', 'wa_auto_accept_request']);
+    expect(flow.requests).toEqual(['wa_confirm_request']);
     expect(generateResponse).not.toHaveBeenCalled();
   });
   it('não repete a divulgação na passagem das 10h', async () => {
@@ -126,7 +126,7 @@ describe('marmitas: atendimento por regras', () => {
     vi.useFakeTimers();
     const flow = attendance();
     await flow.receive('Quero falar com um atendente', '11:00', 'human-1');
-    expect(flow.queued[0]?.payload.text).toBe(HANDOFF_MESSAGE);
+    expect(flow.queued.some(j => j.payload.text === HANDOFF_MESSAGE)).toBe(false);
     expect(flow.requests).toEqual([]);
     expect(generateResponse).not.toHaveBeenCalled();
   });
@@ -142,11 +142,11 @@ describe('marmitas: atendimento por regras', () => {
     vi.useFakeTimers();
     const unknown = attendance();
     await unknown.receive('Xyzz desconhecido', '08:30', 'unknown-1');
-    expect(unknown.queued[0]?.payload.text).toBe(HANDOFF_MESSAGE);
+    expect(unknown.queued.some(j => j.payload.text === HANDOFF_MESSAGE)).toBe(false);
     expect(unknown.queued.some(job => job.dedup_key.startsWith('campaign:'))).toBe(false);
     const humanAtNight = attendance();
     await humanAtNight.receive('Quero falar com um atendente', '17:00', 'human-night-1');
-    expect(humanAtNight.queued[0]?.payload.text).toBe(HANDOFF_MESSAGE);
+    expect(humanAtNight.queued.some(j => j.payload.text === HANDOFF_MESSAGE)).toBe(false);
     expect(humanAtNight.queued[0]?.payload.text).not.toBe(NIGHT_MESSAGE);
   });
 });

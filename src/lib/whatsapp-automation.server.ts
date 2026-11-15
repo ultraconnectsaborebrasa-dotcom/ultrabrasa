@@ -16,7 +16,8 @@ export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'
   checkEmpty(await db.from('whatsapp_jobs').upsert({dedup_key:key,phone:digits(phone),kind,payload:payload as never},{onConflict:'dedup_key',ignoreDuplicates:true}));
 }
 async function handoff(db:Admin,phone:string,reason:string,inboundId?:string,notify=false){
-  if(notify&&inboundId)await queueJob(db,`handoff:${inboundId}`,phone,'text',{text:HANDOFF_MESSAGE,automatic:true});
+  // Silent pause: the customer never receives an automatic "vou encaminhar" message.
+  void inboundId;void notify;
   checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,attendance_status:'needs_reply'}).eq('phone',phone));return reason;
 }
 async function interpret(db:Admin,j:Job){
@@ -107,9 +108,7 @@ async function interpret(db:Admin,j:Job){
     const req={customer:d.customer,type:d.type,items:d.items.map(i=>({...i,note:i.note||'',quotedPrice:lunchP.price})),note:['Origem: BOT AUTOMÁTICO',d.payment==='Cartão'&&d.type==='Delivery'?'Levar maquininha':'',`Pagamento: ${paymentLabel(d.payment,d.type==='Delivery')}`].filter(Boolean).join(' · '),delivery:{address:d.address,paymentMethod:d.payment,cashFor:d.cashFor??0,chargeDeliveryFee:false}};
     const rid=checkEmpty(await db.rpc('wa_confirm_request',{_phone:j.phone,_inbound_id:payload.inboundId??j.id,_version:c.draft_version,_total:total,_request:req}));
     if(!rid)return;
-    const acc=await db.rpc('wa_auto_accept_request',{_id:rid});
-    if(acc.error){await say('awaiting','Pode deixar! Seu pedido chegou por aqui 😊 Já vamos te confirmar.');await handoff(db,j.phone,`Pedido aguardando aceite: ${acc.error.message}`);return;}
-    // Acceptance atomically queues accepted:<order id>; never enqueue a second confirmation here.
+    // Staff acceptance is required before the order reaches the kitchen; acceptance queues the confirmation message.
     return;
   }
   let reply:string;
