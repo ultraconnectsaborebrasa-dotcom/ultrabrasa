@@ -1137,6 +1137,7 @@ export type Database = {
         Returns: undefined
       }
       wa_customer_card: { Args: { _phone: string }; Returns: Json }
+      wa_edit_request: { Args: { _id: string; _patch: Json }; Returns: Json }
       wa_reconcile: { Args: { _id: string }; Returns: undefined }
       wa_reject_request: { Args: { _id: string }; Returns: undefined }
       wa_staff: { Args: never; Returns: boolean }

@@ -1,3 +1,4 @@
+import { EditWhatsAppRequest } from './EditWhatsAppRequest';
 import { confirmAction, promptAction } from '@/lib/confirm-action';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import {
@@ -304,7 +305,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
         <div className="mt-3 space-y-2">{requests.filter(r => period === 'history' || isStoreToday(r.created_at)).map(r => <div key={r.id} className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-2.5 text-sm">
           <Button variant="ghost" size="sm" onClick={() => openConversation(r.phone)}>{r.public_code ? `Catálogo ${r.public_code} · ` : ''}{convs.find(c => c.phone === r.phone)?.name || `+${r.phone}`}</Button>
           <span className="font-mono font-semibold">{brl(r.quoted_total)}</span><span className="text-xs text-muted-foreground">{waitingTime(r.created_at)}</span>
-          <div className="ml-auto flex gap-2"><Button size="sm" disabled={busy} onClick={() => void accept(r.id, true)}>Aceitar e enviar</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => void accept(r.id, false)}>Recusar</Button></div>
+          <div className="ml-auto flex gap-2"><EditWhatsAppRequest key={r.id + r.quoted_total} id={r.id} request={r.request} onSaved={() => void loadRequests()} /><Button size="sm" disabled={busy} onClick={() => void accept(r.id, true)}>Aceitar e enviar</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => void accept(r.id, false)}>Recusar</Button></div>
         </div>)}</div>
       </details>}
       {jobErrors.length > 0 && <details className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
@@ -410,7 +411,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
             {activeRequest && <div className="m-3 mb-0 shrink-0 rounded-xl border border-warning/30 bg-warning/10 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-bold text-warning">Pedido pronto para conferência</p><p className="text-xs text-muted-foreground">Confira os dados antes de enviar à cozinha.</p></div><span className="rounded-full bg-warning/15 px-2 py-1 font-mono text-xs font-bold text-warning">{brl(activeRequest.quoted_total)}</span></div>
               <details className="mt-2"><summary className="cursor-pointer text-xs font-semibold">Conferir dados do pedido</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-card p-2 text-xs">{JSON.stringify(activeRequest.request, null, 2)}</pre></details>
-              <div className="mt-3 flex gap-2"><Button size="sm" disabled={busy} onClick={() => void accept(activeRequest.id, true)}>Confirmar e enviar</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => void accept(activeRequest.id, false)}>Recusar pedido</Button></div>
+              <div className="mt-3 flex gap-2"><EditWhatsAppRequest key={activeRequest.id + activeRequest.quoted_total} id={activeRequest.id} request={activeRequest.request} onSaved={() => void loadRequests()} /><Button size="sm" disabled={busy} onClick={() => void accept(activeRequest.id, true)}>Confirmar e enviar</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => void accept(activeRequest.id, false)}>Recusar pedido</Button></div>
             </div>}
             <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-3 sm:p-5">
               <div className="mx-auto max-w-3xl space-y-2.5">
