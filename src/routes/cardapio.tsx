@@ -70,7 +70,7 @@ function CardapioPage() {
           {period === 'lunch' && <p className="font-bold text-primary">Almoço: marmitas em destaque.</p>}
           {period === 'night' && <p className="font-bold text-primary">Noite: hambúrgueres e espetinhos em destaque.</p>}
           <p className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" />Pedidos a partir das {s?.lunchStart ?? '10:00'} · entregas começam a sair às {s?.deliveryStart ?? '11:00'}</p>
-          <p>Marmitas até 14:00 · Hambúrgueres e acompanhamentos a partir das 17:00 · Preparo a partir das 18:00</p>
+          <p>Marmitas até 14:00 · Hambúrgueres, espetinhos e acompanhamentos a partir das 17:00 · Preparo a partir das 18:00</p>
           {s?.freeDeliveryEunapolis && <p className="flex items-center gap-2 text-success"><Truck className="h-4 w-4" />Entrega grátis para qualquer bairro de Eunápolis</p>}
         </section>
 

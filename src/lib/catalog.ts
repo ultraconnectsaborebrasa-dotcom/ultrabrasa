@@ -50,7 +50,7 @@ export function catalogScheduleAvailable(category: string, s: CatalogSettings | 
   const c = normalizeCategory(category);
   const t = bahiaMinutes(now);
   if (c === 'Marmitas') return t >= toMin(s?.lunchStart ?? '10:00') && t < 14 * 60;
-  if (['Hambúrgueres', 'Acompanhamentos'].includes(c)) return t >= 17 * 60;
+  if (['Hambúrgueres', 'Espetinhos', 'Acompanhamentos'].includes(c)) return t >= 17 * 60;
   return true;
 }
 

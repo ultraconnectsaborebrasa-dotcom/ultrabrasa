@@ -1,6 +1,7 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Horários do cardápio digital
+- [x] Incluir espetinhos no horário dos hambúrgueres: pedidos às 17h e preparo às 18h, com validação na compra; 11 testes aprovados e navegador verificado às 16h59 e 17h sem criar pedido real. Publicação da tela pendente.
 - [x] Indisponibilizar marmitas às 14h e liberar hambúrgueres/acompanhamentos às 17h, com aviso de preparo às 18h.
 - [x] Validar horários na compra; 10 testes aprovados e navegador verificado às 13h59, 14h, 16h59 e 17h, com carrinho aberto sem criar pedido real. Roteiro do WhatsApp preservado; publicação pendente para atualizar a tela pública.
 

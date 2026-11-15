@@ -18,6 +18,12 @@ describe('catalog local schedule', () => {
     expect(catalogScheduleAvailable('Acompanhamentos', null, at('16:59'))).toBe(false);
     expect(catalogScheduleAvailable('Acompanhamentos', null, at('17:00'))).toBe(true);
   });
+  it('skewers follow the hamburger schedule from 17:00 with preparation at 18:00', () => {
+    expect(catalogScheduleAvailable('Espetinhos', null, at('16:59'))).toBe(false);
+    expect(catalogScheduleAvailable('Espetinhos', null, at('17:00'))).toBe(true);
+    expect(catalogScheduleAvailable('Espetinhos', null, at('17:30'))).toBe(true);
+    expect(catalogPreparationMinutes()).toBe(1080);
+  });
   it('preparation begins at 18:00 without blocking advance orders', () => {
     expect(catalogPreparationMinutes()).toBe(1080);
     expect(catalogScheduleAvailable('Hambúrgueres', null, at('17:30'))).toBe(true);
