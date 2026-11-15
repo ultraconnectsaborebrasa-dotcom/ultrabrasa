@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Início do atendimento em mensagens menores
+- [x] Separar a abertura das 08h em saudação, promoção, cardápio e perguntas, preservando a continuidade e a prevenção de repetição.
+- [x] 30 testes aprovados: abertura em quatro mensagens, continuidade e passagem das 10h sem repetição; envio real depende da publicação.
+
 ## Complemento do roteiro de marmitas
 - [x] Incluir promoção das 08h às 10h e aceitar pedidos até 14h20, preservando scripts normais, confirmação e atendimento noturno.
 - [x] 61 testes aprovados, incluindo conversa simulada, confirmação, horários e ausência de geração por IA no fluxo de marmitas.

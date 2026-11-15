@@ -1,5 +1,5 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
-import { botWindow,windowStart,ruleParse,LUNCH_CAMPAIGN,NIGHT_MESSAGE,CLOSING_MESSAGE,CONFIRM_HINT,earlyLunchMessage,isEarlyLunch } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,LUNCH_CAMPAIGN,NIGHT_MESSAGE,CLOSING_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,isEarlyLunch } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
@@ -51,10 +51,11 @@ async function interpret(db:Admin,j:Job){
   const parsed=ruleParse(text,previous,lunchP.id,missingBefore);
   if(parsed.wantsHuman){await handoff(db,j.phone,'Cliente pediu atendente');return;}
   const earlyMessage=earlyLunchMessage(b,lunchP.price);
-  const campaignSeen=already(LUNCH_CAMPAIGN[0])||already(earlyMessage);
-  // One early promotion; keep normal lunch scripts after 10h, without restarting at the boundary.
+  const earlyCampaign=earlyLunchMessages(b,lunchP.price);
+  const campaignSeen=already(LUNCH_CAMPAIGN[0])||already(earlyMessage)||earlyCampaign.some(already);
+  // Split the early promotion; do not restart legacy or split campaigns at the boundary.
   if(!inProgress&&!campaignSeen&&!parsed.extracted){
-    const campaign=isEarlyLunch(now)?[earlyMessage]:LUNCH_CAMPAIGN;
+    const campaign=isEarlyLunch(now)?earlyCampaign:LUNCH_CAMPAIGN;
     for(let i=0;i<campaign.length;i++){
       const msg=campaign[i];
       if(!msg)continue;

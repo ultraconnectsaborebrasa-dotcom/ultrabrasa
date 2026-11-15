@@ -17,6 +17,17 @@ export function earlyLunchMessage(b: Business, price: number): string {
   return `Olá, tudo bem? ❤️\n\nNossa marmita está em promoção por apenas *${value}${b.freeDelivery ? ', com FRETE GRÁTIS!' : '!'}* 😍${demand}\n\n🍽️ *Hoje de cardápio temos:*\n\n${b.lunchMenu}\n\n*Confirme a sua! 😋*\n\nQuantas marmitas deseja?\nQual seu endereço completo?\nQual a forma de pagamento?\nQual seu nome?\n\nAssim já podemos adiantar e organizar seu pedido! ❤️`;
 }
 
+/** Short opening messages; the legacy single message remains a deduplication marker. */
+export function earlyLunchMessages(b: Business, price: number): string[] {
+  const value = price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return [
+    'Olá, tudo bem? ❤️',
+    `Nossa marmita está em promoção por apenas *${value}${b.freeDelivery ? ', com FRETE GRÁTIS!' : '!'}* 😍${b.highDemand ? '\n\nTemos pedidos limitados devido à alta demanda. Garanta a sua! ❤️' : ''}`,
+    `🍽️ *Hoje de cardápio temos:*\n\n${b.lunchMenu}`,
+    '*Confirme a sua! 😋*\n\nQuantas marmitas deseja?\nQual seu endereço completo?\nQual a forma de pagamento?\nQual seu nome?\n\nAssim já podemos adiantar e organizar seu pedido! ❤️',
+  ];
+}
+
 export const isEarlyLunch = (now = new Date()): boolean => {
   const time = spHM(now);
   return time >= '08:00' && time < '10:00';

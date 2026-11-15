@@ -58,7 +58,8 @@ describe('marmitas: atendimento por regras', () => {
     vi.useFakeTimers();
     const flow = attendance();
     await flow.receive('Bom dia', '08:00', 'in-1');
-    expect(flow.queued).toHaveLength(1);
+    expect(flow.queued).toHaveLength(4);
+    expect(new Set(flow.queued.map(job => job.dedup_key)).size).toBe(4);
     await flow.receive('1', '08:01', 'in-2');
     expect(flow.draft().items).toEqual([{ productId: 'm', qty: 1, note: '' }]);
     await flow.receive('Meu nome é Maria, Rua A, 12, bairro Centro, Pix', '08:02', 'in-3');
@@ -74,7 +75,15 @@ describe('marmitas: atendimento por regras', () => {
     const flow = attendance();
     await flow.receive('Olá', '09:59', 'in-1');
     await flow.receive('Bom dia', '10:00', 'in-2');
-    expect(flow.queued.filter(job => job.dedup_key.startsWith('campaign:'))).toHaveLength(1);
+    expect(flow.queued.filter(job => job.dedup_key.startsWith('campaign:'))).toHaveLength(4);
+  });
+  it('não repete as partes ao receber outra saudação na mesma manhã', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Bom dia', '08:30', 'in-1');
+    await flow.receive('Olá', '08:31', 'in-2');
+    expect(flow.queued.filter(job => job.dedup_key.startsWith('campaign:'))).toHaveLength(4);
+    expect(flow.requests).toEqual([]);
   });
   it('preserva a sequência normal das 10h às 14h20', async () => {
     vi.useFakeTimers();
