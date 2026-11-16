@@ -27,7 +27,7 @@ export const conversationDraftSchema = z.object({ customer: z.string().max(120).
 export type ConversationDraft = z.infer<typeof conversationDraftSchema>;
 const plainWords = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const placeWords = (value: string) => plainWords(value).replace(/(?:\s+eunapolis)$/, '').trim();
-const blockedIdentity = /\b(?:pagamento|pix|cartao|credito|debito|dinheiro|marmit\w*|quentinh\w*|entrega|delivery|cardapio|por favor|vcs|voces|em frente|ao lado|perto de|proximo a)\b|^(?:a|o|no|na|aqui)\b/;
+const blockedIdentity = /\b(?:pagamento|pedido|pix|cartao|credito|debito|dinheiro|marmit\w*|quentinh\w*|entrega|delivery|cardapio|por favor|vcs|voces|em frente|ao lado|perto de|proximo a)\b|^(?:a|o|no|na|aqui)\b/;
 const conversationalIdentity = /^(?:ok|okay|tudo bem|tbem|ok tudo bem|ok tbem|oi|oi tudo bem|ola|ola tudo bem|bom dia|boa tarde|boa noite|obrigado|obrigada|valeu|sim|nao|isso|isso mesmo|certo|perfeito|combinado)$/;
 export function validCustomerName(value: string) {
   const v = value.trim();

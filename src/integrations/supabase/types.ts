@@ -531,6 +531,7 @@ export type Database = {
           assigned_name: string | null
           assigned_to: string | null
           attendance_status: string
+          automation_pause_reason: string | null
           automation_paused: boolean
           awaiting_since: string | null
           created_at: string
@@ -543,6 +544,7 @@ export type Database = {
           last_message_at: string
           last_read_at: string | null
           name: string | null
+          order_confirmed_at: string | null
           phone: string
           unread: number
         }
@@ -550,6 +552,7 @@ export type Database = {
           assigned_name?: string | null
           assigned_to?: string | null
           attendance_status?: string
+          automation_pause_reason?: string | null
           automation_paused?: boolean
           awaiting_since?: string | null
           created_at?: string
@@ -562,6 +565,7 @@ export type Database = {
           last_message_at?: string
           last_read_at?: string | null
           name?: string | null
+          order_confirmed_at?: string | null
           phone: string
           unread?: number
         }
@@ -569,6 +573,7 @@ export type Database = {
           assigned_name?: string | null
           assigned_to?: string | null
           attendance_status?: string
+          automation_pause_reason?: string | null
           automation_paused?: boolean
           awaiting_since?: string | null
           created_at?: string
@@ -581,6 +586,7 @@ export type Database = {
           last_message_at?: string
           last_read_at?: string | null
           name?: string | null
+          order_confirmed_at?: string | null
           phone?: string
           unread?: number
         }

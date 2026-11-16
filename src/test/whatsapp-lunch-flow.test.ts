@@ -11,6 +11,9 @@ function attendance(whatsappName: string | null = null) {
   let version = 0;
   let inbound = { body: '', wa_message_id: '', direction: 'in', kind: 'text', created_at: '' };
   let claim: unknown[] = [];
+  let paused = false;
+  let pauseReason: string | null = null;
+  let confirmedAt: string | null = null;
   const queued: { dedup_key: string; payload: { text?: string } }[] = [];
   const outbound: { body: string; created_at: string }[] = [];
   const requests: string[] = [];
@@ -26,9 +29,12 @@ function attendance(whatsappName: string | null = null) {
         single: async () => ({ error: null, data: table === 'whatsapp_settings'
           ? { business: { ...defaultBusiness, lunchProductId: 'm', pixKey: 'configured' }, auto_reply_enabled: true, account_state: 'ok' }
           : table === 'pdv_state' ? { data: { products: [{ id: 'm', name: 'Marmita', price: 19.9, stock: null, active: true }] } }
-          : { name: whatsappName, draft, draft_version: version, automation_paused: false, last_inbound_at: inbound.created_at } }),
+          : { name: whatsappName, draft, draft_version: version, automation_paused: paused, automation_pause_reason: pauseReason, order_confirmed_at: confirmedAt, attendance_status: paused ? 'finished' : 'new', assigned_to: null, last_inbound_at: inbound.created_at } }),
         then: (resolve: (value: unknown) => unknown) => {
           if (update?.['draft']) { draft = conversationDraftSchema.parse(update['draft']); version += 1; }
+          if (update && 'automation_paused' in update) paused = Boolean(update['automation_paused']);
+          if (update && 'automation_pause_reason' in update) pauseReason = update['automation_pause_reason'] as string | null;
+          if (update && 'order_confirmed_at' in update) confirmedAt = update['order_confirmed_at'] as string | null;
           return Promise.resolve({ error: null, data: update ? [{ phone: 'test' }] : table === 'whatsapp_order_requests' ? [] : direction === 'out' ? outbound : [inbound] }).then(resolve);
         },
       };
@@ -41,7 +47,8 @@ function attendance(whatsappName: string | null = null) {
     },
   };
   return {
-    queued, requests, draft: () => draft,
+    queued, requests, draft: () => draft, paused: () => paused,
+    pauseForConfirmedOrder(at: string) { paused = true; pauseReason = 'order_confirmed'; confirmedAt = at; },
     async receive(text: string, time: string, id: string, kind = 'text') {
       vi.setSystemTime(new Date(`2026-11-16T${time}:00-03:00`));
       inbound = { body: text, wa_message_id: id, direction: 'in', kind, created_at: new Date().toISOString() };
@@ -166,5 +173,31 @@ describe('marmitas: atendimento por regras', () => {
     await humanAtNight.receive('Quero falar com um atendente', '17:00', 'human-night-1');
     expect(humanAtNight.queued.some(j => j.payload.text === HANDOFF_MESSAGE)).toBe(false);
     expect(humanAtNight.queued[0]?.payload.text).not.toBe(NIGHT_MESSAGE);
+  });
+  it('depois da confirmação, não responde dúvidas nem agradecimentos do pedido anterior', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    flow.pauseForConfirmedOrder('2026-11-16T13:00:00.000Z');
+    await flow.receive('Obrigada! Qual é o prazo de entrega?', '11:00', 'confirmed-followup-1');
+    expect(flow.queued).toHaveLength(0);
+    expect(flow.paused()).toBe(true);
+    expect(flow.requests).toEqual([]);
+  });
+  it('depois da confirmação, uma saudação no mesmo período não reinicia o robô', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    flow.pauseForConfirmedOrder('2026-11-16T13:00:00.000Z');
+    await flow.receive('Bom dia', '11:00', 'confirmed-greeting-1');
+    expect(flow.queued).toHaveLength(0);
+    expect(flow.paused()).toBe(true);
+  });
+  it('depois da confirmação, só uma nova compra explícita inicia outro fluxo', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    flow.pauseForConfirmedOrder('2026-11-16T13:00:00.000Z');
+    await flow.receive('Quero fazer outro pedido', '11:05', 'confirmed-new-order-1');
+    expect(flow.paused()).toBe(false);
+    expect(flow.draft()).toEqual(conversationDraftSchema.parse({}));
+    expect(flow.queued.length).toBeGreaterThan(0);
   });
 });

@@ -498,6 +498,20 @@
       "when": 1794836833057,
       "tag": "0070_whatsapp_profile_name_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794846403562,
+      "tag": "0071_whatsapp_confirmed_order_handoff",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794846491201,
+      "tag": "0072_whatsapp_new_order_name_guard",
+      "breakpoints": true
     }
   ]
 }

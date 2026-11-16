@@ -7,6 +7,7 @@ import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessa
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-attachments';
 import { ORDER_CONFIRMED_MESSAGE, isOrderConfirmationJob, canSendOrderConfirmation } from './whatsapp-confirmation';
+import { shouldResumeAfterConfirmedOrder } from './whatsapp-order-followup';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
 const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
@@ -18,21 +19,28 @@ export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'
 async function handoff(db:Admin,phone:string,reason:string,inboundId?:string,notify=false){
   // Silent pause: the customer never receives an automatic "vou encaminhar" message.
   void inboundId;void notify;
-  checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,attendance_status:'needs_reply'}).eq('phone',phone));return reason;
+  checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,automation_pause_reason:'human',order_confirmed_at:null,attendance_status:'needs_reply'}).eq('phone',phone));return reason;
 }
 async function interpret(db:Admin,j:Job){
   // Static/rule-based attendance: no AI generation calls in this flow.
   const payload=jobPayload.parse(j.payload);
   const cfg=check(await db.from('whatsapp_settings').select('business,auto_reply_enabled,account_state').eq('id',1).single());
   const b=businessSchema.parse(cfg.business??{});
-  const c=check(await db.from('whatsapp_conversations').select('name,draft,draft_version,automation_paused,last_inbound_at').eq('phone',j.phone).single());
-  if(!cfg.auto_reply_enabled||cfg.account_state!=='ok'||b.circuitPaused||c.automation_paused)return;
-  if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>86400000)return;
+  const c=check(await db.from('whatsapp_conversations').select('name,draft,draft_version,automation_paused,automation_pause_reason,order_confirmed_at,last_inbound_at').eq('phone',j.phone).single());
+  if(!cfg.auto_reply_enabled||cfg.account_state!=='ok'||b.circuitPaused)return;
   const messages=check(await db.from('whatsapp_messages').select('direction,body,kind,wa_message_id,created_at').eq('phone',j.phone).order('provider_at',{ascending:false}).limit(30)).reverse();
   const current=messages.find(m=>m.wa_message_id===payload.inboundId);
   const latestInbound=messages.filter(m=>m.direction==='in').at(-1);
   if(latestInbound?.wa_message_id!==payload.inboundId)return;
   const text=(current?.body??'').trim();
+  if(c.automation_paused){
+    const newOrder=c.automation_pause_reason==='order_confirmed'&&c.order_confirmed_at&&shouldResumeAfterConfirmedOrder(text,c.order_confirmed_at,new Date());
+    if(!newOrder)return;
+    const resumed=check(await db.from('whatsapp_conversations').update({automation_paused:false,automation_pause_reason:null,order_confirmed_at:null,assigned_to:null,assigned_name:null,attendance_status:'new',awaiting_since:null,draft:{},draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',true).eq('automation_pause_reason','order_confirmed').select('phone'));
+    if(!resumed.length)return;
+    c.automation_paused=false;c.automation_pause_reason=null;c.order_confirmed_at=null;c.draft={};c.draft_version+=1;
+  }
+  if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>86400000)return;
   const now=new Date();const win=botWindow(now);const since=windowStart(now);
   const sentSince=checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').gte('created_at',since)) ?? [];
   const already=(t:string)=>sentSince.some(m=>(m.body??'').startsWith(t.slice(0,40)));
@@ -163,13 +171,14 @@ export async function processJobs(db:Admin,limit=2){
         }
       }
       if(confirmation&&!p.orderId&&!p.requestId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
-      const c=check(await db.from('whatsapp_conversations').select('automation_paused,last_inbound_at,attendance_status,assigned_to').eq('phone',j.phone).single());
+      const c=check(await db.from('whatsapp_conversations').select('automation_paused,automation_pause_reason,last_inbound_at,attendance_status,assigned_to').eq('phone',j.phone).single());
+      const confirmedOrderIntake=j.kind==='interpret'&&c.automation_pause_reason==='order_confirmed';
       // Pausa órfã: pedido já recusado/cancelado e ninguém atendendo — o robô volta a responder.
-      if(p.automatic&&c.automation_paused&&c.attendance_status==='new'&&!c.assigned_to){
+      if(p.automatic&&c.automation_paused&&c.automation_pause_reason!=='order_confirmed'&&c.attendance_status==='new'&&!c.assigned_to){
         const open=checkEmpty(await db.from('whatsapp_order_requests').select('id').eq('phone',j.phone).eq('status','awaiting_acceptance').limit(1));
         if(!open?.length){checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:false}).eq('phone',j.phone));c.automation_paused=false;}
       }
-      if(p.automatic&&((c.automation_paused&&!handoffNotice)||!cfg.auto_reply_enabled)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
+      if(p.automatic&&((c.automation_paused&&!handoffNotice&&!confirmedOrderIntake)||!cfg.auto_reply_enabled)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled'}).eq('id',j.id));continue;}
       if(j.kind==='receipt'){const {processReceipt}=await import('./payment-receipts.server');await processReceipt(db,p.inboundId??'');}
       else if(j.kind==='interpret')await interpret(db,j);
       else{
