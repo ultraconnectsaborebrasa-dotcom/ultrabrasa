@@ -6,7 +6,7 @@ vi.mock('@lovable.dev/ai-gateway', () => ({ generateResponse: vi.fn(), GatewayEr
 import { generateResponse } from '@lovable.dev/ai-gateway';
 import { processJobs } from '@/lib/whatsapp-automation.server';
 
-function attendance() {
+function attendance(whatsappName: string | null = null) {
   let draft = conversationDraftSchema.parse({});
   let version = 0;
   let inbound = { body: '', wa_message_id: '', direction: 'in', kind: 'text', created_at: '' };
@@ -26,7 +26,7 @@ function attendance() {
         single: async () => ({ error: null, data: table === 'whatsapp_settings'
           ? { business: { ...defaultBusiness, lunchProductId: 'm', pixKey: 'configured' }, auto_reply_enabled: true, account_state: 'ok' }
           : table === 'pdv_state' ? { data: { products: [{ id: 'm', name: 'Marmita', price: 19.9, stock: null, active: true }] } }
-          : { draft, draft_version: version, automation_paused: false, last_inbound_at: inbound.created_at } }),
+          : { name: whatsappName, draft, draft_version: version, automation_paused: false, last_inbound_at: inbound.created_at } }),
         then: (resolve: (value: unknown) => unknown) => {
           if (update?.['draft']) { draft = conversationDraftSchema.parse(update['draft']); version += 1; }
           return Promise.resolve({ error: null, data: update ? [{ phone: 'test' }] : table === 'whatsapp_order_requests' ? [] : direction === 'out' ? outbound : [inbound] }).then(resolve);
@@ -80,6 +80,24 @@ describe('marmitas: atendimento por regras', () => {
     await flow.receive(text, '08:01', 'interaction-1', kind);
     expect(flow.requests).toEqual(['wa_confirm_request']);
     expect(generateResponse).not.toHaveBeenCalled();
+  });
+  it('usa o perfil do WhatsApp no resumo quando o nome não foi informado', async () => {
+    vi.useFakeTimers();
+    const flow = attendance('Lurdes');
+    await flow.receive('Quero 1 marmita, Rua do Comércio, 214, bairro Centauro, Pix', '11:00', 'profile-1');
+    expect(flow.draft().customer).toBe('Lurdes');
+    expect(flow.draft().summarySent).toBe(true);
+    expect(flow.queued.at(-1)?.payload.text).toContain('Nome: Lurdes');
+    expect(flow.queued.at(-1)?.payload.text).not.toContain('Ok Tbem');
+  });
+  it('não transforma Ok Tbem em nome quando não há perfil válido', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Quero 1 marmita, Rua do Comércio, 214, bairro Centauro, Pix', '11:00', 'chat-1');
+    await flow.receive('Ok Tbem', '11:01', 'chat-2');
+    expect(flow.draft().customer).toBe('');
+    expect(flow.draft().summarySent).toBe(false);
+    expect(flow.requests).toEqual([]);
   });
   it('não repete a divulgação na passagem das 10h', async () => {
     vi.useFakeTimers();

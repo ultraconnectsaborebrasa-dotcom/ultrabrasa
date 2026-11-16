@@ -3,7 +3,7 @@ import { GatewayError } from '@lovable.dev/ai-gateway';
 const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
 import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,NIGHT_MESSAGE,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,isEarlyLunch,lunchMenuOpen,faqReply } from './whatsapp-rulebot';
 import { z } from 'zod';
-import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete } from './whatsapp-business';
+import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete,customerNameWithProfile } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-attachments';
 import { ORDER_CONFIRMED_MESSAGE, isOrderConfirmationJob, canSendOrderConfirmation } from './whatsapp-confirmation';
@@ -25,7 +25,7 @@ async function interpret(db:Admin,j:Job){
   const payload=jobPayload.parse(j.payload);
   const cfg=check(await db.from('whatsapp_settings').select('business,auto_reply_enabled,account_state').eq('id',1).single());
   const b=businessSchema.parse(cfg.business??{});
-  const c=check(await db.from('whatsapp_conversations').select('draft,draft_version,automation_paused,last_inbound_at').eq('phone',j.phone).single());
+  const c=check(await db.from('whatsapp_conversations').select('name,draft,draft_version,automation_paused,last_inbound_at').eq('phone',j.phone).single());
   if(!cfg.auto_reply_enabled||cfg.account_state!=='ok'||b.circuitPaused||c.automation_paused)return;
   if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>86400000)return;
   const messages=check(await db.from('whatsapp_messages').select('direction,body,kind,wa_message_id,created_at').eq('phone',j.phone).order('provider_at',{ascending:false}).limit(30)).reverse();
@@ -51,6 +51,7 @@ async function interpret(db:Admin,j:Job){
   const whole=ruleParse(text,previous,lunchP?.id??'',missingBefore);
   const foldedChanged=JSON.stringify(folded)!==JSON.stringify(previous);
   const parsed={...whole,draft:foldedChanged?folded:whole.draft,extracted:whole.extracted||foldedChanged};
+  parsed.draft.customer=customerNameWithProfile(parsed.draft.customer,c.name);
   const previousTotal=Math.round(previous.items.reduce((sum,item)=>sum+(lunchP?.price??b.lunchPrice)*item.qty,0)*100)/100;
   const interactionConfirms=previous.summarySent&&summaryReady(previous,previousTotal)&&previous.quotedTotal===previousTotal;
   if(parsed.wantsHuman&&!interactionConfirms){await handoff(db,j.phone,'Cliente pediu atendente',payload.inboundId,true);return;}

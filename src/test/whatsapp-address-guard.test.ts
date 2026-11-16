@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conversationDraftSchema, missingOrderFields, summaryReady } from '@/lib/whatsapp-business';
+import { conversationDraftSchema, customerNameWithProfile, missingOrderFields, summaryReady } from '@/lib/whatsapp-business';
 import { recentInboundChunks, ruleParse } from '@/lib/whatsapp-rulebot';
 
 const empty = conversationDraftSchema.parse({});
@@ -71,6 +71,28 @@ describe('nome e endereço sem adivinhação', () => {
     expect(d.customer).toBe('');
     expect(d.address.street).toBe('Rua das Flores');
     expect(summaryReady(d, 19.9)).toBe(false);
+  });
+
+  it.each(['Ok Tbem', 'tudo bem', 'bom dia', 'obrigado'])('não reconhece a resposta conversacional "%s" como nome', (text) => {
+    const d = parse(text, { ...valid, customer: '' });
+    expect(d.customer).toBe('');
+    expect(summaryReady(d, 19.9)).toBe(false);
+  });
+
+  it('usa o nome do WhatsApp quando o nome digitado é inválido', () => {
+    expect(customerNameWithProfile('Ok Tbem', 'Lurdes')).toBe('Lurdes');
+  });
+
+  it('usa o nome do WhatsApp quando o cliente não informou o nome', () => {
+    expect(customerNameWithProfile('', 'Lurdes')).toBe('Lurdes');
+  });
+
+  it('não substitui um nome válido informado pelo cliente', () => {
+    expect(customerNameWithProfile('Núbia Dantas Ramos', 'Núbia Ramos')).toBe('Núbia Dantas Ramos');
+  });
+
+  it('continua pedindo o nome quando o perfil também não é válido', () => {
+    expect(customerNameWithProfile('Ok Tbem', 'bom dia')).toBe('');
   });
 
   it('não deixa nome e bairro duplicados passarem no resumo', () => {

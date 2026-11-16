@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Nome do perfil como alternativa segura
+- [x] “Ok Tbem”, saudações e agradecimentos não são mais aceitos como nome no roteiro nem na confirmação do banco.
+- [x] Nome válido do perfil usado somente quando o nome está ausente/inválido; nome válido digitado pelo cliente tem prioridade.
+- [x] Pedido #813 corrigido para Lurdes no PDV, cliente e entrega; 70 testes aprovados, incluindo fluxo com e sem perfil válido.
+
 ## Nome e referência no atendimento da Núbia
 - [x] Reproduzida a sequência real: nome completo aceito antes dos demais dados; referência não substitui nome nem rua.
 - [x] “Núbia Dantas Ramos”, Rua do Oeste, 30 e referência da Praça Dr. Gusmão separados; validação do banco reforçada.
