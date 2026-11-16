@@ -1,9 +1,14 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Nome e referência no atendimento da Núbia
+- [x] Reproduzida a sequência real: nome completo aceito antes dos demais dados; referência não substitui nome nem rua.
+- [x] “Núbia Dantas Ramos”, Rua do Oeste, 30 e referência da Praça Dr. Gusmão separados; validação do banco reforçada.
+- [x] Pedido real #814 corrigido no PDV e na entrega, sem alterar pagamento, total ou cozinha; 60 testes aprovados.
+
 ## Botão global do robô para Administrador e Caixa
-- [ ] Criar uma ação autorizada que liga/desliga o robô e cancela respostas automáticas pendentes ao desligar.
-- [ ] Exibir o estado real e o botão no WhatsApp dos dois perfis, sem liberar as demais configurações ao Caixa.
-- [ ] Testar persistência e funcionamento no navegador, deixando o robô ligado ao final.
+- [x] Ação autorizada liga/desliga o robô e cancela respostas automáticas pendentes ao desligar.
+- [x] Estado real e botão visíveis no WhatsApp dos dois perfis; demais configurações continuam restritas ao Administrador.
+- [x] Desligar/recarregar/religar verificado com Administrador e Caixa; robô ligado ao final e acesso temporário removido.
 
 ## Reativar o robô e corrigir falhas atuais
 - [x] Configuração, conexão, fila, conversas pausadas e erros atuais verificados; nenhum envio pendente.

@@ -145,10 +145,12 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
   const stop = /\s+(?:e|moro|vou|pago|quero|rua|av|avenida|no|na|pix|cart[aã]o|dinheiro)\b.*$/i;
   if (nm?.[1]) { const v = nm[1].replace(stop, '').trim(); if (validCustomerName(v)) { d.customer = cap(v); extracted = true; } }
   const reference = /(?:ponto de refer[eê]ncia|refer[eê]ncia)\s*:?\s*([^\n,;]+)/i.exec(raw);
+  const locationReference = !reference && /\b(?:quase\s+)?(?:em\s+frente\s+(?:a|à|ao)|ao\s+lado\s+(?:de|do|da)|perto\s+(?:de|do|da)|pr[oó]ximo\s+(?:a|à|ao)|atr[aá]s\s+(?:de|do|da))\b/i.test(raw);
   if (reference?.[1]) { d.address.reference = reference[1].trim(); extracted = true; }
+  else if (locationReference) { d.address.reference = raw.slice(0, 300); extracted = true; }
   const NUMW = '(\\d{1,5}[a-z]?|um|uma|dois|duas|tres|três|quatro|cinco|seis|sete|oito|nove|dez)';
   const houseNum = (v: string) => /^\d/.test(v) ? v : String(WORDS[norm(v)] ?? '');
-  const addr = /\b(rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s+([^\n]+)/i.exec(raw);
+  const addr = locationReference ? null : /\b(rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s+([^\n]+)/i.exec(raw);
   if (addr) {
     const rest = `${addr[1]} ${addr[2]}`.replace(/\s*,?\s*(?:vou pagar|pago|pagamento|meu nome|me chamo|no pix|pix|cart[aã]o|dinheiro|ponto de refer[eê]ncia|refer[eê]ncia)\b.*$/i, '').trim();
     const bairro = /bairro:?\s*([^,.\n]+)/i.exec(rest) ?? /bairro:?\s*([^,.\n]+)/i.exec(raw);
@@ -186,7 +188,7 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
       const neighborhood = raw.replace(/^(?:bairro|no|na)\s+/i, '').trim();
       if (validAddressField('neighborhood', neighborhood, d)) { d.address.neighborhood = neighborhood; extracted = true; }
     }
-    else if (missing.length === 1 && missing[0] === 'nome' && /^[a-zà-ú]+(?:\s+[a-zà-ú]+){0,3}$/i.test(raw) && validCustomerName(raw)) { d.customer = cap(raw); extracted = true; }
+    else if (missing.includes('nome') && !validCustomerName(d.customer) && /^[a-zà-ú]+(?:\s+[a-zà-ú]+){0,3}$/i.test(raw) && validCustomerName(raw)) { d.customer = cap(raw); extracted = true; }
   }
   if (d.address.street || d.address.neighborhood) { d.type = d.type ?? 'Delivery'; d.address.city = 'Eunápolis'; }
   return { draft: d, extracted, confirms, wantsHuman, greeting, thanks };

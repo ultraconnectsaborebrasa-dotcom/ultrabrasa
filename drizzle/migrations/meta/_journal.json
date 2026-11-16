@@ -484,6 +484,13 @@
       "when": 1794834380751,
       "tag": "0068_whatsapp_robot_staff_toggle",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794836555323,
+      "tag": "0069_whatsapp_reference_name_guard",
+      "breakpoints": true
     }
   ]
 }

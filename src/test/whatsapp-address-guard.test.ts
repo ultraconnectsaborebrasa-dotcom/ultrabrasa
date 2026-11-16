@@ -52,6 +52,27 @@ describe('nome e endereço sem adivinhação', () => {
     expect(summaryReady(d, 19.9)).toBe(true);
   });
 
+  it('reconhece o nome da Núbia antes dos outros dados e não usa a referência como nome ou rua', () => {
+    let d = parse('Núbia Dantas ramos', conversationDraftSchema.parse({ items: [{ productId: 'm', qty: 2 }] }));
+    expect(d.customer).toBe('Núbia Dantas Ramos');
+    d = parse('Rua do oeste número 30', d);
+    d = parse('Quase em frente a praça Dr Gusmão', d);
+    expect(d.customer).toBe('Núbia Dantas Ramos');
+    expect(d.address).toMatchObject({ street: 'Rua do oeste', number: '30', reference: 'Quase em frente a praça Dr Gusmão' });
+    d = parse('Dinheiro', d);
+    d = parse('Dr gusmao', d);
+    d = parse('Não precisa', d);
+    expect(d.customer).toBe('Núbia Dantas Ramos');
+    expect(summaryReady(d, 39.8)).toBe(true);
+  });
+
+  it('não aceita uma referência como nome mesmo quando só falta o nome', () => {
+    const d = parse('Quase em frente a praça Dr Gusmão', { ...valid, customer: '' });
+    expect(d.customer).toBe('');
+    expect(d.address.street).toBe('Rua das Flores');
+    expect(summaryReady(d, 19.9)).toBe(false);
+  });
+
   it('não deixa nome e bairro duplicados passarem no resumo', () => {
     const d = { ...valid, customer: 'Juca Rosa', address: { ...valid.address, neighborhood: 'Juca Rosa' } };
     expect(missingOrderFields(d)).toContain('bairro');
