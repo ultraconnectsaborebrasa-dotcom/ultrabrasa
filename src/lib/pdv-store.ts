@@ -39,7 +39,7 @@ export type Order = {
   sellerName?: string;
   serviceAmount?: number;
   tableNumber?: number | undefined;
-  source?: 'mobile' | 'desktop';
+  source?: 'mobile' | 'desktop' | 'catalog';
 };
 export type CashMove = { id: string; kind: "sangria" | "suprimento"; amount: number; reason: string; at: number };
 export type Settings = {

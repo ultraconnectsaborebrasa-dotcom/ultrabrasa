@@ -5,6 +5,7 @@ import { useStore, brl, setState } from "@/lib/pdv-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DailyOfferAdmin } from "@/components/pdv/DailyOfferAdmin";
 
 type Row = { product_id: string; description: string; image_url: string | null; illustrative: boolean; published: boolean; featured: boolean; sort: number };
 
@@ -54,6 +55,7 @@ export function CatalogAdmin() {
 
   return (
     <div className="space-y-4">
+      <DailyOfferAdmin />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-xl font-bold">Cardápio digital</h2>

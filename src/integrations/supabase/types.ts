@@ -1005,6 +1005,7 @@ export type Database = {
         Returns: undefined
       }
       revoke_pdv_access: { Args: { target: string }; Returns: undefined }
+      save_catalog_daily_offer: { Args: { _input: Json }; Returns: undefined }
       save_catalog_product: {
         Args: {
           _description: string

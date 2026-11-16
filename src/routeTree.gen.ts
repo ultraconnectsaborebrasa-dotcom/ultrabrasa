@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CardapioRouteImport } from './routes/cardapio'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MarmitaDoDiaRouteImport } from './routes/marmita-do-dia'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ApiPublicCatalogPhotoNameRouteImport } from './routes/api/public/catalog-photo.$name'
 import { Route as ApiPublicWhatsappProcessRouteImport } from './routes/api/public/whatsapp/process'
@@ -36,6 +37,11 @@ const CardapioRoute = CardapioRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarmitaDoDiaRoute = MarmitaDoDiaRouteImport.update({
+  id: '/marmita-do-dia',
+  path: '/marmita-do-dia',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
+  '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
+  '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
+  '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cardapio'
     | '/login'
+    | '/marmita-do-dia'
     | '/reset-password'
     | '/api/public/catalog-photo/$name'
     | '/api/public/whatsapp/process'
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cardapio'
     | '/login'
+    | '/marmita-do-dia'
     | '/reset-password'
     | '/api/public/catalog-photo/$name'
     | '/api/public/whatsapp/process'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cardapio'
     | '/login'
+    | '/marmita-do-dia'
     | '/reset-password'
     | '/api/public/catalog-photo/$name'
     | '/api/public/whatsapp/process'
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CardapioRoute: typeof CardapioRoute
   LoginRoute: typeof LoginRoute
+  MarmitaDoDiaRoute: typeof MarmitaDoDiaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicCatalogPhotoNameRoute: typeof ApiPublicCatalogPhotoNameRoute
   ApiPublicWhatsappProcessRoute: typeof ApiPublicWhatsappProcessRoute
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marmita-do-dia': {
+      id: '/marmita-do-dia'
+      path: '/marmita-do-dia'
+      fullPath: '/marmita-do-dia'
+      preLoaderRoute: typeof MarmitaDoDiaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CardapioRoute: CardapioRoute,
   LoginRoute: LoginRoute,
+  MarmitaDoDiaRoute: MarmitaDoDiaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicCatalogPhotoNameRoute: ApiPublicCatalogPhotoNameRoute,
   ApiPublicWhatsappProcessRoute: ApiPublicWhatsappProcessRoute,

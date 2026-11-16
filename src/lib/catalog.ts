@@ -2,11 +2,34 @@ export type CatalogProduct = {
   id: string; name: string; category: string; price: number; available: boolean;
   description: string; image: string | null; illustrative: boolean; featured: boolean; sort: number;
 };
+export type DailyOfferConfig = {
+  productId: string; title: string; description: string; accompaniments: string[]; active: boolean;
+};
+export type DailyOffer = DailyOfferConfig & {
+  name: string; price: number; stock: number | null; minStock: number; available: boolean; image: string | null;
+};
 export type CatalogSettings = {
   lunchStart?: string; lunchEnd?: string; nightStart?: string; nightEnd?: string;
   deliveryStart?: string; preparationStart?: string; freeDeliveryEunapolis?: boolean;
+  dailyOffer?: DailyOfferConfig;
 };
-export type PublicCatalog = { settings: CatalogSettings | null; products: CatalogProduct[] };
+export type PublicCatalog = { settings: CatalogSettings | null; products: CatalogProduct[]; dailyOffer: DailyOffer | null };
+
+export const DEFAULT_DAILY_OFFER: DailyOfferConfig = {
+  productId: 'product-marmita-completa', title: 'Cardápio de hoje',
+  description: 'Churrasco, carne assada e linguiça de frango',
+  accompaniments: ['Arroz', 'Farofa de feijão', 'Macarrão', 'Salada'], active: true,
+};
+
+export type DailyOfferState = 'available' | 'inactive' | 'sold-out' | 'unavailable' | 'closed';
+export function dailyOfferState(offer: DailyOffer, scheduled: boolean): DailyOfferState {
+  if (!offer.active) return 'inactive';
+  if (offer.stock === 0) return 'sold-out';
+  if (!offer.available) return 'unavailable';
+  if (!scheduled) return 'closed';
+  return 'available';
+}
+export const dailyOfferHasLowStock = (offer: DailyOffer) => offer.stock !== null && offer.stock > 0 && offer.stock <= offer.minStock;
 
 export const CATEGORY_ORDER = ['Marmitas', 'Hambúrgueres', 'Espetinhos', 'Acompanhamentos', 'Porções', 'Salgados', 'Lanches', 'Bebidas'];
 
@@ -90,11 +113,11 @@ export function validateCheckout(f: CheckoutForm, cart: CartLine[]): string | nu
 export const cartTotal = (cart: CartLine[]) => cart.reduce((s, l) => s + l.price * l.qty, 0);
 
 /** WhatsApp summary text. Payment is always reported as pending: choosing a method is not paying. */
-export function buildOrderMessage(code: string, f: CheckoutForm, cart: CartLine[]) {
+export function buildOrderMessage(code: string, f: CheckoutForm, cart: CartLine[], channel: 'catalog' | 'daily-menu' = 'catalog') {
   const total = cartTotal(cart);
   const when = f.type === 'Delivery' ? 'na entrega' : 'na retirada';
   const lines = [
-    `*Pedido ${code}* — Catálogo digital`,
+    `*Pedido ${code}* — ${channel === 'daily-menu' ? 'Marmita do Dia · Cardápio público' : 'Catálogo digital'}`,
     `Cliente: ${f.customer.trim()}`,
     `WhatsApp: ${f.phone.trim()}`,
     '',

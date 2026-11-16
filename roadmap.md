@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Marmita do Dia pública integrada ao PDV
+- [x] Página mobile com conteúdo real da oferta, preço do PDV, estoque e checkout existente, com acesso pelo cardápio atual.
+- [x] Editor administrativo da oferta usando o produto Marmita completa, sem cadastro ou estoque paralelos.
+- [x] Validação de oferta, estoque, entrega grátis em Eunápolis, origem pública e pagamento pendente no banco; estoque ilimitado atual preservado.
+- [x] 287 testes aprovados e página/checkout verificados em celular e computador sem criar pedido real; editor não testado com conta administradora. Publicação necessária para os clientes.
+
 ## Janela da marmita no cardápio digital
 - [x] Marmitas disponíveis das 09:00 às 14:00, com bloqueio antes das 09:00 na compra e aviso na tela.
 - [x] 12 testes do cardápio aprovados, 283 no total, build OK e tela pública conferida às 09:07 com marmitas adicionáveis; compra antes das 09:00 não foi executada em pedido real.

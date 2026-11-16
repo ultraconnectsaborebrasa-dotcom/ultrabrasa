@@ -26,8 +26,9 @@ const PAYMENTS: PaymentChoice[] = ['Pix', 'Crédito', 'Débito', 'Dinheiro'];
 type Placed = { code: string; link: string };
 const PLACED_KEY = 'ub-catalog-last-order';
 
-export function CatalogCheckout({ cart, setCart, open, setOpen }: {
+export function CatalogCheckout({ cart, setCart, open, setOpen, channel = 'catalog' }: {
   cart: CartLine[]; setCart: (f: (c: CartLine[]) => CartLine[]) => void; open: boolean; setOpen: (v: boolean) => void;
+  channel?: 'catalog' | 'daily-menu';
 }) {
   const [form, setForm] = useState<CheckoutForm>(emptyForm);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export function CatalogCheckout({ cart, setCart, open, setOpen }: {
     const { data, error: rpcError } = await supabase.rpc('catalog_place_order', {
       _client_key: keyRef.current,
       _order: {
-        customer: form.customer, phone: form.phone, type: form.type, address: form.address, requestedTime: form.requestedTime,
+        channel, customer: form.customer, phone: form.phone, type: form.type, address: form.address, requestedTime: form.requestedTime,
         payment: form.payment, needChange: form.payment === 'Dinheiro' && form.needChange, cashFor: Number(form.cashFor.replace(',', '.')) || 0,
         note: form.note, items: cart.map((l) => ({ productId: l.productId, qty: l.qty, note: l.note })),
       },
@@ -62,7 +63,7 @@ export function CatalogCheckout({ cart, setCart, open, setOpen }: {
     setSending(false);
     if (rpcError || !data) { setError(rpcError?.message || 'Não foi possível registrar o pedido. Tente novamente.'); return; }
     const code = (data as { code: string }).code;
-    const p = { code, link: whatsappLink(buildOrderMessage(code, form, cart)) };
+    const p = { code, link: whatsappLink(buildOrderMessage(code, form, cart, channel)) };
     setPlaced(p);
     localStorage.setItem(PLACED_KEY, JSON.stringify(p));
     localStorage.setItem('ub-catalog-customer', JSON.stringify({ customer: form.customer, phone: form.phone, address: form.address }));

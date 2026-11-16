@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Clock, Plus, Truck } from 'lucide-react';
@@ -65,6 +65,10 @@ function CardapioPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 pb-28">
+        {data.dailyOffer?.active && <Link to="/marmita-do-dia" className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/10 p-4">
+          <span><span className="block text-xs font-bold uppercase tracking-wide text-primary">Marmita do Dia</span><span className="font-display text-lg font-bold">{data.dailyOffer.title}</span><span className="block text-sm text-muted-foreground">{data.dailyOffer.description}</span></span>
+          <span className="shrink-0 text-right font-bold text-primary">{brl(data.dailyOffer.price)}<span className="block text-xs text-foreground">Pedir agora →</span></span>
+        </Link>}
         <section className="mt-4 grid gap-2 rounded-lg border border-border bg-card p-4 text-sm">
           {period === 'closed' && <p className="font-bold text-warning">Loja fechada agora. Você pode ver o cardápio; pedidos antecipados a partir das {s?.lunchStart ?? '09:00'}.</p>}
           {period === 'lunch' && <p className="font-bold text-primary">Almoço: marmitas em destaque.</p>}

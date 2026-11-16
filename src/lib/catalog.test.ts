@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catalogPreparationMinutes, catalogScheduleAvailable, buildOrderMessage, validateCheckout, type CartLine, type CheckoutForm } from './catalog';
+import { catalogPreparationMinutes, catalogScheduleAvailable, buildOrderMessage, validateCheckout, dailyOfferState, dailyOfferHasLowStock, type CartLine, type CheckoutForm, type DailyOffer } from './catalog';
 
 const cart: CartLine[] = [{ productId: 'm', name: 'Marmita completa', price: 19.9, qty: 2, note: 'sem salada' }];
 const base: CheckoutForm = { customer: 'Ana', phone: '73 99999-0000', type: 'Delivery', address: { street: 'Rua A', number: '10', neighborhood: 'Centro', complement: '', reference: 'Praça' }, requestedTime: '', payment: 'Pix', needChange: false, cashFor: '', note: '' };
@@ -45,5 +45,34 @@ describe('catalog checkout', () => {
   it('summary keeps payment pending and includes order code and total', () => {
     const m = buildOrderMessage('C1001', { ...base, payment: 'Dinheiro', needChange: true, cashFor: '50' }, cart);
     expect(m).toContain('Pedido C1001'); expect(m).toContain('Situação do pagamento: pendente'); expect(m).toMatch(/39,80/); expect(m).toMatch(/Troco para R\$\s50,00/);
+  });
+  it('daily-menu summary identifies the public menu origin and free delivery', () => {
+    const m = buildOrderMessage('C1002', base, cart, 'daily-menu');
+    expect(m).toContain('Marmita do Dia · Cardápio público');
+    expect(m).toMatch(/Taxa de entrega: R\$\s0,00/);
+    expect(m).toContain('Situação do pagamento: pendente');
+  });
+});
+
+describe('daily marmita offer', () => {
+  const offer: DailyOffer = {
+    productId: 'product-marmita-completa', name: 'Marmita completa', title: 'Cardápio de hoje',
+    description: 'Churrasco, carne assada e linguiça de frango', accompaniments: ['Arroz'], active: true,
+    price: 19.9, stock: 10, minStock: 5, available: true, image: null,
+  };
+  it('blocks new orders and reports sold out at zero stock', () => {
+    expect(dailyOfferState({ ...offer, stock: 0, available: false }, true)).toBe('sold-out');
+  });
+  it('shows low stock only with a real limited stock at or below the threshold', () => {
+    expect(dailyOfferHasLowStock({ ...offer, stock: 5 })).toBe(true);
+    expect(dailyOfferHasLowStock({ ...offer, stock: 6 })).toBe(false);
+    expect(dailyOfferHasLowStock({ ...offer, stock: null })).toBe(false);
+    expect(dailyOfferHasLowStock({ ...offer, stock: 0 })).toBe(false);
+  });
+  it('respects offer deactivation, product availability and the lunch schedule', () => {
+    expect(dailyOfferState({ ...offer, active: false }, true)).toBe('inactive');
+    expect(dailyOfferState({ ...offer, available: false }, true)).toBe('unavailable');
+    expect(dailyOfferState(offer, false)).toBe('closed');
+    expect(dailyOfferState(offer, true)).toBe('available');
   });
 });
