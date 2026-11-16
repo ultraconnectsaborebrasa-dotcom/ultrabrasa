@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Janela da marmita no cardápio digital
+- [x] Marmitas disponíveis das 09:00 às 14:00, com bloqueio antes das 09:00 na compra e aviso na tela.
+- [x] 12 testes do cardápio aprovados, 283 no total, build OK e tela pública conferida às 09:07 com marmitas adicionáveis; compra antes das 09:00 não foi executada em pedido real.
+
 ## Endereços e nomes no atendimento automático
 - [x] Impedir que nome, rua, número e bairro sejam trocados ou adivinhados em sequências de mensagens.
 - [x] Bloquear resumo e solicitação ao PDV quando nome ou endereço estiverem ambíguos, inclusive na validação do banco.

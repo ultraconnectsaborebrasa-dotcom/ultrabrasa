@@ -40,7 +40,7 @@ export function bahiaMinutes(now = new Date()) {
 export type Period = 'lunch' | 'night' | 'closed';
 export function currentPeriod(s: CatalogSettings | null, now = new Date()): Period {
   const t = bahiaMinutes(now);
-  if (t >= toMin(s?.lunchStart ?? '10:00') && t < 14 * 60) return 'lunch';
+  if (t >= toMin(s?.lunchStart ?? '09:00') && t < 14 * 60) return 'lunch';
   const ns = 17 * 60, ne = toMin(s?.nightEnd ?? '23:30');
   if (ns <= ne ? t >= ns && t < ne : t >= ns || t < ne) return 'night';
   return 'closed';
@@ -49,7 +49,7 @@ export function currentPeriod(s: CatalogSettings | null, now = new Date()): Peri
 export function catalogScheduleAvailable(category: string, s: CatalogSettings | null, now = new Date()) {
   const c = normalizeCategory(category);
   const t = bahiaMinutes(now);
-  if (c === 'Marmitas') return t >= toMin(s?.lunchStart ?? '10:00') && t < 14 * 60;
+  if (c === 'Marmitas') return t >= toMin(s?.lunchStart ?? '09:00') && t < 14 * 60;
   if (['Hambúrgueres', 'Espetinhos', 'Acompanhamentos'].includes(c)) return t >= 17 * 60;
   return true;
 }

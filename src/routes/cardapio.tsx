@@ -66,11 +66,11 @@ function CardapioPage() {
 
       <main className="mx-auto max-w-3xl px-4 pb-28">
         <section className="mt-4 grid gap-2 rounded-lg border border-border bg-card p-4 text-sm">
-          {period === 'closed' && <p className="font-bold text-warning">Loja fechada agora. Você pode ver o cardápio; pedidos antecipados a partir das {s?.lunchStart ?? '10:00'}.</p>}
+          {period === 'closed' && <p className="font-bold text-warning">Loja fechada agora. Você pode ver o cardápio; pedidos antecipados a partir das {s?.lunchStart ?? '09:00'}.</p>}
           {period === 'lunch' && <p className="font-bold text-primary">Almoço: marmitas em destaque.</p>}
           {period === 'night' && <p className="font-bold text-primary">Noite: hambúrgueres e espetinhos em destaque.</p>}
-          <p className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" />Pedidos a partir das {s?.lunchStart ?? '10:00'} · entregas começam a sair às {s?.deliveryStart ?? '11:00'}</p>
-          <p>Marmitas até 14:00 · Hambúrgueres, espetinhos e acompanhamentos a partir das 17:00 · Preparo a partir das 18:00</p>
+          <p className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" />Pedidos a partir das {s?.lunchStart ?? '09:00'} · entregas começam a sair às {s?.deliveryStart ?? '11:00'}</p>
+          <p>Marmitas das 09:00 às 14:00 · Hambúrgueres, espetinhos e acompanhamentos a partir das 17:00 · Preparo a partir das 18:00</p>
           {s?.freeDeliveryEunapolis && <p className="flex items-center gap-2 text-success"><Truck className="h-4 w-4" />Entrega grátis para qualquer bairro de Eunápolis</p>}
         </section>
 

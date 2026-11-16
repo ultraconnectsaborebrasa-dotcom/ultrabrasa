@@ -6,9 +6,15 @@ const base: CheckoutForm = { customer: 'Ana', phone: '73 99999-0000', type: 'Del
 
 describe('catalog local schedule', () => {
   const at = (time: string) => new Date(`2026-11-15T${time}:00-03:00`);
-  it('marmitas close exactly at 14:00 even with legacy 15:00 settings', () => {
+  it('marmitas open at 09:00 and close exactly at 14:00 even with legacy 15:00 settings', () => {
+    expect(catalogScheduleAvailable('Marmitas', { lunchEnd: '15:00' }, at('08:59'))).toBe(false);
+    expect(catalogScheduleAvailable('Marmitas', { lunchEnd: '15:00' }, at('09:00'))).toBe(true);
     expect(catalogScheduleAvailable('Marmitas', { lunchEnd: '15:00' }, at('13:59'))).toBe(true);
     expect(catalogScheduleAvailable('Marmitas', { lunchEnd: '15:00' }, at('14:00'))).toBe(false);
+  });
+  it('marmitas open at 09:00 with the stored 09:00 setting', () => {
+    expect(catalogScheduleAvailable('Marmitas', { lunchStart: '09:00', lunchEnd: '14:00' }, at('08:59'))).toBe(false);
+    expect(catalogScheduleAvailable('Marmitas', { lunchStart: '09:00', lunchEnd: '14:00' }, at('09:00'))).toBe(true);
   });
   it('hamburgers open exactly at 17:00 before preparation', () => {
     expect(catalogScheduleAvailable('Hambúrgueres', null, at('16:59'))).toBe(false);
