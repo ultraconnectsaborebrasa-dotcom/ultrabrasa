@@ -477,6 +477,13 @@
       "when": 1794831780192,
       "tag": "0067_fix_daily_offer_unlimited_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794834380751,
+      "tag": "0068_whatsapp_robot_staff_toggle",
+      "breakpoints": true
     }
   ]
 }

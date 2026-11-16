@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Botão global do robô para Administrador e Caixa
+- [ ] Criar uma ação autorizada que liga/desliga o robô e cancela respostas automáticas pendentes ao desligar.
+- [ ] Exibir o estado real e o botão no WhatsApp dos dois perfis, sem liberar as demais configurações ao Caixa.
+- [ ] Testar persistência e funcionamento no navegador, deixando o robô ligado ao final.
+
 ## Reativar o robô e corrigir falhas atuais
 - [x] Configuração, conexão, fila, conversas pausadas e erros atuais verificados; nenhum envio pendente.
 - [x] Correções recentes publicadas; 17 avisos antigos encerrados sem reenvio, preservando atendimentos humanos e pedidos.

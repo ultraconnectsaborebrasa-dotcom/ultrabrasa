@@ -17,6 +17,7 @@ import { whatsappSend, whatsappStatus, whatsappSyncHistory } from '@/lib/whatsap
 import { businessSchema, type Business } from '@/lib/whatsapp-business';
 import { whatsappAction, whatsappRequestAction, whatsappSendPdf, whatsappStaff } from '@/lib/whatsapp-attendance.functions';
 import { WhatsAppBusinessSettings } from './WhatsAppBusinessSettings';
+import { WhatsAppRobotToggle } from './WhatsAppRobotToggle';
 import { WhatsAppCustomerCard } from './WhatsAppCustomerCard';
 import { refreshWhatsAppConversations } from '@/lib/whatsapp-alerts';
 import { ReceiptReview } from './ReceiptReview';
@@ -155,7 +156,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
     if (!r.error) setCfg({ ...r.data, business: businessSchema.parse(r.data.business), quick_replies: Array.isArray(r.data.quick_replies) ? r.data.quick_replies as string[] : [] });
   };
 
-  useEffect(() => { void checkStatus(); void loadConvs(); void loadCfg(); void loadRequests(); void staffFn().then(setStaff).catch(() => {}); const t = setInterval(() => void loadRequests(), 5000); return () => clearInterval(t); }, []);
+  useEffect(() => { void checkStatus(); void loadConvs(); void loadCfg(); void loadRequests(); void staffFn().then(setStaff).catch(() => {}); const t = setInterval(() => { void loadRequests(); void loadCfg(); }, 5000); return () => clearInterval(t); }, []);
   useEffect(() => { setLoadingConvs(true); void loadConvs(); const t = setInterval(() => { setDay(storeDayStart()); void loadConvs(); }, 5000); return () => clearInterval(t); }, [period, day, clearedAt]);
   useEffect(() => {
     if (!active) return;
@@ -289,8 +290,9 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
         {status === null ? 'Verificando conexão' : status.connected ? `Conectado · ${status.phone}` : 'Desconectado'}
       </span>
       {cfg?.account_state === 'blocked' && <span className="flex items-center gap-1 text-xs text-destructive"><AlertTriangle size={14} /> Conta bloqueada pela Meta</span>}
-      <div className="ml-auto flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => { void checkStatus(); void loadConvs(); }}><RefreshCw /> Atualizar</Button>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        {cfg && <WhatsAppRobotToggle enabled={cfg.auto_reply_enabled} onChange={enabled => setCfg(current => current ? { ...current, auto_reply_enabled: enabled } : current)} />}
+        <Button variant="outline" size="sm" onClick={() => { void checkStatus(); void loadConvs(); void loadCfg(); }}><RefreshCw /> Atualizar</Button>
         {isAdmin && status?.connected && <Button variant="outline" size="sm" disabled={busy} onClick={() => void syncHistory()}><History /> Importar</Button>}
         {isAdmin && <Button variant="outline" size="sm" onClick={() => setShowCfg(v => !v)}><Settings2 /> Configurações</Button>}
       </div>
