@@ -1161,6 +1161,10 @@ export type Database = {
         Args: { _at: string; _body: string; _name: string; _phone: string }
         Returns: undefined
       }
+      whatsapp_customer_name_valid: {
+        Args: { _name: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "operator" | "cashier" | "courier"

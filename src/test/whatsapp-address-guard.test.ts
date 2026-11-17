@@ -83,6 +83,16 @@ describe('nome e endereço sem adivinhação', () => {
     expect(customerNameWithProfile('Ok Tbem', 'Lurdes')).toBe('Lurdes');
   });
 
+  it('não mistura uma instrução de entrega com o nome da cliente', () => {
+    const d = parse('Flávia mas vai entregar, Rua A, 12, bairro Centro');
+    expect(d.customer).toBe('');
+    expect(customerNameWithProfile(d.customer, 'flavisilva98')).toBe('flavisilva98');
+  });
+
+  it.each(['Pode ser', 'Pode mandar', 'Uma'])('não usa a resposta "%s" como nome', (text) => {
+    expect(customerNameWithProfile(text, null)).toBe('');
+  });
+
   it('usa o nome do WhatsApp quando o cliente não informou o nome', () => {
     expect(customerNameWithProfile('', 'Lurdes')).toBe('Lurdes');
   });

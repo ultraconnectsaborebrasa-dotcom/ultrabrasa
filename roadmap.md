@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Edição e nome correto nos pedidos do robô
+- [x] Permitir adicionar produtos do PDV na edição antes do envio à cozinha, recalculando preços e totais no servidor.
+- [x] Perguntar o nome quando estiver ausente e usar o nome válido do WhatsApp como alternativa, sem gerar nomes aleatórios; frases de entrega e respostas curtas são bloqueadas também no banco.
+- [x] Testar as regras e verificar a edição fictícia sem aceitar pedidos reais: 88 testes aprovados, tipagem verificada e nenhum pedido real aguardando aceite.
+
 ## Impressão automática ao enviar à cozinha
 - [x] Aceites do WhatsApp no painel e nas notificações do Administrador/Caixa buscam a comanda real e imprimem automaticamente na impressora da cozinha selecionada.
 - [x] Impressão usa a fila deduplicada, respeita a opção de impressão automática e não desfaz o pedido se a impressora falhar; 14 testes e tipagem aprovados, sem imprimir fisicamente.
