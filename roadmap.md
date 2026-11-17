@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Robô ativo e Pix após a confirmação
+- [x] Robô ativado com conexão normal; botão de ligar/desligar testado no painel e estado confirmado após atualizar a página.
+- [x] Confirmação com saída às 11h e prazo de 30 a 45 minutos; mensagem completa de Pix configurada para pedidos Pix após a confirmação, sem baixa automática.
+- [x] 21 testes aprovados; envio em uma conversa real não foi executado.
+
 ## Nome do perfil como alternativa segura
 - [x] “Ok Tbem”, saudações e agradecimentos não são mais aceitos como nome no roteiro nem na confirmação do banco.
 - [x] Nome válido do perfil usado somente quando o nome está ausente/inválido; nome válido digitado pelo cliente tem prioridade.
