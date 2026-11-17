@@ -4,7 +4,7 @@ import { ReceiveAndSendDialog } from '@/components/pdv/ReceiveAndSendDialog';
 
 afterEach(cleanup);
 
-describe('recebimento antes do envio à cozinha', () => {
+describe('recebimento no lançamento do pedido', () => {
   it('confirma a forma escolhida e mostra o total do pedido', async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     render(
@@ -19,15 +19,14 @@ describe('recebimento antes do envio à cozinha', () => {
 
     expect(screen.getByText(/R\$\s*39,80/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Forma de pagamento do novo pedido'), { target: { value: 'Pix' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Receber, imprimir e enviar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Receber, imprimir e finalizar' }));
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith('Pix'));
   });
 
-  it('oferece recebimento direto com impressão e sem cozinha', async () => {
+  it('recebe, imprime e finaliza sem oferecer envio à cozinha', async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     render(
       <ReceiveAndSendDialog
-        mode="direct"
         total={19.9}
         methods={['Pix', 'Dinheiro']}
         busy={false}
@@ -36,8 +35,9 @@ describe('recebimento antes do envio à cozinha', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: 'Receber e finalizar' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Receber pagamento' })).toBeInTheDocument();
     expect(screen.getByText(/sem enviar à cozinha/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /enviar/i })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Forma de pagamento do novo pedido'), { target: { value: 'Dinheiro' } });
     fireEvent.click(screen.getByRole('button', { name: 'Receber, imprimir e finalizar' }));
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith('Dinheiro'));

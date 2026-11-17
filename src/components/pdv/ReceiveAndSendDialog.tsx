@@ -10,14 +10,12 @@ export function ReceiveAndSendDialog({
   busy,
   onClose,
   onConfirm,
-  mode = 'kitchen',
 }: {
   total: number;
   methods: string[];
   busy: boolean;
   onClose: () => void;
   onConfirm: (method: string) => Promise<void>;
-  mode?: 'kitchen' | 'direct';
 }) {
   const [method, setMethod] = useState('');
   const lock = useRef(false);
@@ -36,7 +34,7 @@ export function ReceiveAndSendDialog({
     <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{mode === 'direct' ? 'Receber e finalizar' : 'Receber e enviar à cozinha'}</DialogTitle>
+          <DialogTitle>Receber pagamento</DialogTitle>
         </DialogHeader>
         <div className="flex items-center justify-between border-y py-4">
           <span>Valor a receber</span>
@@ -56,15 +54,13 @@ export function ReceiveAndSendDialog({
           </select>
         </label>
         <p className="text-sm text-muted-foreground">
-          {mode === 'direct'
-            ? 'O pagamento e a venda serão gravados juntos, sem enviar à cozinha. A comanda do caixa será impressa automaticamente.'
-            : 'O pagamento e o pedido serão gravados juntos. Depois, a comanda da cozinha será impressa automaticamente.'}
+          O pagamento será registrado e o pedido finalizado, sem enviar à cozinha. A comanda do caixa será impressa automaticamente.
         </p>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" disabled={busy} onClick={onClose}>Voltar</Button>
           <Button disabled={busy || !method} onClick={() => void confirm()}>
             <CreditCard className="mr-2 h-4 w-4" />
-            {busy ? 'Recebendo…' : mode === 'direct' ? 'Receber, imprimir e finalizar' : 'Receber, imprimir e enviar'}
+            {busy ? 'Recebendo…' : 'Receber, imprimir e finalizar'}
           </Button>
         </div>
       </DialogContent>

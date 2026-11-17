@@ -129,3 +129,7 @@
 - [x] 5. Abas com contadores no Caixa (Novos, Cozinha, Prontos, Em entrega, Finalizados) + cartões com tempo, cliente, itens e pagamento
 - [x] 6. Pedidos inconsistentes: nenhum encontrado (filas vazias, entregas consistentes); guards novos impedem recorrência
 - [x] 7. Testes: 159 testes + fluxo real balcão e delivery no navegador; build OK
+
+## Botão único de recebimento no lançamento
+- [x] Remover “Receber e enviar à cozinha”; restam “Enviar pedido à cozinha” (sem receber) e “Receber” (dá baixa, finaliza e imprime no caixa).
+- [x] 9 testes do recebimento aprovados, tipagem verificada e tela do caixa conferida em 1280×1800 sem registrar pagamento real; impressora física não acionada.
