@@ -5,11 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { brl } from '@/lib/pdv-store';
 import { toast } from 'sonner';
 
-export function BulkPayDialog({orders,methods,onClose,onDone}:{orders:{id:string;number:number;total:number}[];methods:string[];onClose:()=>void;onDone:()=>void|Promise<void>}){
+export function BulkPayDialog({orders,methods,onClose,onDone,onPaid}:{orders:{id:string;number:number;total:number}[];methods:string[];onClose:()=>void;onDone:()=>void|Promise<void>;onPaid:(orderId:string,method:string)=>void|Promise<void>}){
  const [method,setMethod]=useState('');const [busy,setBusy]=useState(false);const lock=useRef(false);
  const total=orders.reduce((s,o)=>s+o.total,0);
  async function confirm(){if(lock.current||!method)return;lock.current=true;setBusy(true);let ok=0;const failed:number[]=[];
-  for(const o of orders){const {error}=await supabase.rpc('pay_pdv_cashier' as never,{order_id:o.id,payment_method:method} as never);if(error)failed.push(o.number);else ok++;}
+  for(const o of orders){const {error}=await supabase.rpc('pay_pdv_cashier' as never,{order_id:o.id,payment_method:method} as never);if(error)failed.push(o.number);else{ok++;await onPaid(o.id,method);}}
   await onDone();lock.current=false;setBusy(false);
   if(ok)toast.success(`${ok} pedido(s) marcados como pagos em ${method}`);
   if(failed.length)toast.error(`Não deu baixa: #${failed.join(', #')}. Confira e tente de novo.`);else onClose();

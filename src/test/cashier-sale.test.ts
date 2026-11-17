@@ -28,6 +28,19 @@ describe('envio de venda pelo caixa', () => {
     });
   });
 
+  it('grava a venda direta paga sem usar o envio à cozinha', async () => {
+    await submitCashierSale(request, 'Pix', 'direct');
+    expect(supabase.rpc).toHaveBeenCalledWith('submit_pdv_cashier_direct_paid', {
+      request,
+      payment_method: 'Pix',
+    });
+  });
+
+  it('não permite venda direta sem forma de pagamento', async () => {
+    await expect(submitCashierSale(request, undefined, 'direct')).rejects.toThrow('Selecione a forma de pagamento');
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
   it('não informa sucesso quando a gravação paga falha', async () => {
     vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: new Error('Sem caixa aberto') } as never);
     await expect(submitCashierSale(request, 'Dinheiro')).rejects.toThrow('Sem caixa aberto');

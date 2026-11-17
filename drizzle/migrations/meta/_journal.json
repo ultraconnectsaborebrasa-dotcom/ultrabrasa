@@ -547,6 +547,13 @@
       "when": 1794925808620,
       "tag": "0077_lock_kitchen_payment_status",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794929597421,
+      "tag": "0078_cashier_direct_paid_sale",
+      "breakpoints": true
     }
   ]
 }

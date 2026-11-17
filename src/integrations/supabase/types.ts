@@ -1085,6 +1085,10 @@ export type Database = {
       }
       set_whatsapp_auto_reply: { Args: { _enabled: boolean }; Returns: boolean }
       start_delivery_route: { Args: { route_id: string }; Returns: undefined }
+      submit_pdv_cashier_direct_paid: {
+        Args: { payment_method: string; request: Json }
+        Returns: Json
+      }
       submit_pdv_cashier_paid: {
         Args: { payment_method: string; request: Json }
         Returns: Json

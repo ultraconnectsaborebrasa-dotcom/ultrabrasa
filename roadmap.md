@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Venda direta paga no caixa
+- [x] Adicionar “Receber” para pedidos novos de Balcão, Mesa ou Retirada: quitar, finalizar e imprimir no caixa sem enviar à Cozinha.
+- [x] Manter “Receber e enviar à cozinha” inalterado e validar as gravações sem movimentar vendas reais; 16 testes aprovados.
+- [x] Baixas individuais e em lote de pedidos já abertos pelo Caixa imprimem no caixa sem enviar à Cozinha; fluxo individual verificado em 890×674 com duas impressões fictícias e nenhuma mudança indevida de etapa.
+
 ## Recebimento imediato no caixa e na Cozinha
 - [x] Ao dar baixa em um pedido em preparo pela Cozinha, registrar o pagamento e movê-lo automaticamente para Pronto na mesma gravação; baixa no caixa preserva a etapa. Testado na tela em 890×674 sem movimentar dados reais.
 - [x] Manter envio sem pagamento e adicionar “Receber e enviar”, com forma de pagamento, gravação única e impressão automática.

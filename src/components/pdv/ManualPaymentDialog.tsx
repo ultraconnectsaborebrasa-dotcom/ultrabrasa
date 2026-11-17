@@ -5,10 +5,10 @@ import { submitManualPayment } from '@/lib/manual-payment';
 import { brl } from '@/lib/pdv-store';
 import { toast } from 'sonner';
 
-export function ManualPaymentDialog({order,methods,markReady=false,onClose,onPaid}:{order:{id:string;number:number;total:number};methods:string[];markReady?:boolean;onClose:()=>void;onPaid:()=>void|Promise<void>}) {
+export function ManualPaymentDialog({order,methods,markReady=false,onClose,onPaid}:{order:{id:string;number:number;total:number};methods:string[];markReady?:boolean;onClose:()=>void;onPaid:(method:string)=>void|Promise<void>}) {
  const [method,setMethod]=useState('');const [busy,setBusy]=useState(false);const lock=useRef(false);
  async function confirm(){if(lock.current||!method)return;lock.current=true;setBusy(true);
-  try{await submitManualPayment(order.id,method,markReady);await onPaid();toast.success(markReady?`Pedido #${order.number} pago e marcado como pronto`:`Pedido #${order.number} pago`);onClose();}
+  try{await submitManualPayment(order.id,method,markReady);await onPaid(method);toast.success(markReady?`Pedido #${order.number} pago e marcado como pronto`:`Pedido #${order.number} pago`);onClose();}
   catch(e){toast.error(e instanceof Error?e.message:(e as {message?:string})?.message??'Não foi possível dar baixa. Tente novamente.');}
   finally{lock.current=false;setBusy(false);}
  }

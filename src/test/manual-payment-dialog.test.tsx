@@ -30,7 +30,7 @@ describe('janela de recebimento na cozinha', () => {
       order_id: 'pedido-cozinha',
       payment_method: 'Pix',
     }));
-    expect(onPaid).toHaveBeenCalledOnce();
+    expect(onPaid).toHaveBeenCalledWith('Pix');
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
