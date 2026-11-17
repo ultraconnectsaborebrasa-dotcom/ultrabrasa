@@ -29,7 +29,7 @@ describe('janela de edição antes da cozinha', () => {
     const select = await screen.findByLabelText('Produto para adicionar');
     await waitFor(() => expect(select).not.toBeDisabled());
     fireEvent.change(select, { target: { value: 'soda' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar produto' }));
     expect(screen.getByLabelText('Quantidade de Refrigerante')).toHaveValue(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }));

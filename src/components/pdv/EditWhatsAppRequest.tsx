@@ -55,8 +55,9 @@ export function EditWhatsAppRequest({ id, request, whatsappName, onSaved }: { id
   }, 0), [items, products]);
 
   function addProduct() {
+    if (!selectedProduct) { toast.info('Escolha um produto na lista ao lado para adicionar.'); return; }
     const product = products.find(item => item.id === selectedProduct);
-    if (!product) return;
+    if (!product) { toast.error('Produto não encontrado. Atualize a janela e tente novamente.'); return; }
     setItems(current => addProductToRequestItems(current, product));
     setSelectedProduct('');
   }
@@ -77,6 +78,19 @@ export function EditWhatsAppRequest({ id, request, whatsappName, onSaved }: { id
       <div className="space-y-3 text-sm">
         <label className="block">Nome do cliente<input className="field mt-1 w-full" value={customer} onChange={e => setCustomer(e.target.value)} /></label>
         {whatsappName && <p className="-mt-2 text-xs text-muted-foreground">Nome no WhatsApp: {whatsappName}</p>}
+
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
+          <p className="font-semibold">Adicionar produto</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Escolha na lista e toque no botão para incluir na comanda.</p>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <select aria-label="Produto para adicionar" className="field min-w-0 flex-1" value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)} disabled={loadingProducts}>
+              <option value="">{loadingProducts ? 'Carregando produtos…' : 'Escolha um produto do PDV'}</option>
+              {products.map(product => <option key={product.id} value={product.id} disabled={product.stock === 0}>{product.name} · {brl(product.price)}{product.stock === 0 ? ' · sem estoque' : ''}</option>)}
+            </select>
+            <Button type="button" className="shrink-0" onClick={addProduct}><Plus /> Adicionar produto</Button>
+          </div>
+        </div>
+
         {delivery && <div className="grid grid-cols-3 gap-2">
           <label className="col-span-2">Rua<input className="field mt-1 w-full" value={addr.street} onChange={e => setAddr({ ...addr, street: e.target.value })} /></label>
           <label>Número<input className="field mt-1 w-full" value={addr.number} onChange={e => setAddr({ ...addr, number: e.target.value })} /></label>
@@ -84,17 +98,6 @@ export function EditWhatsAppRequest({ id, request, whatsappName, onSaved }: { id
           <label className="col-span-3">Referência<input className="field mt-1 w-full" value={addr.reference} onChange={e => setAddr({ ...addr, reference: e.target.value })} /></label>
         </div>}
         <label className="block">Pagamento<select className="field mt-1 w-full" value={payment} onChange={e => setPayment(e.target.value)}>{['Pix', 'Dinheiro', 'Cartão', 'Crédito', 'Débito'].concat(payment && !['Pix','Dinheiro','Cartão','Crédito','Débito'].includes(payment) ? [payment] : []).map(p => <option key={p}>{p}</option>)}</select></label>
-
-        <div className="rounded-lg border bg-muted/30 p-3">
-          <p className="font-semibold">Adicionar produto</p>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <select aria-label="Produto para adicionar" className="field min-w-0 flex-1" value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)} disabled={loadingProducts}>
-              <option value="">{loadingProducts ? 'Carregando produtos…' : 'Escolha um produto do PDV'}</option>
-              {products.map(product => <option key={product.id} value={product.id} disabled={product.stock === 0}>{product.name} · {brl(product.price)}{product.stock === 0 ? ' · sem estoque' : ''}</option>)}
-            </select>
-            <Button type="button" variant="secondary" disabled={!selectedProduct} onClick={addProduct}><Plus /> Adicionar</Button>
-          </div>
-        </div>
 
         <p className="font-semibold">Itens da comanda (0 remove)</p>
         <div className="space-y-2">{items.map((item, index) => {
