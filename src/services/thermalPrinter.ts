@@ -2,6 +2,7 @@ import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
 import { addressText, type Delivery } from '@/lib/delivery';
 import { receiptOrderWithDelivery, isDeliveryOrder } from './deliveryReceipt';
+import { isVirtualPrinter, paperWidthForPrinter, parsePrinterModel, sortPrinters, type PrinterModel } from '@/lib/printer-models';
 import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
 
@@ -30,6 +31,8 @@ export const printerPreferences = {
  set cashierPrinter(value: string) { put('cashierPrinter', value); },
  get printMode(): 'driver' | 'raw' { return get('printMode') === 'raw' ? 'raw' : 'driver'; },
  set printMode(value: 'driver' | 'raw') { put('printMode', value); },
+ get printerModel(): PrinterModel { return parsePrinterModel(get('printerModel')); },
+ set printerModel(value: PrinterModel) { put('printerModel', value); },
 };
 const printed = () => { try { return new Set<string>(JSON.parse(get('printedOrderIds') || '[]')); } catch { return new Set<string>(); } };
 const pending = () => { try { return new Set<string>(JSON.parse(get('pendingOrderIds') || '[]')); } catch { return new Set<string>(); } };
@@ -202,12 +205,9 @@ export async function listPrinters() {
  await connectPrinter();
  const found: unknown = await (await api()).printers.find();
  const names = Array.isArray(found) ? found.filter((n): n is string => typeof n === 'string' && n.length > 0) : typeof found === 'string' && found ? [found] : [];
- return [...names].sort((a, b) => rank(b) - rank(a));
+ return sortPrinters(names);
 }
-const THERMAL = /mo-?5812|atomo|átomo|pos-?58|pos-?80|thermal|t[ée]rmica|58mm|80mm|bluetooth|bt-?printer/i;
-const VIRTUAL = /pdf|xps|onenote|fax|anydesk|send to/i;
-const rank = (name: string) => (THERMAL.test(name) ? 2 : 0) - (VIRTUAL.test(name) ? 1 : 0);
-// Escolhe automaticamente a impressora (prioriza a térmica MO-5812) quando nenhuma foi salva.
+// Escolhe automaticamente a impressora, priorizando a Epson TM-T20 e outras térmicas.
 export type PrintTarget = 'kitchen' | 'cashier';
 async function ensurePrinter(target?: PrintTarget) {
  const names = await listPrinters();
@@ -217,7 +217,7 @@ async function ensurePrinter(target?: PrintTarget) {
  if (saved && names.includes(saved)) return saved;
  const [first] = names;
  if (!first) throw new Error('Nenhuma impressora encontrada no computador.');
- if (VIRTUAL.test(first)) throw new Error('A impressora térmica não foi encontrada no Windows. Ligue e pareie a impressora e tente novamente.');
+  if (isVirtualPrinter(first)) throw new Error('A impressora térmica não foi encontrada no Windows. Conecte a Epson por USB, instale o driver e tente novamente.');
  printerPreferences.selectedPrinter = first;
  return first;
 }
@@ -236,7 +236,8 @@ async function sendText(qz: QZ, printerName: string, text: string) {
   const config = qz.configs.create(printerName, { encoding: 'CP437' });
   return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + '\x1bM\x00' + '\x1b!\x00' + '\x1d!\x00' + '\x1dL\x00\x00' + '\x1dW\x80\x01' + '\x1b$\x00\x00' + '\x1ba\x00' + text + '\n\n\n' }]);
  }
- const config = qz.configs.create(printerName, { units: 'mm', size: { width: 58 }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 5, bottom: 0, left: 5 }, scaleContent: true, rasterize: false, colorType: 'blackwhite' });
+ const paperWidth = paperWidthForPrinter(printerName, printerPreferences.printerModel);
+ const config = qz.configs.create(printerName, { units: 'mm', size: { width: paperWidth }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 3, bottom: 0, left: 3 }, scaleContent: true, rasterize: false, colorType: 'blackwhite' });
  const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:8pt;font-weight:bold;line-height:1.25;white-space:pre;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }

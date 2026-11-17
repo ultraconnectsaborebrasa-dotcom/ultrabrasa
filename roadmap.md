@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Epson TM-T20 via USB
+- [x] Adicionar seleção do modelo Epson TM-T20 de 80 mm e identificar o nome instalado no Windows.
+- [x] Priorizar a Epson na busca automática, configurar papel de 80 mm e validar a tela sem imprimir fisicamente; 18 testes aprovados e seleção fictícia confirmada em 890×674.
+
 ## Venda direta paga no caixa
 - [x] Adicionar “Receber” para pedidos novos de Balcão, Mesa ou Retirada: quitar, finalizar e imprimir no caixa sem enviar à Cozinha.
 - [x] Manter “Receber e enviar à cozinha” inalterado e validar as gravações sem movimentar vendas reais; 16 testes aprovados.

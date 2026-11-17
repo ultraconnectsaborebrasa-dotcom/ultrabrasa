@@ -3,6 +3,7 @@ import { CheckCircle2, CircleAlert, LoaderCircle, Printer, RefreshCw, Wifi, Wifi
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { isPrinterConnected, listPrinters, pendingPrintIds, printerPreferences, testPrinter, connectPrinter, disconnectPrinter } from '@/services/thermalPrinter';
+import { isEpsonTmT20, type PrinterModel } from '@/lib/printer-models';
 
 export function ThermalPrinterPanel() {
   const [connected, setConnected] = useState(false);
@@ -12,6 +13,7 @@ export function ThermalPrinterPanel() {
   const [kitchen, setKitchen] = useState(printerPreferences.kitchenPrinter);
   const [cashier, setCashier] = useState(printerPreferences.cashierPrinter);
   const [mode, setMode] = useState(printerPreferences.printMode);
+  const [model, setModel] = useState<PrinterModel>(printerPreferences.printerModel);
   const [busy, setBusy] = useState('');
   const [pending, setPending] = useState<string[]>(pendingPrintIds());
 
@@ -51,6 +53,25 @@ export function ThermalPrinterPanel() {
       toast.error(error instanceof Error ? error.message : 'Falha ao listar impressoras.');
     } finally { setBusy(''); }
   }
+  async function selectEpson() {
+    setBusy('epson');
+    try {
+      const names = await listPrinters();
+      setPrinters(names);
+      setModel('epson-tm-t20');
+      printerPreferences.printerModel = 'epson-tm-t20';
+      const epson = names.find(isEpsonTmT20);
+      if (!epson) {
+        toast.warning('A Epson TM-T20 não apareceu no Windows. Conecte o cabo USB, ligue a impressora e instale o driver Epson.');
+        return;
+      }
+      setSelected(epson);
+      printerPreferences.selectedPrinter = epson;
+      toast.success(`Epson selecionada: ${epson}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível localizar a Epson TM-T20.');
+    } finally { setBusy(''); }
+  }
   async function test() {
     setBusy('test');
     try { await testPrinter(); toast.success('Teste enviado à impressora.'); }
@@ -65,7 +86,7 @@ export function ThermalPrinterPanel() {
   }
 
   return <div className="space-y-4">
-    <p className="text-sm text-muted-foreground">Conecte o QZ Tray neste computador para enviar comandas à impressora térmica Bluetooth instalada no Windows.</p>
+    <p className="text-sm text-muted-foreground">Conecte o QZ Tray neste computador para enviar comandas à impressora térmica USB, Bluetooth ou de rede instalada no Windows.</p>
     <div className="flex flex-wrap items-center gap-2">
       <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${connected ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
         {connected ? <CheckCircle2 size={14}/> : <WifiOff size={14}/>}
@@ -78,13 +99,26 @@ export function ThermalPrinterPanel() {
       <Button variant="outline" onClick={refreshPrinters} disabled={!!busy}>{busy === 'list' ? <LoaderCircle className="animate-spin"/> : <RefreshCw/>} Listar impressoras</Button>
       {connected && <Button variant="outline" onClick={disconnect} disabled={!!busy}>Desconectar</Button>}
     </div>
+    <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      <label htmlFor="thermal-printer-model" className="text-sm font-medium">Modelo e largura do papel</label>
+      <select id="thermal-printer-model" value={model} onChange={e => { const value = e.target.value as PrinterModel; setModel(value); printerPreferences.printerModel = value; }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+        <option value="auto">Detectar automaticamente</option>
+        <option value="epson-tm-t20">Epson TM-T20 USB — 80 mm</option>
+        <option value="thermal-58">Impressora térmica — 58 mm</option>
+        <option value="thermal-80">Impressora térmica — 80 mm</option>
+      </select>
+      <Button variant="secondary" className="w-full" onClick={() => void selectEpson()} disabled={!!busy}>
+        {busy === 'epson' ? <LoaderCircle className="animate-spin"/> : <Printer/>} Localizar e selecionar Epson TM-T20
+      </Button>
+      <p className="text-xs text-muted-foreground">Para a Epson USB, instale o driver Epson no Windows, conecte o cabo e ligue a impressora antes de buscar.</p>
+    </div>
     <div className="space-y-2">
-      <label htmlFor="thermal-printer-select" className="text-sm font-medium">Impressora do Windows</label>
+      <label htmlFor="thermal-printer-select" className="text-sm font-medium">Impressora instalada no Windows</label>
       <select id="thermal-printer-select" value={selected} onChange={e => { setSelected(e.target.value); printerPreferences.selectedPrinter = e.target.value; }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
         <option value="">Selecione uma impressora</option>
         {[...new Set([...printers, ...(selected ? [selected] : [])])].map(name => <option key={name} value={name}>{name}</option>)}
       </select>
-      <p className="text-xs text-muted-foreground">Se a impressora não aparecer, confira se ela está ligada, pareada e instalada em Windows → Printers & scanners.</p>
+      <p className="text-xs text-muted-foreground">Se a Epson não aparecer, confira o cabo USB e a instalação em Windows → Bluetooth e dispositivos → Impressoras e scanners. Também é possível escolher manualmente outro nome usado pelo driver.</p>
     </div>
     {([['kitchen', 'Impressora da cozinha', kitchen, setKitchen], ['cashier', 'Impressora do caixa', cashier, setCashier]] as const).map(([key, label, value, setValue]) => <div key={key} className="space-y-2">
       <label htmlFor={`printer-${key}`} className="text-sm font-medium">{label}</label>
