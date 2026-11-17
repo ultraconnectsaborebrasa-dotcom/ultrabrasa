@@ -25,3 +25,9 @@ function rank(name: string): number {
 export function sortPrinters(names: string[]): string[] {
   return [...names].sort((a, b) => rank(b) - rank(a));
 }
+
+// Nunca escolhe PDF/outra impressora virtual como substituta da térmica.
+export function preferredPhysicalPrinter(names: string[]): string {
+  const physical = sortPrinters(names.filter(name => !isVirtualPrinter(name)));
+  return physical.find(isEpsonTmT20) ?? physical[0] ?? '';
+}

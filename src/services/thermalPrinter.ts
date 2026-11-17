@@ -2,7 +2,7 @@ import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
 import { addressText, type Delivery } from '@/lib/delivery';
 import { receiptOrderWithDelivery, isDeliveryOrder } from './deliveryReceipt';
-import { isVirtualPrinter, paperWidthForPrinter, parsePrinterModel, sortPrinters, type PrinterModel } from '@/lib/printer-models';
+import { paperWidthForPrinter, parsePrinterModel, preferredPhysicalPrinter, sortPrinters, type PrinterModel } from '@/lib/printer-models';
 import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
 
@@ -224,12 +224,14 @@ async function ensurePrinter(target?: PrintTarget) {
  const specific = target === 'kitchen' ? printerPreferences.kitchenPrinter : target === 'cashier' ? printerPreferences.cashierPrinter : '';
  if (specific) { if (names.includes(specific)) return specific; throw new Error(`Impressora "${specific}" não encontrada. Verifique se está ligada e conectada.`); }
  const saved = printerPreferences.selectedPrinter;
- if (saved && names.includes(saved)) return saved;
- const [first] = names;
- if (!first) throw new Error('Nenhuma impressora encontrada no computador.');
-  if (isVirtualPrinter(first)) throw new Error('A impressora térmica não foi encontrada no Windows. Conecte a Epson por USB, instale o driver e tente novamente.');
- printerPreferences.selectedPrinter = first;
- return first;
+ if (saved) {
+  if (names.includes(saved)) return saved;
+  throw new Error(`A impressora selecionada "${saved}" não foi encontrada. Ligue a Epson e selecione-a novamente; nenhum cupom foi enviado a outra impressora.`);
+ }
+ const preferred = preferredPhysicalPrinter(names);
+ if (!preferred) throw new Error('Nenhuma impressora física encontrada. Conecte e ligue a Epson, depois selecione-a no PDV.');
+ printerPreferences.selectedPrinter = preferred;
+ return preferred;
 }
 // Evita que uma impressão travada (ex.: janela de permissão do QZ ignorada) bloqueie a fila.
 function withTimeout<T>(promise: Promise<T>, ms = 20000) {
@@ -247,7 +249,7 @@ async function sendText(qz: QZ, printerName: string, text: string) {
   return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + '\x1bM\x00' + '\x1b!\x00' + '\x1d!\x00' + '\x1dL\x00\x00' + '\x1dW\x80\x01' + '\x1b$\x00\x00' + '\x1ba\x00' + text + '\n\n\n' }]);
  }
  const paperWidth = paperWidthForPrinter(printerName, printerPreferences.printerModel);
- const config = qz.configs.create(printerName, { units: 'mm', size: { width: paperWidth }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 3, bottom: 0, left: 3 }, scaleContent: true, rasterize: false, colorType: 'blackwhite' });
+ const config = qz.configs.create(printerName, { units: 'mm', size: { width: paperWidth }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 3, bottom: 0, left: 3 }, scaleContent: true, rasterize: true, colorType: 'blackwhite' });
  const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:8pt;font-weight:bold;line-height:1.25;white-space:pre;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }

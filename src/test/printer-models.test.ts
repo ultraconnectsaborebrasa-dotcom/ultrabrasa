@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isEpsonTmT20, paperWidthForPrinter, parsePrinterModel, sortPrinters } from '@/lib/printer-models';
+import { isEpsonTmT20, paperWidthForPrinter, parsePrinterModel, preferredPhysicalPrinter, sortPrinters } from '@/lib/printer-models';
 
 describe('seleção da Epson TM-T20', () => {
   it('reconhece os nomes usados pelo driver da Epson no Windows', () => {
@@ -21,5 +21,10 @@ describe('seleção da Epson TM-T20', () => {
   it('recupera somente modelos de impressora válidos', () => {
     expect(parsePrinterModel('epson-tm-t20')).toBe('epson-tm-t20');
     expect(parsePrinterModel('modelo-desconhecido')).toBe('auto');
+  });
+
+  it('escolhe a Epson física e nunca substitui por PDF', () => {
+    expect(preferredPhysicalPrinter(['Microsoft Print to PDF', 'EPSON TM-T20 Receipt'])).toBe('EPSON TM-T20 Receipt');
+    expect(preferredPhysicalPrinter(['Microsoft Print to PDF'])).toBe('');
   });
 });

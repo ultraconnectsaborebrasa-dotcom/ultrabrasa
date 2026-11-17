@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Seleção funcional da Epson física
+- [x] Separar a impressora física da conexão QZ Tray e deixar a Epson selecionada explicitamente.
+- [x] Impedir substituição silenciosa por PDF/outra impressora e usar rasterização compatível com o driver Epson de 80 mm.
+- [x] Treze testes aprovados; seleção, impressão fictícia e persistência após recarregar verificadas no Caixa em 890×674, sem acionar a impressora física.
+
 ## Conexão com o QZ Tray
 - [x] Repetir a conexão quando o QZ Tray estiver iniciando e explicar como abri-lo no Windows.
 - [x] Testar a falha e a nova tentativa sem acionar a impressora física; causa confirmada: QZ Tray instalado, mas fechado. Dez testes aprovados.

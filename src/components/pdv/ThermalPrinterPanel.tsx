@@ -3,7 +3,7 @@ import { CheckCircle2, CircleAlert, LoaderCircle, Printer, RefreshCw, Wifi, Wifi
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { isPrinterConnected, listPrinters, pendingPrintIds, printerPreferences, testPrinter, connectPrinter, disconnectPrinter } from '@/services/thermalPrinter';
-import { isEpsonTmT20, type PrinterModel } from '@/lib/printer-models';
+import { isEpsonTmT20, preferredPhysicalPrinter, type PrinterModel } from '@/lib/printer-models';
 
 export function ThermalPrinterPanel() {
   const [connected, setConnected] = useState(false);
@@ -40,15 +40,18 @@ export function ThermalPrinterPanel() {
       const names = await listPrinters();
       setPrinters(names);
       if (selected && !names.includes(selected)) {
-        setSelected('');
-        printerPreferences.selectedPrinter = '';
+        toast.warning(`A impressora selecionada "${selected}" não está disponível agora. O PDV não usará outra impressora no lugar dela.`);
       }
-      const onlyPrinter = names.length === 1 ? names[0] : undefined;
-      if (!selected && onlyPrinter !== undefined) {
-        setSelected(onlyPrinter);
-        printerPreferences.selectedPrinter = onlyPrinter;
+      const preferred = preferredPhysicalPrinter(names);
+      if (!selected && preferred) {
+        setSelected(preferred);
+        printerPreferences.selectedPrinter = preferred;
+        if (isEpsonTmT20(preferred)) {
+          setModel('epson-tm-t20');
+          printerPreferences.printerModel = 'epson-tm-t20';
+        }
       }
-      toast.success(names.length ? `${names.length} impressora(s) encontrada(s).` : 'Nenhuma impressora encontrada no Windows.');
+      toast.success(names.length ? `${names.length} impressora(s) encontrada(s). Selecione a Epson física abaixo.` : 'Nenhuma impressora encontrada no Windows.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Falha ao listar impressoras.');
     } finally { setBusy(''); }
@@ -58,13 +61,13 @@ export function ThermalPrinterPanel() {
     try {
       const names = await listPrinters();
       setPrinters(names);
-      setModel('epson-tm-t20');
-      printerPreferences.printerModel = 'epson-tm-t20';
       const epson = names.find(isEpsonTmT20);
       if (!epson) {
-        toast.warning('A Epson TM-T20 não apareceu no Windows. Conecte o cabo USB, ligue a impressora e instale o driver Epson.');
+        toast.warning('A Epson TM-T20 não apareceu no QZ Tray. Ligue a Epson e confira se o QZ Tray está aberto; a impressora selecionada não foi alterada.');
         return;
       }
+      setModel('epson-tm-t20');
+      printerPreferences.printerModel = 'epson-tm-t20';
       setSelected(epson);
       printerPreferences.selectedPrinter = epson;
       toast.success(`Epson selecionada: ${epson}`);
@@ -86,7 +89,10 @@ export function ThermalPrinterPanel() {
   }
 
   return <div className="space-y-4">
-    <p className="text-sm text-muted-foreground">Conecte o QZ Tray neste computador para enviar comandas à impressora térmica USB, Bluetooth ou de rede instalada no Windows.</p>
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+      <b>A Epson é a impressora. O QZ Tray é somente a conexão.</b>
+      <p className="mt-1 text-muted-foreground">Deixe o QZ Tray aberto no Windows e escolha <b>EPSON TM-T20</b> na lista de impressoras físicas. Não selecione PDF nem outra impressora virtual.</p>
+    </div>
     <div className="flex flex-wrap items-center gap-2">
       <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${connected ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
         {connected ? <CheckCircle2 size={14}/> : <WifiOff size={14}/>}
@@ -95,8 +101,8 @@ export function ThermalPrinterPanel() {
       {pending.length > 0 && <span className="text-xs text-warning">{pending.length} pedido(s) aguardando impressão</span>}
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button onClick={connect} disabled={!!busy}>{busy === 'connect' ? <LoaderCircle className="animate-spin"/> : <Wifi/>} Conectar ao QZ Tray</Button>
-      <Button variant="outline" onClick={refreshPrinters} disabled={!!busy}>{busy === 'list' ? <LoaderCircle className="animate-spin"/> : <RefreshCw/>} Listar impressoras</Button>
+      <Button onClick={connect} disabled={!!busy}>{busy === 'connect' ? <LoaderCircle className="animate-spin"/> : <Wifi/>} 1. Conectar QZ Tray</Button>
+      <Button variant="outline" onClick={refreshPrinters} disabled={!!busy}>{busy === 'list' ? <LoaderCircle className="animate-spin"/> : <RefreshCw/>} 2. Buscar impressoras</Button>
       {connected && <Button variant="outline" onClick={disconnect} disabled={!!busy}>Desconectar</Button>}
     </div>
     <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -113,12 +119,24 @@ export function ThermalPrinterPanel() {
       <p className="text-xs text-muted-foreground">Para a Epson USB, instale o driver Epson no Windows, conecte o cabo e ligue a impressora antes de buscar.</p>
     </div>
     <div className="space-y-2">
-      <label htmlFor="thermal-printer-select" className="text-sm font-medium">Impressora instalada no Windows</label>
-      <select id="thermal-printer-select" value={selected} onChange={e => { setSelected(e.target.value); printerPreferences.selectedPrinter = e.target.value; }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-        <option value="">Selecione uma impressora</option>
+      <label htmlFor="thermal-printer-select" className="text-sm font-medium">3. Impressora física usada nos cupons</label>
+      <select id="thermal-printer-select" value={selected} onChange={e => {
+        const name = e.target.value;
+        setSelected(name);
+        printerPreferences.selectedPrinter = name;
+        if (isEpsonTmT20(name)) {
+          setModel('epson-tm-t20');
+          printerPreferences.printerModel = 'epson-tm-t20';
+        }
+      }} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Selecione a Epson ou outra impressora física</option>
         {[...new Set([...printers, ...(selected ? [selected] : [])])].map(name => <option key={name} value={name}>{name}</option>)}
       </select>
-      <p className="text-xs text-muted-foreground">Se a Epson não aparecer, confira o cabo USB e a instalação em Windows → Bluetooth e dispositivos → Impressoras e scanners. Também é possível escolher manualmente outro nome usado pelo driver.</p>
+      {selected && <p className={`flex items-center gap-2 text-xs font-medium ${printers.includes(selected) ? 'text-success' : 'text-warning'}`}>
+        {printers.includes(selected) ? <CheckCircle2 size={14}/> : <CircleAlert size={14}/>}
+        {printers.includes(selected) ? `Selecionada para imprimir: ${selected}` : `Selecionada, mas não encontrada agora: ${selected}`}
+      </p>}
+      <p className="text-xs text-muted-foreground">A escolha fica salva neste computador. Se a Epson estiver desligada, o PDV avisa e não imprime em outra impressora.</p>
     </div>
     {([['kitchen', 'Impressora da cozinha', kitchen, setKitchen], ['cashier', 'Impressora do caixa', cashier, setCashier]] as const).map(([key, label, value, setValue]) => <div key={key} className="space-y-2">
       <label htmlFor={`printer-${key}`} className="text-sm font-medium">{label}</label>
@@ -142,7 +160,7 @@ export function ThermalPrinterPanel() {
       <div className="space-y-1"><div className="text-sm font-medium">Impressão automática</div><p className="text-xs text-muted-foreground">Imprimir automaticamente cada pedido enviado à cozinha neste computador. O QZ Tray e a impressora precisam estar configurados.</p></div>
       <input aria-label="Impressão automática" type="checkbox" checked={autoPrint} onChange={e => { setAutoPrint(e.target.checked); printerPreferences.autoPrintEnabled = e.target.checked; }} className="mt-1 h-4 w-4 accent-primary"/>
     </div>
-    <Button variant="outline" onClick={test} disabled={!!busy}>{busy === 'test' ? <LoaderCircle className="animate-spin"/> : <Printer/>} Imprimir teste</Button>
+    <Button onClick={test} disabled={!!busy || !selected}>{busy === 'test' ? <LoaderCircle className="animate-spin"/> : <Printer/>} 4. Imprimir teste na impressora selecionada</Button>
     <div className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
       <CircleAlert size={16} className="mt-0.5 shrink-0"/>
       <p>O QZ Tray precisa estar aberto no mesmo computador que executa o UltraBrasa. O aplicativo já assina as impressões com o certificado "Ultrabrasa PDV": na primeira conexão, se o QZ Tray pedir autorização, marque "Lembrar esta decisão" e clique em Permitir uma única vez. Depois disso a impressão é totalmente automática, sem janelas.</p>
