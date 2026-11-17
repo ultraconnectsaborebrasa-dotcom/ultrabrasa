@@ -6,8 +6,9 @@
 
 ## Robô ativo e Pix após a confirmação
 - [x] Robô ativado com conexão normal; botão de ligar/desligar testado no painel e estado confirmado após atualizar a página.
-- [x] Confirmação com saída às 11h e prazo de 30 a 45 minutos; mensagem completa de Pix configurada para pedidos Pix após a confirmação, sem baixa automática.
-- [x] 21 testes aprovados; envio em uma conversa real não foi executado.
+- [x] Após a confirmação com saída às 11h e prazo de 30 a 45 minutos, pedidos Pix recebem a mensagem completa combinada; cartão e dinheiro não recebem essa mensagem e a baixa continua manual.
+- [x] Edição antes do aceite preserva a forma de pagamento; pedidos com campos apagados são reconhecidos pelo resumo confirmado, sem reenvio retroativo.
+- [x] 160 testes de WhatsApp aprovados e tipagem verificada; envio em uma conversa real não foi executado.
 
 ## Nome do perfil como alternativa segura
 - [x] “Ok Tbem”, saudações e agradecimentos não são mais aceitos como nome no roteiro nem na confirmação do banco.

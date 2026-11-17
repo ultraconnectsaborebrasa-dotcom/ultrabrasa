@@ -7,6 +7,7 @@ import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessa
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
 import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-attachments';
 import { ORDER_CONFIRMED_MESSAGE, isOrderConfirmationJob, canSendOrderConfirmation } from './whatsapp-confirmation';
+import { pixPaymentMessage } from './whatsapp-payment';
 import { shouldResumeAfterConfirmedOrder } from './whatsapp-order-followup';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
@@ -188,7 +189,7 @@ export async function processJobs(db:Admin,limit=2){
         if(pre)throw new Error('Envio anterior requer revisão');
         let providerId:string|undefined;
         if(j.kind==='text'){
-          const text=confirmation?ORDER_CONFIRMED_MESSAGE:p.text??'';
+          const text=confirmation?ORDER_CONFIRMED_MESSAGE:j.dedup_key.endsWith(':pix-key')?pixPaymentMessage(businessSchema.parse(cfg.business).pixKey):p.text??'';
           if(p.automatic&&j.dedup_key.startsWith('campaign:')&&p.inboundId){
             const latest=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id').eq('phone',j.phone).eq('direction','in').order('provider_at',{ascending:false}).limit(1))??[];
             if(latest[0]?.wa_message_id!==p.inboundId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}

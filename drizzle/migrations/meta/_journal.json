@@ -512,6 +512,13 @@
       "when": 1794846491201,
       "tag": "0072_whatsapp_new_order_name_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794921582732,
+      "tag": "0073_whatsapp_pix_after_confirmation",
+      "breakpoints": true
     }
   ]
 }

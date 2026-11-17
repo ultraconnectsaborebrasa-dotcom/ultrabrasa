@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { requestPaymentMethod } from '@/lib/whatsapp-payment';
 
 type Item = { productId: string; qty: number; note?: string; name?: string };
 type Req = { customer?: string; payment?: string; note?: string; type?: string; items?: Item[]; summary?: Item[]; delivery?: { address?: { street?: string; number?: string; neighborhood?: string; reference?: string } } };
@@ -12,7 +13,7 @@ export function EditWhatsAppRequest({ id, request, onSaved }: { id: string; requ
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [customer, setCustomer] = useState(r.customer ?? '');
-  const [payment, setPayment] = useState(r.payment ?? '');
+  const [payment, setPayment] = useState(() => requestPaymentMethod(r));
   const [note, setNote] = useState(r.note ?? '');
   const a = r.delivery?.address ?? {};
   const [addr, setAddr] = useState({ street: a.street ?? '', number: a.number ?? '', neighborhood: a.neighborhood ?? '', reference: a.reference ?? '' });
