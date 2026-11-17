@@ -23,6 +23,7 @@ import { useWhatsAppConversations,useWhatsAppPendingOrders } from '@/lib/whatsap
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
 import { whatsappRequestAction } from '@/lib/whatsapp-attendance.functions';
+import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -64,7 +65,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const whatsappConvs=useWhatsAppConversations();const whatsappUnread=whatsappConvs.reduce((n,c)=>n+c.unread,0);
   const whatsappPending=useWhatsAppPendingOrders();
   const requestFn=useServerFn(whatsappRequestAction);
-  const acceptWhatsAppOrder=async(id:string)=>{try{await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
+  const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');const orderId=(accepted as {id?:unknown}|null)?.id;if(typeof orderId==='string')void autoPrintKitchenOrderById(orderId);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
   const saving = useSaving();
   const sync = useSyncStatus();
   const alerts = useOrderAlerts();

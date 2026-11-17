@@ -25,6 +25,7 @@ import { ReceiptRegistration } from './ReceiptRegistration';
 import { recoverReceiptAttachment } from '@/lib/receipt-actions.functions';
 import { isStoreToday, storeDayStart } from '@/lib/daily-inbox';
 import { needsStaffReply, sortQueue, type QueueOrder } from '@/lib/whatsapp-queue';
+import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status: string; assigned_name: string | null; automation_paused: boolean; awaiting_since: string | null };
 type Msg = { id: string; direction: string; source: string; kind: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
@@ -194,8 +195,10 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
     if (!yes && !reason?.trim()) return;
     setBusy(true);
     try {
-      await requestFn({ data: { id, accept: yes, reason: reason ?? undefined } });
+      const accepted = await requestFn({ data: { id, accept: yes, reason: reason ?? undefined } });
       toast.success(yes ? 'Pedido aceito e enviado à cozinha' : 'Pedido recusado');
+      const orderId = (accepted as { id?: unknown } | null)?.id;
+      if (yes && typeof orderId === 'string') void autoPrintKitchenOrderById(orderId);
       await loadRequests();
       await loadConvs();
       void refreshWhatsAppConversations();

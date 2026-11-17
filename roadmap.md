@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Impressão automática ao enviar à cozinha
+- [x] Aceites do WhatsApp no painel e nas notificações do Administrador/Caixa buscam a comanda real e imprimem automaticamente na impressora da cozinha selecionada.
+- [x] Impressão usa a fila deduplicada, respeita a opção de impressão automática e não desfaz o pedido se a impressora falhar; 14 testes e tipagem aprovados, sem imprimir fisicamente.
+
 ## Robô ativo e Pix após a confirmação
 - [x] Robô ativado com conexão normal; botão de ligar/desligar testado no painel e estado confirmado após atualizar a página.
 - [x] Confirmação com saída às 11h e prazo de 30 a 45 minutos; mensagem completa de Pix configurada para pedidos Pix após a confirmação, sem baixa automática.

@@ -29,6 +29,7 @@ import { ManualPaymentDialog } from './ManualPaymentDialog';
 import { BulkPayDialog } from './BulkPayDialog';
 import { kitchenBulkDestination, runKitchenBulkAction } from '@/lib/kitchen-bulk';
 import { BulkDeliveryDeparture } from './BulkDeliveryDeparture';
+import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
 
 type Product = {id:string;name:string;category:string;price:number;stock:number|null;active:boolean};
 type Item = {name:string;productId?:string;qty:number;price:number;note?:string};
@@ -43,7 +44,7 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
  const waConvs=useWhatsAppConversations();
  const waUnread=waConvs.reduce((sum,c)=>sum+(c.unread||0),0);
  const requestFn=useServerFn(whatsappRequestAction);
- const acceptWhatsAppOrder=async(id:string)=>{try{await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
+ const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');const orderId=(accepted as {id?:unknown}|null)?.id;if(typeof orderId==='string')void autoPrintKitchenOrderById(orderId);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
  const [busy,setBusy]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);
  const [receiptOrders,setReceiptOrders]=useState<string[]>([]);
