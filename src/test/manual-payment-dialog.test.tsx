@@ -24,7 +24,7 @@ describe('janela de recebimento na cozinha', () => {
     );
 
     fireEvent.change(screen.getByLabelText('Forma de pagamento'), { target: { value: 'Pix' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Receber e marcar pronto' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Receber e dar baixa' }));
 
     await waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith('pay_pdv_kitchen', {
       order_id: 'pedido-cozinha',

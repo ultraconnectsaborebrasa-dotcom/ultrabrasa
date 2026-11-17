@@ -74,7 +74,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
 
       <details><summary className="cursor-pointer text-sm font-semibold">Pagamentos recebidos e histórico</summary><SalesHistory /></details>
 
-      {paying&&<ManualPaymentDialog order={{id:paying.id,number:paying.number,total:totals(paying,settings.serviceFeePct).total}} onClose={()=>setPaying(null)} methods={settings.paymentMethods} onPaid={openCloud}/>}
+      {paying&&<ManualPaymentDialog markReady order={{id:paying.id,number:paying.number,total:totals(paying,settings.serviceFeePct).total}} onClose={()=>setPaying(null)} methods={settings.paymentMethods} onPaid={openCloud}/>}
     </div>
   );
 }
