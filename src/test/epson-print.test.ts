@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { testPrinter } from '@/services/thermalPrinter';
+import { printOrder, testPrinter } from '@/services/thermalPrinter';
+import type { Order } from '@/lib/pdv-store';
 
 const security = {
   setCertificatePromise: vi.fn(),
@@ -42,6 +43,48 @@ describe('impressão na Epson física', () => {
       rasterize: true,
     }));
     expect(print).toHaveBeenCalledTimes(1);
+    const payload = print.mock.calls[0]![1] as Array<{ data: string }>;
+    expect(payload[0]!.data).toContain('PAPEL 80 MM / 48 COLUNAS');
+    expect(payload[0]!.data).toContain('-'.repeat(48));
+  });
+
+  it('usa toda a área de 80 mm no modo direto ESC/POS', async () => {
+    localStorage.setItem('ultrabrasa-printer-printMode', 'raw');
+    const { print } = mockQz(['EPSON TM-T20 Receipt']);
+
+    await testPrinter();
+
+    const payload = print.mock.calls[0]![1] as Array<{ data: string }>;
+    expect(payload[0]!.data).toContain('\x1dW\x40\x02');
+    expect(payload[0]!.data).toContain('PAPEL 80 MM / 48 COLUNAS');
+  });
+
+  it('mantém a área de 58 mm na impressora menor', async () => {
+    localStorage.setItem('ultrabrasa-printer-selectedPrinter', 'Atomo MO-5812');
+    localStorage.setItem('ultrabrasa-printer-printerModel', 'thermal-58');
+    localStorage.setItem('ultrabrasa-printer-printMode', 'raw');
+    const { print } = mockQz(['Atomo MO-5812']);
+
+    await testPrinter();
+
+    const payload = print.mock.calls[0]![1] as Array<{ data: string }>;
+    expect(payload[0]!.data).toContain('\x1dW\x80\x01');
+    expect(payload[0]!.data).toContain('PAPEL 58 MM / 28 COLUNAS');
+  });
+
+  it('formata a comanda do pedido com 48 colunas na Epson', async () => {
+    const { print } = mockQz(['EPSON TM-T20 Receipt']);
+    const order: Order = {
+      id: 'pedido-ficticio-80mm', number: 9999, type: 'Balcão', customer: 'Cliente teste',
+      items: [{ uid: 'item-1', productId: 'produto-1', name: 'Marmita completa com arroz e farofa', price: 19.9, qty: 1, note: '' }],
+      note: '', discount: 0, fee: 0, serviceFee: false, payments: [], status: 'aberta', createdAt: Date.now(),
+    };
+
+    await printOrder(order, 0, { manual: true });
+
+    const payload = print.mock.calls[0]![1] as Array<{ data: string }>;
+    expect(payload[0]!.data).toContain('1x Marmita completa com arroz e farofa');
+    expect(payload[0]!.data).toContain('-'.repeat(48));
   });
 
   it('não envia o cupom a outra impressora quando a Epson selecionada está ausente', async () => {

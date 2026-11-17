@@ -1,4 +1,5 @@
 export type PrinterModel = 'auto' | 'thermal-58' | 'epson-tm-t20' | 'thermal-80';
+export type PrintColumns = 28 | 48;
 
 export function parsePrinterModel(value: string | null): PrinterModel {
   return value === 'thermal-58' || value === 'epson-tm-t20' || value === 'thermal-80' ? value : 'auto';
@@ -12,6 +13,10 @@ export function paperWidthForPrinter(name: string, model: PrinterModel): 58 | 80
   if (model === 'thermal-58') return 58;
   if (model === 'thermal-80' || model === 'epson-tm-t20') return 80;
   return isEpsonTmT20(name) || /80\s*mm|pos-?80|tm-?t88/i.test(name) ? 80 : 58;
+}
+
+export function receiptColumnsForPrinter(name: string, model: PrinterModel): PrintColumns {
+  return paperWidthForPrinter(name, model) === 80 ? 48 : 28;
 }
 
 const THERMAL = /mo-?5812|atomo|átomo|pos-?58|pos-?80|thermal|t[ée]rmica|58mm|80mm|bluetooth|bt-?printer/i;

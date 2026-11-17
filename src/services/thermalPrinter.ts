@@ -2,7 +2,7 @@ import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
 import { addressText, type Delivery } from '@/lib/delivery';
 import { receiptOrderWithDelivery, isDeliveryOrder } from './deliveryReceipt';
-import { paperWidthForPrinter, parsePrinterModel, preferredPhysicalPrinter, sortPrinters, type PrinterModel } from '@/lib/printer-models';
+import { paperWidthForPrinter, parsePrinterModel, preferredPhysicalPrinter, receiptColumnsForPrinter, sortPrinters, type PrintColumns, type PrinterModel } from '@/lib/printer-models';
 import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
 
@@ -40,20 +40,23 @@ export const pendingPrintIds = () => [...pending()];
 const saveSet = (name: string, values: Set<string>) => put(name, JSON.stringify([...values]));
 export const wasAutomaticallyPrinted = (id: string) => printed().has(id);
 const normalize = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, '?');
-// Largura conservadora para a Atomo MO-5812 (58 mm, ~48 mm imprimíveis): 28 caracteres na fonte normal.
-const WIDTH = 28;
-const line = '-'.repeat(WIDTH);
-const center = (value: string) => { const text = normalize(value).slice(0, WIDTH); return ' '.repeat(Math.floor((WIDTH - text.length) / 2)) + text; };
-const pair = (label: string, value: string) => { const gap = WIDTH - label.length - value.length; return gap >= 1 ? label + ' '.repeat(gap) + value : [label, '  ' + value].join('\n'); };
-function wrap(value: unknown): string[] {
- const words = normalize(value).split(/\s+/).filter(Boolean);
- const lines: string[] = []; let current = '';
- for (const word of words) {
-  if (word.length > WIDTH) { if (current) { lines.push(current); current = ''; } for (let i = 0; i < word.length; i += WIDTH) lines.push(word.slice(i, i + WIDTH)); continue; }
-  if (current && current.length + word.length + 1 > WIDTH) { lines.push(current); current = word; } else current += (current ? ' ' : '') + word;
+// Epson 80 mm usa 48 colunas; a térmica de 58 mm mantém o formato conservador de 28.
+function receiptLayout(columns: PrintColumns) {
+ const width = columns;
+ const line = '-'.repeat(width);
+ const center = (value: string) => { const text = normalize(value).slice(0, width); return ' '.repeat(Math.floor((width - text.length) / 2)) + text; };
+ const pair = (label: string, value: string) => { const gap = width - label.length - value.length; return gap >= 1 ? label + ' '.repeat(gap) + value : [label, '  ' + value].join('\n'); };
+ function wrap(value: unknown): string[] {
+  const words = normalize(value).split(/\s+/).filter(Boolean);
+  const lines: string[] = []; let current = '';
+  for (const word of words) {
+   if (word.length > width) { if (current) { lines.push(current); current = ''; } for (let i = 0; i < word.length; i += width) lines.push(word.slice(i, i + width)); continue; }
+   if (current && current.length + word.length + 1 > width) { lines.push(current); current = word; } else current += (current ? ' ' : '') + word;
+  }
+  if (current) lines.push(current);
+  return lines;
  }
- if (current) lines.push(current);
- return lines;
+ return { line, center, pair, wrap };
 }
 // Use apenas caracteres ASCII no valor monetário para evitar que a codificação
 // da impressora térmica altere o símbolo da moeda ou os separadores decimais.
@@ -66,7 +69,8 @@ const money = (value: number) => {
  const fraction = String(absolute % 100).padStart(2, '0');
  return sign + 'R$ ' + whole + ',' + fraction;
 };
-export function formatReceipt(order: Order, serviceFeePct: number): string {
+export function formatReceipt(order: Order, serviceFeePct: number, columns: PrintColumns = 28): string {
+ const { line, center, pair, wrap } = receiptLayout(columns);
  const date = new Date(order.createdAt);
  const sum = totals(order, serviceFeePct);
  const lines = [center('ULTRACONNECT'), center('SABOR E BRASA'), line, center('PEDIDO #' + order.number), line,
@@ -101,7 +105,8 @@ export function formatReceipt(order: Order, serviceFeePct: number): string {
 }
 // Cupom de entrega: destaca o endereço completo para o entregador, sem preço por item
 // (o painel de entregas não recebe preço unitário, apenas o total do pedido).
-export function formatDeliveryTicket(delivery: Delivery): string {
+export function formatDeliveryTicket(delivery: Delivery, columns: PrintColumns = 28): string {
+ const { line, center, pair, wrap } = receiptLayout(columns);
  const date = new Date(delivery.created_at);
  const lines = [center('ULTRACONNECT'), center('SABOR E BRASA'), line, center('DELIVERY #' + delivery.number), line,
   'DATA: ' + date.toLocaleDateString('pt-BR'), 'HORA: ' + date.toLocaleTimeString('pt-BR'), line];
@@ -123,7 +128,8 @@ export function formatDeliveryTicket(delivery: Delivery): string {
  return lines.join('\n') + '\n';
 }
 // Folha da rota: sequência de paradas com endereço completo para o entregador.
-export function formatRouteSheet(route: { name: string; courier?: string | null }, stops: Delivery[]): string {
+export function formatRouteSheet(route: { name: string; courier?: string | null }, stops: Delivery[], columns: PrintColumns = 28): string {
+ const { line, center, pair, wrap } = receiptLayout(columns);
  const now = new Date();
  const lines = [center('ULTRACONNECT'), center('SABOR E BRASA'), line, center('ROTA'), ...wrap(route.name), line,
   'DATA: ' + now.toLocaleDateString('pt-BR'), 'HORA: ' + now.toLocaleTimeString('pt-BR'),
@@ -145,7 +151,7 @@ export function formatRouteSheet(route: { name: string; courier?: string | null 
 export function printRouteSheet(route: { name: string; courier?: string | null }, stops: Delivery[]) {
  return new Promise<void>((resolve, reject) => {
   const order = { id: 'route-' + route.name + '-' + Date.now(), number: 0, items: [] } as unknown as Order;
-  queue.push({ target: undefined, order, pct: 0, manual: true, force: true, text: formatRouteSheet(route, stops), resolve, reject });
+  queue.push({ target: undefined, order, pct: 0, manual: true, force: true, text: columns => formatRouteSheet(route, stops, columns), resolve, reject });
   void drain();
  });
 }
@@ -244,16 +250,18 @@ async function sendText(qz: QZ, printerName: string, text: string) {
  if (!printerName) throw new Error('Nenhuma impressora configurada. Abra Ajustes → Impressora térmica.');
  if (!qz.websocket.isActive()) throw new Error('QZ Tray não está conectado neste computador. Abra o QZ Tray e tente novamente.');
  if (!text.trim()) throw new Error('Não há conteúdo para imprimir.');
+ const paperWidth = paperWidthForPrinter(printerName, printerPreferences.printerModel);
  if (printerPreferences.printMode === 'raw') {
   const config = qz.configs.create(printerName, { encoding: 'CP437' });
-  return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + '\x1bM\x00' + '\x1b!\x00' + '\x1d!\x00' + '\x1dL\x00\x00' + '\x1dW\x80\x01' + '\x1b$\x00\x00' + '\x1ba\x00' + text + '\n\n\n' }]);
+  const printableDots = paperWidth === 80 ? 576 : 384;
+  const setPrintableWidth = '\x1dW' + String.fromCharCode(printableDots % 256, Math.floor(printableDots / 256));
+  return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + '\x1bM\x00' + '\x1b!\x00' + '\x1d!\x00' + '\x1dL\x00\x00' + setPrintableWidth + '\x1b$\x00\x00' + '\x1ba\x00' + text + '\n\n\n' }]);
  }
- const paperWidth = paperWidthForPrinter(printerName, printerPreferences.printerModel);
  const config = qz.configs.create(printerName, { units: 'mm', size: { width: paperWidth }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 3, bottom: 0, left: 3 }, scaleContent: true, rasterize: true, colorType: 'blackwhite' });
  const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:8pt;font-weight:bold;line-height:1.25;white-space:pre;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }
-type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; text?: string; resolve: () => void; reject: (error: unknown) => void };
+type Job = { target: PrintTarget | undefined; order: Order; pct: number; manual: boolean; force: boolean; text?: (columns: PrintColumns) => string; resolve: () => void; reject: (error: unknown) => void };
 const queue: Job[] = [];
 let working = false;
 async function drain() {
@@ -270,8 +278,10 @@ async function drain() {
      const receiptOrder = job.text ? job.order : await receiptOrderWithDelivery(job.order);
      await connectPrinter();
     const printerName = await ensurePrinter(job.target);
-    log('Printing:', job.order.number, printerName, printerPreferences.printMode);
-     await withTimeout(sendText(await api(), printerName, job.text ?? formatReceipt(receiptOrder, job.pct)));
+    const columns = receiptColumnsForPrinter(printerName, printerPreferences.printerModel);
+    const text = job.text ? job.text(columns) : formatReceipt(receiptOrder, job.pct, columns);
+    log('Printing:', job.order.number, printerName, printerPreferences.printMode, columns);
+     await withTimeout(sendText(await api(), printerName, text));
     if (!job.manual) {
      const ids = printed(); ids.add(job.order.id); saveSet('printedOrderIds', ids);
      const waiting = pending(); waiting.delete(job.order.id); saveSet('pendingOrderIds', waiting);
@@ -297,7 +307,7 @@ export function printOrder(order: Order, serviceFeePct: number, options: { manua
 export function printDeliveryTicket(delivery: Delivery) {
  return new Promise<void>((resolve, reject) => {
   const order = { id: 'delivery-' + delivery.id, number: delivery.number, items: [] } as unknown as Order;
-  queue.push({ target: undefined, order, pct: 0, manual: true, force: true, text: formatDeliveryTicket(delivery), resolve, reject });
+  queue.push({ target: undefined, order, pct: 0, manual: true, force: true, text: columns => formatDeliveryTicket(delivery, columns), resolve, reject });
   void drain();
  });
 }
@@ -306,5 +316,8 @@ export async function testPrinter(target?: PrintTarget) {
  const printerName = await ensurePrinter(target);
  const qz = await api();
  const date = new Date();
- await withTimeout(sendText(qz, printerName, [center('TESTE DE ALINHAMENTO'), line, 'INICIO DA LINHA', 'PEDIDO COMPLETO', 'SUBTOTAL', 'TOTAL', '1234567890', 'R$ 123,45', 'ABCDEFGHIJKLMNOPQRSTUVWX', '-'.repeat(24), 'FIM DA LINHA', line, ...wrap('Impressora: ' + printerName), date.toLocaleString('pt-BR'), '', '', '', ''].join('\n')));
+ const columns = receiptColumnsForPrinter(printerName, printerPreferences.printerModel);
+ const paperWidth = paperWidthForPrinter(printerName, printerPreferences.printerModel);
+ const { line, center, wrap } = receiptLayout(columns);
+ await withTimeout(sendText(qz, printerName, [center('TESTE DE ALINHAMENTO'), line, center(`PAPEL ${paperWidth} MM / ${columns} COLUNAS`), 'INICIO DA LINHA', 'PEDIDO COMPLETO', 'SUBTOTAL', 'TOTAL', '1234567890', 'R$ 123,45', 'ABCDEFGHIJKLMNOPQRSTUVWX', '-'.repeat(columns), 'FIM DA LINHA', line, ...wrap('Impressora: ' + printerName), date.toLocaleString('pt-BR'), '', '', '', ''].join('\n')));
 }

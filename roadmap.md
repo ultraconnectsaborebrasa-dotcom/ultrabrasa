@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Largura real de 80 mm na Epson
+- [x] Usar 48 colunas no conteúdo e 576 pontos no modo direto da Epson, mantendo 28 colunas/384 pontos na impressora de 58 mm.
+- [x] Dezessete testes aprovados, incluindo comanda fictícia completa e os dois modos, sem acionar a impressora física.
+
 ## Seleção funcional da Epson física
 - [x] Separar a impressora física da conexão QZ Tray e deixar a Epson selecionada explicitamente.
 - [x] Impedir substituição silenciosa por PDF/outra impressora e usar rasterização compatível com o driver Epson de 80 mm.
