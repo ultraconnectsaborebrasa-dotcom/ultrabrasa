@@ -7,7 +7,7 @@ import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
 
 type QZ = {
- websocket: { connect: () => Promise<void>; disconnect: () => Promise<void>; isActive: () => boolean };
+ websocket: { connect: (options?: { retries?: number; delay?: number }) => Promise<void>; disconnect: () => Promise<void>; isActive: () => boolean };
  printers: { find: () => Promise<string[]> };
  configs: { create: (name: string, options?: Record<string, unknown>) => unknown };
  print: (config: unknown, data: unknown[]) => Promise<void>;
@@ -196,7 +196,17 @@ async function api(): Promise<QZ> {
 export async function connectPrinter() {
  log('Connecting QZ');
  const qz = await api();
- if (!qz.websocket.isActive()) await qz.websocket.connect();
+ if (!qz.websocket.isActive()) {
+  try {
+   // Uma segunda tentativa cobre o QZ Tray ainda iniciando junto com o Windows.
+   await qz.websocket.connect({ retries: 1, delay: 1 });
+  } catch (error) {
+   if (error instanceof Error && /Unable to establish connection with QZ/i.test(error.message)) {
+    throw new Error('O PDV não encontrou o QZ Tray aberto. Abra o QZ Tray no Windows, confira se o ícone aparece perto do relógio e tente novamente. Se ainda não estiver instalado, instale o QZ Tray neste computador.');
+   }
+   throw error;
+  }
+ }
  log('Connected');
 }
 export async function disconnectPrinter() { const qz = await api(); if (qz.websocket.isActive()) await qz.websocket.disconnect(); }

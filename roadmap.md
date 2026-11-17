@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Conexão com o QZ Tray
+- [x] Repetir a conexão quando o QZ Tray estiver iniciando e explicar como abri-lo no Windows.
+- [x] Testar a falha e a nova tentativa sem acionar a impressora física; causa confirmada: QZ Tray instalado, mas fechado. Dez testes aprovados.
+
 ## Epson TM-T20 via USB
 - [x] Adicionar seleção do modelo Epson TM-T20 de 80 mm e identificar o nome instalado no Windows.
 - [x] Priorizar a Epson na busca automática, configurar papel de 80 mm e validar a tela sem imprimir fisicamente; 18 testes aprovados e seleção fictícia confirmada em 890×674.
