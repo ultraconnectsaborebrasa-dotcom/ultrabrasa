@@ -526,6 +526,13 @@
       "when": 1794922474836,
       "tag": "0074_whatsapp_customer_name_safety",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1794924424920,
+      "tag": "0075_cashier_paid_kitchen_submission",
+      "breakpoints": true
     }
   ]
 }

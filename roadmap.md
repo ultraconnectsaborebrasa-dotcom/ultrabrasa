@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Recebimento imediato no caixa e na Cozinha
+- [x] Adicionar baixa manual direta nos pedidos da Cozinha sem alterar a etapa de preparo ou entrega.
+- [x] Manter envio sem pagamento e adicionar “Receber e enviar”, com forma de pagamento, gravação única e impressão automática.
+- [x] Testar as regras e o fluxo sem movimentar vendas ou pagamentos reais: 12 testes aprovados e fluxo verificado em 1280×1800 e 890×674; impressora física não acionada.
+
 ## Edição e nome correto nos pedidos do robô
 - [x] Permitir adicionar produtos do PDV na edição antes do envio à cozinha, recalculando preços e totais no servidor.
 - [x] Perguntar o nome quando estiver ausente e usar o nome válido do WhatsApp como alternativa, sem gerar nomes aleatórios; frases de entrega e respostas curtas são bloqueadas também no banco.
