@@ -985,6 +985,10 @@ export type Database = {
         Args: { order_id: string; payment_method: string }
         Returns: undefined
       }
+      pay_pdv_kitchen: {
+        Args: { order_id: string; payment_method: string }
+        Returns: undefined
+      }
       read_delivery_board: { Args: never; Returns: Json }
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }

@@ -1,7 +1,7 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Recebimento imediato no caixa e na Cozinha
-- [x] Adicionar baixa manual direta nos pedidos da Cozinha sem alterar a etapa de preparo ou entrega.
+- [x] Ao dar baixa em um pedido em preparo pela Cozinha, registrar o pagamento e movê-lo automaticamente para Pronto na mesma gravação; baixa no caixa preserva a etapa. Testado na tela em 890×674 sem movimentar dados reais.
 - [x] Manter envio sem pagamento e adicionar “Receber e enviar”, com forma de pagamento, gravação única e impressão automática.
 - [x] Testar as regras e o fluxo sem movimentar vendas ou pagamentos reais: 12 testes aprovados e fluxo verificado em 1280×1800 e 890×674; impressora física não acionada.
 

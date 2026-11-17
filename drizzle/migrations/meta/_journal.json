@@ -533,6 +533,20 @@
       "when": 1794924424920,
       "tag": "0075_cashier_paid_kitchen_submission",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794925741479,
+      "tag": "0076_kitchen_payment_marks_ready",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794925808620,
+      "tag": "0077_lock_kitchen_payment_status",
+      "breakpoints": true
     }
   ]
 }
