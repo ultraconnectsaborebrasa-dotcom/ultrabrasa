@@ -40,7 +40,7 @@ export const pendingPrintIds = () => [...pending()];
 const saveSet = (name: string, values: Set<string>) => put(name, JSON.stringify([...values]));
 export const wasAutomaticallyPrinted = (id: string) => printed().has(id);
 const normalize = (value: unknown) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, '?');
-// Epson 80 mm usa 48 colunas; a térmica de 58 mm mantém o formato conservador de 28.
+// Epson 80 mm usa 42 colunas para preservar a margem direita; a térmica de 58 mm mantém 28.
 function receiptLayout(columns: PrintColumns) {
  const width = columns;
  const line = '-'.repeat(width);
@@ -257,7 +257,7 @@ async function sendText(qz: QZ, printerName: string, text: string) {
   const setPrintableWidth = '\x1dW' + String.fromCharCode(printableDots % 256, Math.floor(printableDots / 256));
   return qz.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: '\x1b@' + '\x1bM\x00' + '\x1b!\x00' + '\x1d!\x00' + '\x1dL\x00\x00' + setPrintableWidth + '\x1b$\x00\x00' + '\x1ba\x00' + text + '\n\n\n' }]);
  }
- const config = qz.configs.create(printerName, { units: 'mm', size: { width: paperWidth }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: 3, bottom: 0, left: 3 }, scaleContent: true, rasterize: true, colorType: 'blackwhite' });
+ const config = qz.configs.create(printerName, { units: 'mm', size: { width: paperWidth }, orientation: 'portrait', interpolation: 'nearest-neighbor', margins: { top: 0, right: paperWidth === 80 ? 6 : 3, bottom: 0, left: 3 }, scaleContent: true, rasterize: true, colorType: 'blackwhite' });
  const html = '<html><body style="margin:0;padding:0"><pre style="margin:0;font-family:\'Courier New\',monospace;font-size:8pt;font-weight:bold;line-height:1.25;white-space:pre;color:#000">' + escapeHtml(text) + '</pre></body></html>';
  return qz.print(config, [{ type: 'pixel', format: 'html', flavor: 'plain', data: html }]);
 }

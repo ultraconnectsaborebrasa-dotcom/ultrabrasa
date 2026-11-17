@@ -44,8 +44,8 @@ describe('impressão na Epson física', () => {
     }));
     expect(print).toHaveBeenCalledTimes(1);
     const payload = print.mock.calls[0]![1] as Array<{ data: string }>;
-    expect(payload[0]!.data).toContain('PAPEL 80 MM / 48 COLUNAS');
-    expect(payload[0]!.data).toContain('-'.repeat(48));
+    expect(payload[0]!.data).toContain('PAPEL 80 MM / 42 COLUNAS');
+    expect(payload[0]!.data).toContain('-'.repeat(42));
   });
 
   it('usa toda a área de 80 mm no modo direto ESC/POS', async () => {
@@ -56,7 +56,7 @@ describe('impressão na Epson física', () => {
 
     const payload = print.mock.calls[0]![1] as Array<{ data: string }>;
     expect(payload[0]!.data).toContain('\x1dW\x40\x02');
-    expect(payload[0]!.data).toContain('PAPEL 80 MM / 48 COLUNAS');
+    expect(payload[0]!.data).toContain('PAPEL 80 MM / 42 COLUNAS');
   });
 
   it('mantém a área de 58 mm na impressora menor', async () => {
@@ -72,7 +72,7 @@ describe('impressão na Epson física', () => {
     expect(payload[0]!.data).toContain('PAPEL 58 MM / 28 COLUNAS');
   });
 
-  it('formata a comanda do pedido com 48 colunas na Epson', async () => {
+  it('formata a comanda do pedido com 42 colunas na Epson', async () => {
     const { print } = mockQz(['EPSON TM-T20 Receipt']);
     const order: Order = {
       id: 'pedido-ficticio-80mm', number: 9999, type: 'Balcão', customer: 'Cliente teste',
@@ -84,7 +84,14 @@ describe('impressão na Epson física', () => {
 
     const payload = print.mock.calls[0]![1] as Array<{ data: string }>;
     expect(payload[0]!.data).toContain('1x Marmita completa com arroz e farofa');
-    expect(payload[0]!.data).toContain('-'.repeat(48));
+    expect(payload[0]!.data).toContain('-'.repeat(42));
+    expect(payload[0]!.data).toMatch(/TOTAL:\s+R\$ 19,90/);
+
+    localStorage.setItem('ultrabrasa-printer-printMode', 'raw');
+    print.mockClear();
+    await printOrder(order, 0, { manual: true });
+    const rawPayload = print.mock.calls[0]![1] as Array<{ data: string }>;
+    expect(rawPayload[0]!.data).toMatch(/TOTAL:\s+R\$ 19,90/);
   });
 
   it('não envia o cupom a outra impressora quando a Epson selecionada está ausente', async () => {

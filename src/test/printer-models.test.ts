@@ -23,8 +23,8 @@ describe('seleção da Epson TM-T20', () => {
     expect(parsePrinterModel('modelo-desconhecido')).toBe('auto');
   });
 
-  it('usa 48 colunas na Epson de 80 mm e 28 na térmica de 58 mm', () => {
-    expect(receiptColumnsForPrinter('EPSON TM-T20 Receipt', 'epson-tm-t20')).toBe(48);
+  it('usa 42 colunas na Epson de 80 mm para não cortar valores e 28 na térmica de 58 mm', () => {
+    expect(receiptColumnsForPrinter('EPSON TM-T20 Receipt', 'epson-tm-t20')).toBe(42);
     expect(receiptColumnsForPrinter('Atomo MO-5812', 'thermal-58')).toBe(28);
   });
 

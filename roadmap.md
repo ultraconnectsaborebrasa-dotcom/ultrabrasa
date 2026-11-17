@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Valores completos na Epson
+- [x] Manter papel de 80 mm, margem direita de 6 mm e conteúdo de 42 colunas para evitar corte dos valores.
+- [x] Dezessete testes aprovados, incluindo total fictício de R$ 19,90 completo nos modos driver e direto; impressora física não acionada.
+
 ## Largura real de 80 mm na Epson
 - [x] Usar 48 colunas no conteúdo e 576 pontos no modo direto da Epson, mantendo 28 colunas/384 pontos na impressora de 58 mm.
 - [x] Dezessete testes aprovados, incluindo comanda fictícia completa e os dois modos, sem acionar a impressora física.
