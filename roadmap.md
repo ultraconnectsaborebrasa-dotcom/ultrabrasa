@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Pix automático após finalizar o pedido
+- [x] Causa confirmada nos pedidos #868 e #871: comprovantes antigos e desvinculados do mesmo telefone cancelavam a chave Pix do pedido novo.
+- [x] Verificação de comprovante limitada ao pedido aceito; confirmação e atendimento humano continuam preservados, sem reenvio retroativo.
+- [x] 169 testes de WhatsApp aprovados e build OK; publicação solicitada. Envio real ficará para o próximo pedido Pix, sem criar cobrança de teste.
+
 ## Integração com UltraBrasa Entregas
 - [x] Contrato bidirecional confirmado: pedidos Delivery enviados com identificador estável; retorno valida evento, revisão e assinatura sem alterar pagamentos.
 - [x] Segredos de envio e retorno salvos com segurança no PDV; assinatura Lovable verificada por testes automatizados.

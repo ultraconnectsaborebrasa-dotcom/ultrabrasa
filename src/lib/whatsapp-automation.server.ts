@@ -162,7 +162,7 @@ export async function processJobs(db:Admin,limit=2){
         const target=checkEmpty(await q.maybeSingle());
         if((confirmation&&!canSendOrderConfirmation(target?.status))||target&&['rejected','cancelled'].includes(target.status)){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
         if(p.pixPrompt&&!confirmation){
-          const receipts=checkEmpty(await db.from('payment_receipts').select('id').eq('phone',j.phone).in('state',['review','unverified','confirmed']).limit(1));
+          const receipts=checkEmpty(await db.from('payment_receipts').select('id').eq('order_id',p.orderId??'').in('state',['review','unverified','confirmed']).limit(1));
           const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
           const orders=z.object({orders:z.array(z.object({id:z.string(),payments:z.array(z.unknown()).default([])}))}).parse(snapshot.data).orders;
           if(receipts?.length||orders.find(o=>o.id===p.orderId)?.payments.length){
