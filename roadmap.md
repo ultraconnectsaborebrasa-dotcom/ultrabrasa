@@ -1,9 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Integração com UltraBrasa Entregas
-- [ ] Confirmar o sentido da sincronização e obter o contrato público de integração da outra conta.
-- [ ] Implementar envio seguro com validação, deduplicação e preservação das rotas atuais.
-- [ ] Testar sem criar entregas reais; página fornecida atualmente exige login e não revela o contrato.
+- [x] Sincronização bidirecional confirmada: enviar pedidos Delivery e receber status como saiu para entrega e entregue.
+- [ ] Obter autenticação/assinatura da outra conta; contrato público de pedidos já identificado, mas recebimento responde não configurado.
+- [x] Preparar contrato de pedidos, endereço, itens, totais, coordenadas e eventos de retorno; 12 testes aprovados sem entregas reais.
+- [ ] Implementar envio seguro com deduplicação e preservação das rotas atuais após receber a assinatura; nenhuma entrega real foi enviada.
 
 ## Valores completos na Epson
 - [x] Manter papel de 80 mm, margem direita de 6 mm e conteúdo de 42 colunas para evitar corte dos valores.
