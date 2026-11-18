@@ -1,19 +1,12 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Integração com UltraBrasa Entregas
-- [x] Sincronização bidirecional confirmada: enviar pedidos Delivery e receber status como saiu para entrega e entregue.
-- [ ] Obter autenticação/assinatura da outra conta; contrato público de pedidos já identificado, mas recebimento responde não configurado.
-- [x] URLs confirmadas pelo responsável: recebimento `/api/public/pdv/orders` e verificação `/api/public/pdv/health` no endereço estável do UltraBrasa Entregas; ambas retornaram HTML do site na verificação de 18/11, indicando publicação/ativação pendente na outra conta.
-- [x] Preparar contrato de pedidos, endereço, itens, totais, coordenadas e eventos de retorno; 12 testes aprovados sem entregas reais.
-- [x] Preparar envio HTTP para as URLs confirmadas, manter `order_id` estável para deduplicação, limitar espera e rejeitar resposta HTML como conexão válida; seis testes e tipagem aprovados, sem entregas reais.
-- [ ] Implementar assinatura, fila de envio e retorno de status após a outra conta publicar a verificação e confirmar o formato das credenciais; nenhuma entrega real foi enviada.
-- [x] Credenciais da outra conta conferidas pelo responsável: recebimento configurado; retorno ainda não configurado.
-- [x] JSON de retorno confirmado: `event_id`, `event`, `revision`, `order_id`, `delivery_id`, `status`, datas e motoboy; callbacks devem ser monotônicos por revisão.
-- [ ] Obter os nomes dos cabeçalhos de assinatura do envio e do retorno; os valores secretos não devem ser copiados para a conversa.
-- [x] URL `https://ultraconnectbrasa.com.br/api/public/entregas/retorno` publicada, segredo reconhecido e resposta pública `health_ok` confirmada; teste pela outra conta solicitado ao responsável.
-- [x] Fila automática de envio criada sem pedidos pendentes ou reenvio de histórico; tentativas, alterações durante envio e deduplicação protegidos no banco.
-- [ ] Publicar e agendar o processador da fila; envio real ainda não executado e depende da outra conta publicar/ativar seus endpoints.
-- [x] Envio assinado no padrão Lovable verificado pela biblioteca de webhook; 13 testes aprovados, sem entrega real enviada.
+- [x] Contrato bidirecional confirmado: pedidos Delivery enviados com identificador estável; retorno valida evento, revisão e assinatura sem alterar pagamentos.
+- [x] Segredos de envio e retorno salvos com segurança no PDV; assinatura Lovable verificada por testes automatizados.
+- [x] URL `https://ultraconnectbrasa.com.br/api/public/entregas/retorno` publicada e resposta `health_ok` confirmada.
+- [x] Fila automática criada sem histórico pendente e agendamento ativo a cada minuto; 13 testes e tipagem aprovados, sem entregas reais enviadas.
+- [ ] Na outra conta, copiar os dois segredos, salvar, testar o retorno e publicar/ativar os endpoints; `/api/public/pdv/health` ainda retorna HTML do site.
+- [ ] Verificar um envio e um retorno reais depois que a outra conta estiver ativa; nenhum pedido real foi criado para teste.
 
 ## Valores completos na Epson
 - [x] Manter papel de 80 mm, margem direita de 6 mm e conteúdo de 42 colunas para evitar corte dos valores.
