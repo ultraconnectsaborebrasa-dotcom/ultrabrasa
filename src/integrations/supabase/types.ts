@@ -321,6 +321,42 @@ export type Database = {
         }
         Relationships: []
       }
+      external_delivery_outbox: {
+        Row: {
+          attempts: number
+          available_at: string
+          created_at: string
+          last_error: string | null
+          leased_at: string | null
+          order_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          attempts?: number
+          available_at?: string
+          created_at?: string
+          last_error?: string | null
+          leased_at?: string | null
+          order_id: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          attempts?: number
+          available_at?: string
+          created_at?: string
+          last_error?: string | null
+          leased_at?: string | null
+          order_id?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       payment_receipt_events: {
         Row: {
           action: string
@@ -995,6 +1031,15 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: undefined
       }
+      complete_external_delivery_outbox: {
+        Args: {
+          p_error?: string
+          p_ok: boolean
+          p_order_id: string
+          p_version: number
+        }
+        Returns: undefined
+      }
       confirm_receipt_payment: {
         Args: { _id: string; _method?: string }
         Returns: Json
@@ -1014,6 +1059,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      lease_external_delivery_outbox: {
+        Args: { p_limit: number }
+        Returns: {
+          order_id: string
+          version: number
+        }[]
       }
       link_payment_receipt: {
         Args: { _id: string; _request: string }

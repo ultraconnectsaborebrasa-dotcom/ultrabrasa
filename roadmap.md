@@ -10,7 +10,9 @@
 - [x] Credenciais da outra conta conferidas pelo responsável: recebimento configurado; retorno ainda não configurado.
 - [x] JSON de retorno confirmado: `event_id`, `event`, `revision`, `order_id`, `delivery_id`, `status`, datas e motoboy; callbacks devem ser monotônicos por revisão.
 - [ ] Obter os nomes dos cabeçalhos de assinatura do envio e do retorno; os valores secretos não devem ser copiados para a conversa.
-- [x] URL `https://ultraconnectbrasa.com.br/api/public/entregas/retorno` publicada e conferida; segredo de retorno salvo com segurança, aguardando nova publicação para ficar disponível ao endpoint.
+- [x] URL `https://ultraconnectbrasa.com.br/api/public/entregas/retorno` publicada, segredo reconhecido e resposta pública `health_ok` confirmada; teste pela outra conta solicitado ao responsável.
+- [x] Fila automática de envio criada sem pedidos pendentes ou reenvio de histórico; tentativas, alterações durante envio e deduplicação protegidos no banco.
+- [ ] Publicar e agendar o processador da fila; envio real ainda não executado e depende da outra conta publicar/ativar seus endpoints.
 - [x] Envio assinado no padrão Lovable verificado pela biblioteca de webhook; 13 testes aprovados, sem entrega real enviada.
 
 ## Valores completos na Epson
