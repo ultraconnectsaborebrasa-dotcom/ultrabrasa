@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Integração com UltraBrasa Entregas
+- [ ] Confirmar o sentido da sincronização e obter o contrato público de integração da outra conta.
+- [ ] Implementar envio seguro com validação, deduplicação e preservação das rotas atuais.
+- [ ] Testar sem criar entregas reais; página fornecida atualmente exige login e não revela o contrato.
+
 ## Valores completos na Epson
 - [x] Manter papel de 80 mm, margem direita de 6 mm e conteúdo de 42 colunas para evitar corte dos valores.
 - [x] Dezessete testes aprovados, incluindo total fictício de R$ 19,90 completo nos modos driver e direto; impressora física não acionada.
