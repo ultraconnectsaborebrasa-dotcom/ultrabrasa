@@ -14,7 +14,7 @@ import { sendText } from '@/lib/whatsapp.server';
 type Db = Parameters<typeof processJobs>[0];
 type Job = { id: string; phone: string; kind: string; dedup_key: string; payload: Record<string, unknown> };
 
-function mockDb(job: Job, { paused = false, latestInbound = 'wamid.old' } = {}) {
+function mockDb(job: Job, { paused = false, latestInbound = 'wamid.old', stockExhausted = false } = {}) {
   const updates: Record<string, unknown>[] = [];
   let claims = 0;
   const db = {
@@ -29,7 +29,7 @@ function mockDb(job: Job, { paused = false, latestInbound = 'wamid.old' } = {}) 
         limit: () => q,
         single: async () => ({
           data: table === 'whatsapp_settings'
-            ? { business: defaultBusiness, account_state: 'ok', auto_reply_enabled: true }
+            ? { business: { ...defaultBusiness, stockExhausted }, account_state: 'ok', auto_reply_enabled: true }
             : { automation_paused: paused, last_inbound_at: new Date().toISOString() },
           error: null,
         }),
@@ -50,6 +50,14 @@ function mockDb(job: Job, { paused = false, latestInbound = 'wamid.old' } = {}) 
 afterEach(() => { vi.useRealTimers(); vi.clearAllMocks(); });
 
 describe('Sequências e transferência do roteiro geral', () => {
+  it('cancela respostas normais pendentes quando o estoque é marcado como esgotado', async () => {
+    const job = { id: 'job-sold-out', phone: '5573999999999', kind: 'text', dedup_key: 'reply:wamid.old', payload: { text: 'Continue seu pedido', automatic: true } };
+    const { db, updates } = mockDb(job, { stockExhausted: true });
+    await processJobs(db, 1);
+    expect(sendText).not.toHaveBeenCalled();
+    expect(updates.some(update => update['state'] === 'cancelled')).toBe(true);
+  });
+
   it('cancela uma parte pendente quando o cliente responde durante a sequência', async () => {
     const job = { id: 'job-1', phone: '5573999999999', kind: 'text', dedup_key: 'campaign:today:1:phone', payload: { text: 'Parte pendente', inboundId: 'wamid.old', automatic: true } };
     const { db, updates } = mockDb(job, { latestInbound: 'wamid.new' });

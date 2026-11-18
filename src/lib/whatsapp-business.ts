@@ -7,6 +7,7 @@ export const businessSchema = z.object({
   lunchProductId: z.string().max(100).default(''),
   freeDelivery: z.boolean().default(true),
   highDemand: z.boolean().default(true),
+  stockExhausted: z.boolean().default(false),
   demandText: z.string().max(300).default('A procura está alta! Quer deixar seu pedido adiantado?'),
   pixKey: z.string().max(200).default(''),
   pixRecipient: z.string().min(1).max(200).default('Ultraconnect LTDA'),

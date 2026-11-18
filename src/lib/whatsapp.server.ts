@@ -1,6 +1,6 @@
 // Server-only WhatsApp helpers. Import only inside server handlers.
 import { ATTACHMENT_ACK, isAttachment } from './whatsapp-attachments';
-import { conversationDraftSchema } from './whatsapp-business';
+import { businessSchema, conversationDraftSchema } from './whatsapp-business';
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/whatsapp';
 
 function keys() {
@@ -143,7 +143,10 @@ export async function processEvent(db: Admin, event: string, payload: any) {
         if(['image','document'].includes(m.type))await queueJob(db,`receipt:${m.id}`,phone,'receipt',{inboundId:m.id,automatic:false});
         const conversation=await db.from('whatsapp_conversations').select('draft').eq('phone',phone).single();
         if(conversation.error)throw new Error(conversation.error.message);
-        if(conversationDraftSchema.parse(conversation.data.draft??{}).summarySent)await maybeAutoReply(db,phone,m.id);
+        const settings=await db.from('whatsapp_settings').select('business').eq('id',1).single();
+        if(settings.error)throw new Error(settings.error.message);
+        const stockExhausted=businessSchema.parse(settings.data.business??{}).stockExhausted;
+        if(conversationDraftSchema.parse(conversation.data.draft??{}).summarySent||stockExhausted)await maybeAutoReply(db,phone,m.id);
       }else await maybeAutoReply(db, phone, m.id);
     }
   } else if (event === 'whatsapp.status') {

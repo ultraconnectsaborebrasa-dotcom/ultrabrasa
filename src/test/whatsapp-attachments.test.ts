@@ -5,14 +5,14 @@ import { processEvent } from '@/lib/whatsapp.server';
 const { queueJob } = vi.hoisted(() => ({ queueJob: vi.fn() }));
 vi.mock('@/lib/whatsapp-automation.server', () => ({ queueJob }));
 
-function attachmentDb(summarySent: boolean) {
+function attachmentDb(summarySent: boolean, stockExhausted = false) {
   return {
     rpc: vi.fn().mockResolvedValue({data:true,error:null}),
     from(table: string) {
       const q = {
         select: () => q,
         eq: () => q,
-        single: async () => ({ data: table === 'whatsapp_conversations' ? { draft: { summarySent } } : { auto_reply_enabled: true, account_state: 'ok' }, error: null }),
+        single: async () => ({ data: table === 'whatsapp_conversations' ? { draft: { summarySent } } : { auto_reply_enabled: true, account_state: 'ok', business: { stockExhausted } }, error: null }),
       };
       return q;
     },
@@ -51,6 +51,13 @@ describe('Attachment acknowledgment rules', () => {
     expect(new Set(ackCalls.map(c => c[1])).size).toBe(1);
     expect(ackCalls[0]?.[4]).toMatchObject({automatic:true,inboundId:'wamid.file'});
     expect(queueJob.mock.calls.some(c => c[3] === 'interpret')).toBe(false);
+  });
+  it('queues the stock-exhausted response when a customer sends an attachment first', async () => {
+    queueJob.mockClear();
+    const db = attachmentDb(false, true);
+    const payload = {entry:[{changes:[{value:{messages:[{id:'wamid.sold-out-image',from:'5573999999999',type:'image',image:{id:'123'}}]}}]}]};
+    await processEvent(db, 'whatsapp.message', payload);
+    expect(queueJob.mock.calls.some(c => c[1] === 'interpret:wamid.sold-out-image' && c[3] === 'interpret')).toBe(true);
   });
   it('queues an attachment as order confirmation only after the summary', async () => {
     queueJob.mockClear();

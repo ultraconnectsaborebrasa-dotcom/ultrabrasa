@@ -15,7 +15,21 @@ export async function updateWhatsappAutoReply(context: WhatsappContext, enabled:
   return { enabled };
 }
 
+export async function updateWhatsappStockExhausted(context: WhatsappContext, enabled: boolean) {
+  const permission = await context.supabase.rpc('wa_staff');
+  if (permission.error || !permission.data) throw new Error('Sem permissão para alterar o aviso de estoque');
+
+  const result = await context.supabase.rpc('set_whatsapp_stock_exhausted', { _enabled: enabled });
+  if (result.error) throw new Error(result.error.message);
+  return { stockExhausted: enabled };
+}
+
 export const whatsappSetAutoReply = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ enabled: z.boolean() }).parse(input))
   .handler(async ({ data, context }) => updateWhatsappAutoReply(context, data.enabled));
+
+export const whatsappSetStockExhausted = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ enabled: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => updateWhatsappStockExhausted(context, data.enabled));

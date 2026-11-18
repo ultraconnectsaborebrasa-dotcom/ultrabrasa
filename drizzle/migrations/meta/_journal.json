@@ -575,6 +575,13 @@
       "when": 1795007128184,
       "tag": "0081_external_delivery_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795020742561,
+      "tag": "0082_whatsapp_stock_exhausted_mode",
+      "breakpoints": true
     }
   ]
 }

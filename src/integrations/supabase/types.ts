@@ -1188,6 +1188,10 @@ export type Database = {
         Returns: undefined
       }
       set_whatsapp_auto_reply: { Args: { _enabled: boolean }; Returns: boolean }
+      set_whatsapp_stock_exhausted: {
+        Args: { _enabled: boolean }
+        Returns: boolean
+      }
       start_delivery_route: { Args: { route_id: string }; Returns: undefined }
       submit_pdv_cashier_direct_paid: {
         Args: { payment_method: string; request: Json }

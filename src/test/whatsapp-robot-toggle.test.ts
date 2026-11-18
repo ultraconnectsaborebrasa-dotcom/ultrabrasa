@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { updateWhatsappAutoReply } from '@/lib/whatsapp-robot-toggle.functions';
+import { updateWhatsappAutoReply, updateWhatsappStockExhausted } from '@/lib/whatsapp-robot-toggle.functions';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -16,6 +16,16 @@ describe('controle global do robô', () => {
     await expect(updateWhatsappAutoReply(contextWith(rpc), false)).resolves.toEqual({ enabled: false });
     expect(rpc).toHaveBeenNthCalledWith(1, 'wa_staff');
     expect(rpc).toHaveBeenNthCalledWith(2, 'set_whatsapp_auto_reply', { _enabled: false });
+  });
+
+  it('ativa o aviso de estoque esgotado pela função autorizada', async () => {
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: true, error: null })
+      .mockResolvedValueOnce({ data: true, error: null });
+
+    await expect(updateWhatsappStockExhausted(contextWith(rpc), true)).resolves.toEqual({ stockExhausted: true });
+    expect(rpc).toHaveBeenNthCalledWith(1, 'wa_staff');
+    expect(rpc).toHaveBeenNthCalledWith(2, 'set_whatsapp_stock_exhausted', { _enabled: true });
   });
 
   it('não altera o robô quando o usuário não é Administrador ou Caixa', async () => {

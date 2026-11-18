@@ -9,6 +9,7 @@ import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-
 import { ORDER_CONFIRMED_MESSAGE, isOrderConfirmationJob, canSendOrderConfirmation } from './whatsapp-confirmation';
 import { pixPaymentMessage } from './whatsapp-payment';
 import { shouldResumeAfterConfirmedOrder } from './whatsapp-order-followup';
+import { STOCK_EXHAUSTED_MESSAGE, isStockExhaustedJob } from './whatsapp-stock-exhausted';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
 const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
@@ -45,6 +46,10 @@ async function interpret(db:Admin,j:Job){
   const now=new Date();const win=botWindow(now);const since=windowStart(now);
   const sentSince=checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').gte('created_at',since)) ?? [];
   const already=(t:string)=>sentSince.some(m=>(m.body??'').startsWith(t.slice(0,40)));
+  if(b.stockExhausted){
+    if(!already(STOCK_EXHAUSTED_MESSAGE))await queueJob(db,`stock-exhausted:${since}:${j.phone}`,j.phone,'text',{text:STOCK_EXHAUSTED_MESSAGE,automatic:true,inboundId:payload.inboundId});
+    return;
+  }
   const snapshot=check(await db.from('pdv_state').select('data').eq('id',1).single());
   const products=z.object({products:z.array(z.object({id:z.string(),name:z.string(),price:z.number(),stock:z.number().nullable(),active:z.boolean()}))}).parse(snapshot.data).products;
   const lunchP=products.find(p=>p.id===b.lunchProductId&&p.active&&p.price>0);
@@ -154,7 +159,11 @@ export async function processJobs(db:Admin,limit=2){
       const confirmation=isOrderConfirmationJob(j.dedup_key);
       const handoffNotice=j.dedup_key.startsWith('handoff:');
       if(j.dedup_key.startsWith('receipt-ack:')){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
-      if(j.kind!=='receipt'&&(businessSchema.parse(cfg.business).circuitPaused||cfg.account_state!=='ok')){
+      const business=businessSchema.parse(cfg.business);
+      if(p.automatic&&business.stockExhausted&&!['interpret','receipt'].includes(j.kind)&&!isStockExhaustedJob(j.dedup_key)){
+        checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;
+      }
+      if(j.kind!=='receipt'&&(business.circuitPaused||cfg.account_state!=='ok')){
         checkEmpty(await db.from('whatsapp_jobs').update({state:'pending',lease_until:null,next_attempt_at:new Date(Date.now()+60000).toISOString()}).eq('id',j.id));continue;
       }
       if(p.orderId||p.requestId){
@@ -189,7 +198,7 @@ export async function processJobs(db:Admin,limit=2){
         if(pre)throw new Error('Envio anterior requer revisão');
         let providerId:string|undefined;
         if(j.kind==='text'){
-          const text=confirmation?ORDER_CONFIRMED_MESSAGE:j.dedup_key.endsWith(':pix-key')?pixPaymentMessage(businessSchema.parse(cfg.business).pixKey):p.text??'';
+          const text=confirmation?ORDER_CONFIRMED_MESSAGE:j.dedup_key.endsWith(':pix-key')?pixPaymentMessage(business.pixKey):p.text??'';
           if(p.automatic&&j.dedup_key.startsWith('campaign:')&&p.inboundId){
             const latest=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id').eq('phone',j.phone).eq('direction','in').order('provider_at',{ascending:false}).limit(1))??[];
             if(latest[0]?.wa_message_id!==p.inboundId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
@@ -210,7 +219,10 @@ export async function processJobs(db:Admin,limit=2){
             await sendTyping(j.phone,String(j.dedup_key??'').split(':').slice(1).join(':'));
             await new Promise(r=>setTimeout(r,j.dedup_key.startsWith('campaign:')?3000:1500+Math.min(1500,text.length*8)));
             const live=check(await db.from('whatsapp_conversations').select('automation_paused').eq('phone',j.phone).single());
-            if(live.automation_paused&&!handoffNotice){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+            const liveCfg=check(await db.from('whatsapp_settings').select('business,auto_reply_enabled').eq('id',1).single());
+            const liveStockExhausted=businessSchema.parse(liveCfg.business).stockExhausted;
+            const wrongMode=liveStockExhausted!==isStockExhaustedJob(j.dedup_key);
+            if((live.automation_paused&&!handoffNotice)||!liveCfg.auto_reply_enabled||wrongMode){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
           }
           providerId=await sendText(db,j.phone,text,{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
         }

@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Modo de estoque esgotado no WhatsApp
+- [x] Botão “Estoque esgotado” junto ao controle do robô, autorizado para Administrador e Caixa e com estado persistido no banco.
+- [x] Aviso exato enviado uma vez a quem chamar durante o modo, inclusive anexos; sem campanha, sem novos pedidos e sem interromper confirmações/pagamentos já aceitos.
+- [x] “Ativar robô” encerra o modo e restaura o roteiro; mensagens antigas são bloqueadas também na troca de modo. 175 testes aprovados, build OK e tela verificada em 889×674 sem ativar o aviso real; publicação solicitada.
+
 ## Pix automático após finalizar o pedido
 - [x] Causa confirmada nos pedidos #868 e #871: comprovantes antigos e desvinculados do mesmo telefone cancelavam a chave Pix do pedido novo.
 - [x] Verificação de comprovante limitada ao pedido aceito; confirmação e atendimento humano continuam preservados, sem reenvio retroativo.

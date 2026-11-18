@@ -1,48 +1,82 @@
 import { useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
-import { Bot, Power } from 'lucide-react';
+import { Bot, PackageX, Power } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { whatsappSetAutoReply } from '@/lib/whatsapp-robot-toggle.functions';
+import { whatsappSetAutoReply, whatsappSetStockExhausted } from '@/lib/whatsapp-robot-toggle.functions';
 
-export function WhatsAppRobotToggle({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) {
-  const [busy, setBusy] = useState(false);
+type RobotMode = { enabled: boolean; stockExhausted: boolean };
+
+export function WhatsAppRobotToggle({ enabled, stockExhausted, onChange }: RobotMode & { onChange: (mode: RobotMode) => void }) {
+  const [busy, setBusy] = useState<'robot' | 'stock' | null>(null);
   const setAutoReply = useServerFn(whatsappSetAutoReply);
+  const setStockExhausted = useServerFn(whatsappSetStockExhausted);
+  const normalFlow = enabled && !stockExhausted;
 
-  async function toggle() {
-    const next = !enabled;
-    setBusy(true);
+  async function toggleRobot() {
+    const next = !normalFlow;
+    setBusy('robot');
     try {
       const result = await setAutoReply({ data: { enabled: next } });
-      onChange(result.enabled);
+      onChange({ enabled: result.enabled, stockExhausted: false });
       toast.success(next ? 'Robô ativado' : 'Robô desativado', {
         description: next
-          ? 'As conversas assumidas pela equipe continuam no atendimento manual.'
+          ? 'O atendimento automático normal foi restaurado. Conversas assumidas pela equipe continuam manuais.'
           : 'Novas respostas automáticas e as que estavam na fila foram interrompidas.',
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Não foi possível alterar o robô');
     } finally {
-      setBusy(false);
+      setBusy(null);
+    }
+  }
+
+  async function toggleStockExhausted() {
+    const next = !stockExhausted;
+    setBusy('stock');
+    try {
+      const result = await setStockExhausted({ data: { enabled: next } });
+      onChange({ enabled: next ? true : enabled, stockExhausted: result.stockExhausted });
+      toast.success(next ? 'Aviso de estoque esgotado ativado' : 'Atendimento normal restaurado', {
+        description: next
+          ? 'Quem falar com a loja receberá o aviso de encerramento, sem mensagem em massa.'
+          : 'O roteiro automático de pedidos voltou a funcionar.',
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível alterar o aviso de estoque');
+    } finally {
+      setBusy(null);
     }
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-background p-2">
-      <span className={cn('inline-flex items-center gap-1.5 px-1 text-xs font-semibold', enabled ? 'text-success' : 'text-muted-foreground')}>
-        <Bot size={16} /> Robô {enabled ? 'ligado' : 'desligado'}
+      <span className={cn('inline-flex items-center gap-1.5 px-1 text-xs font-semibold', normalFlow ? 'text-success' : stockExhausted ? 'text-warning' : 'text-muted-foreground')}>
+        {stockExhausted ? <PackageX size={16} /> : <Bot size={16} />}
+        {stockExhausted ? 'Estoque esgotado' : `Robô ${enabled ? 'ligado' : 'desligado'}`}
       </span>
       <Button
         type="button"
         size="sm"
-        variant={enabled ? 'outline' : 'default'}
-        aria-pressed={enabled}
-        aria-label={enabled ? 'Desativar robô do WhatsApp' : 'Ativar robô do WhatsApp'}
-        disabled={busy}
-        onClick={() => void toggle()}
+        variant={normalFlow ? 'outline' : 'default'}
+        aria-pressed={normalFlow}
+        aria-label={normalFlow ? 'Desativar robô do WhatsApp' : 'Ativar robô do WhatsApp'}
+        disabled={busy !== null}
+        onClick={() => void toggleRobot()}
       >
-        <Power /> {busy ? 'Salvando…' : enabled ? 'Desativar robô' : 'Ativar robô'}
+        <Power /> {busy === 'robot' ? 'Salvando…' : normalFlow ? 'Desativar robô' : 'Ativar robô'}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={stockExhausted ? 'default' : 'outline'}
+        aria-pressed={stockExhausted}
+        aria-label={stockExhausted ? 'Encerrar aviso de estoque esgotado' : 'Ativar aviso de estoque esgotado'}
+        disabled={busy !== null}
+        onClick={() => void toggleStockExhausted()}
+      >
+        <PackageX /> {busy === 'stock' ? 'Salvando…' : stockExhausted ? 'Encerrar aviso' : 'Estoque esgotado'}
       </Button>
     </div>
   );

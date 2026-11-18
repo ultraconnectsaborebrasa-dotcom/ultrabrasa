@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { conversationDraftSchema, defaultBusiness } from '@/lib/whatsapp-business';
 import { NIGHT_MESSAGE, CLOSING_MESSAGE, LUNCH_CLOSED_MESSAGE, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
+import { STOCK_EXHAUSTED_MESSAGE } from '@/lib/whatsapp-stock-exhausted';
 vi.mock('@/lib/whatsapp.server', () => ({ gateway: vi.fn(), sendText: vi.fn(), sendTyping: vi.fn(), digits: (s: string) => s }));
 vi.mock('@lovable.dev/ai-gateway', () => ({ generateResponse: vi.fn(), GatewayError: class GatewayError extends Error {} }));
 import { generateResponse } from '@lovable.dev/ai-gateway';
 import { processJobs } from '@/lib/whatsapp-automation.server';
 
-function attendance(whatsappName: string | null = null) {
+function attendance(whatsappName: string | null = null, stockExhausted = false) {
   let draft = conversationDraftSchema.parse({});
   let version = 0;
   let inbound = { body: '', wa_message_id: '', direction: 'in', kind: 'text', created_at: '' };
@@ -27,7 +28,7 @@ function attendance(whatsappName: string | null = null) {
         update: (data: Record<string, unknown>) => { update = data; return q; },
         upsert: async (job: typeof queued[number]) => { if (!queued.some(j => j.dedup_key === job.dedup_key)) queued.push(job); return { data: null, error: null }; },
         single: async () => ({ error: null, data: table === 'whatsapp_settings'
-          ? { business: { ...defaultBusiness, lunchProductId: 'm', pixKey: 'configured' }, auto_reply_enabled: true, account_state: 'ok' }
+          ? { business: { ...defaultBusiness, lunchProductId: 'm', pixKey: 'configured', stockExhausted }, auto_reply_enabled: true, account_state: 'ok' }
           : table === 'pdv_state' ? { data: { products: [{ id: 'm', name: 'Marmita', price: 19.9, stock: null, active: true }] } }
           : { name: whatsappName, draft, draft_version: version, automation_paused: paused, automation_pause_reason: pauseReason, order_confirmed_at: confirmedAt, attendance_status: paused ? 'finished' : 'new', assigned_to: null, last_inbound_at: inbound.created_at } }),
         then: (resolve: (value: unknown) => unknown) => {
@@ -62,6 +63,18 @@ function attendance(whatsappName: string | null = null) {
 
 afterEach(() => { vi.useRealTimers(); vi.clearAllMocks(); });
 describe('marmitas: atendimento por regras', () => {
+  it('com estoque esgotado, avisa quem chamar uma única vez sem iniciar pedido', async () => {
+    vi.useFakeTimers();
+    const flow = attendance(null, true);
+    await flow.receive('Bom dia', '11:00', 'sold-out-1');
+    expect(flow.queued).toHaveLength(1);
+    expect(flow.queued[0]?.payload.text).toBe(STOCK_EXHAUSTED_MESSAGE);
+    await flow.receive('Quero 2 marmitas, meu nome é Maria, Rua A, 12, bairro Centro, Pix', '11:01', 'sold-out-2');
+    expect(flow.queued).toHaveLength(1);
+    expect(flow.requests).toEqual([]);
+    expect(generateResponse).not.toHaveBeenCalled();
+  });
+
   it('08h: uma promoção, guarda dados, resumo antes da confirmação e um único aceite', async () => {
     vi.useFakeTimers();
     const flow = attendance();
