@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EXTERNAL_DELIVERY_HEALTH_URL, EXTERNAL_DELIVERY_ORDERS_URL, checkExternalDeliveryConnection, sendExternalDeliveryOrder } from '@/lib/delivery-integration-http';
+import { EXTERNAL_DELIVERY_HEALTH_URL, EXTERNAL_DELIVERY_ORDERS_URL, checkExternalDeliveryConnection, sendExternalDeliveryOrder, sendSignedExternalDeliveryOrder } from '@/lib/delivery-integration-http';
+import { verifyWebhookRequest } from '@lovable.dev/webhooks-js';
 import type { ExternalDeliveryPayload } from '@/lib/delivery-integration';
 
 const payload: ExternalDeliveryPayload = {
@@ -23,6 +24,17 @@ describe('comunicação HTTP com UltraBrasa Entregas', () => {
     const fetcher = vi.fn().mockResolvedValue(new Response('<!DOCTYPE html>', { status: 200, headers: { 'Content-Type': 'text/html' } }));
     expect(await checkExternalDeliveryConnection(fetcher)).toEqual({ ok: false, status: 200, code: 'invalid_response' });
     expect(fetcher).toHaveBeenCalledWith(EXTERNAL_DELIVERY_HEALTH_URL, expect.anything());
+  });
+
+  it('assina o envio no padrão que a outra conta consegue verificar', async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true, code: 'created' }), { status: 200 }));
+    const result = await sendSignedExternalDeliveryOrder(payload, 'shared-secret', fetcher);
+    expect(result.ok).toBe(true);
+    const [url, init] = fetcher.mock.calls[0]!;
+    const signedRequest = new Request(url, init);
+    const verified = await verifyWebhookRequest({ req: signedRequest, secret: 'shared-secret' });
+    expect(verified.payload).toMatchObject({ order_id: 'order-abc', total: 19.9 });
+    expect(signedRequest.headers.get('x-lovable-delivery')).toBe('order-abc');
   });
 
   it('devolve falha controlada quando a outra conta está indisponível', async () => {

@@ -1,4 +1,5 @@
 import { externalDeliverySchema, type ExternalDeliveryPayload } from '@/lib/delivery-integration';
+import { createDeliverySignatureHeaders } from '@/lib/delivery-request-signature';
 
 export const EXTERNAL_DELIVERY_ORDERS_URL = 'https://project--ad4cd978-a9c4-4678-aa58-5b7f8d65df9e.lovable.app/api/public/pdv/orders';
 export const EXTERNAL_DELIVERY_HEALTH_URL = 'https://project--ad4cd978-a9c4-4678-aa58-5b7f8d65df9e.lovable.app/api/public/pdv/health';
@@ -44,6 +45,17 @@ export function sendExternalDeliveryOrder(
     body: JSON.stringify(validPayload),
     signal: AbortSignal.timeout(10_000),
   }));
+}
+
+export function sendSignedExternalDeliveryOrder(
+  payload: ExternalDeliveryPayload,
+  secret: string,
+  fetcher: Fetcher = fetch,
+): Promise<ExternalDeliveryHttpResult> {
+  const validPayload = externalDeliverySchema.parse(payload);
+  const rawBody = JSON.stringify(validPayload);
+  const authenticationHeaders = createDeliverySignatureHeaders(rawBody, secret, validPayload.order_id);
+  return sendExternalDeliveryOrder(validPayload, authenticationHeaders, fetcher);
 }
 
 export function checkExternalDeliveryConnection(fetcher: Fetcher = fetch): Promise<ExternalDeliveryHttpResult> {
