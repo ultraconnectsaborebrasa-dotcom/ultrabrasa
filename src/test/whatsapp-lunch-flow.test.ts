@@ -174,6 +174,10 @@ describe('marmitas: atendimento por regras', () => {
     await afterPreparationStarts.receive('Boa noite', '18:00', 'night-after-18');
     expect(afterPreparationStarts.queued[0]?.payload.text).toBe(NIGHT_MENU_MESSAGE);
     expect(afterPreparationStarts.queued[0]?.payload.text).toContain('https://ultraconnectbrasa.com.br/cardapio');
+    const hoursAfter18 = attendance();
+    await hoursAfter18.receive('Que horas começa o preparo?', '19:22', 'night-hours-after-18');
+    expect(hoursAfter18.queued[0]?.payload.text).toContain('https://ultraconnectbrasa.com.br/cardapio');
+    expect(hoursAfter18.queued[0]?.payload.text).not.toContain('17:00');
     const closed = attendance();
     await closed.receive('Olá', '22:10', 'closed-1');
     expect(closed.queued[0]?.payload.text).toBe(CLOSING_MESSAGE);

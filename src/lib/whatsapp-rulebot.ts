@@ -6,7 +6,11 @@ export const GREETING_MESSAGE = 'Olá, tudo bem?';
 export const LUNCH_CLOSED_MESSAGE = 'Infelizmente, os pedidos de marmitas de hoje já foram encerrados!\n\nAgradecemos muito pela procura e pela preferência.\n\nAmanhã estaremos recebendo novos pedidos a partir das 08:00.\n\nSerá um prazer atender você!';
 export const NIGHT_MESSAGE = 'Olá, tudo bem?\n\nJá estamos nos preparando para atender você nesta noite!\n\nA partir das 17:00 temos salgados, acompanhamentos e hambúrgueres disponíveis. Os preparos começam às 18:00.\n\nMe conta o que você gostaria de pedir!';
 export const NIGHT_MENU_MESSAGE = 'Boa noite, tudo bem? 😊\n\nJá estamos atendendo! Confira nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio\n\nDá uma olhadinha e me conta o que você gostaria de pedir.';
+/** Resposta curta "já estamos atendendo" com o link do cardápio, usada a partir das 18:00. */
+export const NIGHT_SERVING_MENU_MESSAGE = 'Já estamos atendendo! Confira nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio e me conta o que você gostaria de pedir.';
 export const nightOpeningMessage = (now = new Date()) => spHM(now) >= '18:00' ? NIGHT_MENU_MESSAGE : NIGHT_MESSAGE;
+/** A partir das 18:00 o cardápio digital substitui o aviso de "começa às 17:00". */
+const nightHoursReply = (now: Date) => spHM(now) >= '18:00' ? NIGHT_SERVING_MENU_MESSAGE : 'A partir das 17:00 temos salgados, acompanhamentos e hambúrgueres. Os preparos começam às 18:00.';
 export const AFTERNOON_MESSAGES = [
   'Boa tarde, tudo bem? 😊 Nosso atendimento da noite começa a partir das 17:00, com hambúrgueres, espetinhos, salgados e acompanhamentos. Os preparos começam às 18:00.',
   'Você já pode escolher seu pedido no nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio\n\nDá uma olhadinha e me conta o que você gostaria de pedir. Se precisar de ajuda, estou por aqui!',
@@ -84,7 +88,7 @@ export function faqReply(text: string, b: Business, price: number, now = new Dat
   if (/prazo|tempo de entrega|demora para entregar|demora pra entregar/.test(n)) return 'Nosso prazo estimado é de 30 a 45 minutos após o pedido sair para entrega.';
   if (/horario de saida|que horas.*(saem|sai)|comecam a sair|pedidos saem/.test(n)) return 'Nossos pedidos começam a sair a partir das 11:00.';
   if (/frete gratis|entrega gratis|entrega e gratis|taxa de entrega|valor da entrega/.test(n)) return b.freeDelivery ? 'Sim! A entrega é grátis para qualquer lugar de Eunápolis.' : null;
-  if (/horario noturno|horario da noite|que horas.*(preparo|noite)|preparos comecam/.test(n)) return 'A partir das 17:00 temos salgados, acompanhamentos e hambúrgueres. Os preparos começam às 18:00.';
+  if (/horario noturno|horario da noite|que horas.*(preparo|noite)|preparos comecam/.test(n)) return nightHoursReply(now);
   if (/ainda.*(aceita|aceitando)|aceita pedido|estao aceitando/.test(n)) {
     if (win === 'lunch') return 'Sim! Estamos recebendo pedidos de marmitas até as 14:20, conforme a disponibilidade da cozinha.';
     if (win === 'night') return 'Sim! O atendimento da noite segue até as 22:10, conforme a disponibilidade da cozinha.';
@@ -93,9 +97,7 @@ export function faqReply(text: string, b: Business, price: number, now = new Dat
   if (win === 'lunch' && /preco|valor|quanto (custa|e|fica|sai)/.test(n) && /marmit|quentinh|almoco|hoje/.test(n)) return promotionMessage(b, price);
   if (/cardapio|menu|o que tem|o que voces tem|o que vcs tem/.test(n)) {
     if (win === 'lunch' && lunchMenuOpen(now)) return `Hoje temos ${b.lunchMenu}.`;
-    if (win === 'night') return spHM(now) >= '18:00'
-      ? 'Já estamos atendendo! Confira nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio e me conta o que você gostaria de pedir.'
-      : 'A partir das 17:00 temos salgados, acompanhamentos e hambúrgueres. Os preparos começam às 18:00.';
+    if (win === 'night') return nightHoursReply(now);
     if (win === 'afterLunch') return LUNCH_CLOSED_MESSAGE;
   }
   return null;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { botWindow, ruleParse, isEarlyLunch, windowStart, lunchMenuOpen, earlyLunchMessages, regularLunchMessages, faqReply, LUNCH_CLOSED_MESSAGE, NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, nightOpeningMessage, AFTERNOON_MESSAGES, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
+import { botWindow, ruleParse, isEarlyLunch, windowStart, lunchMenuOpen, earlyLunchMessages, regularLunchMessages, faqReply, LUNCH_CLOSED_MESSAGE, NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, NIGHT_SERVING_MENU_MESSAGE, nightOpeningMessage, AFTERNOON_MESSAGES, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
 import { conversationDraftSchema, missingOrderFields, defaultBusiness } from '@/lib/whatsapp-business';
 const empty = conversationDraftSchema.parse({});
 const at = (hm: string) => new Date(`2026-11-16T${hm}:00-03:00`);
@@ -97,7 +97,14 @@ describe('bot tradicional', () => {
     expect(nightOpeningMessage(at('17:59'))).toBe(NIGHT_MESSAGE);
     expect(nightOpeningMessage(at('18:00'))).toBe(NIGHT_MENU_MESSAGE);
     expect(NIGHT_MENU_MESSAGE).toContain('https://ultraconnectbrasa.com.br/cardapio');
+    expect(NIGHT_MENU_MESSAGE).not.toContain('17:00');
     expect(faqReply('O que tem hoje?', defaultBusiness, 19.9, at('18:00'))).toContain('https://ultraconnectbrasa.com.br/cardapio');
+  });
+  it('depois das 18h responde dúvidas de horário com o cardápio digital, sem falar das 17h', () => {
+    expect(faqReply('Qual o horário noturno?', defaultBusiness, 19.9, at('18:00'))).toBe(NIGHT_SERVING_MENU_MESSAGE);
+    expect(faqReply('Que horas começa o preparo?', defaultBusiness, 19.9, at('19:22'))).not.toContain('17:00');
+    expect(faqReply('Vocês ainda aceitam pedidos?', defaultBusiness, 19.9, at('19:22'))).toContain('22:10');
+    expect(faqReply('Qual o horário noturno?', defaultBusiness, 19.9, at('17:30'))).toContain('A partir das 17:00');
   });
   it('registra troco no dinheiro e não pede troco no cartão ou Pix', () => {
     const base = ruleParse('Quero 1 marmita, meu nome é Ana, Rua A, 12, bairro Centro', empty, 'm', missingOrderFields(empty));
