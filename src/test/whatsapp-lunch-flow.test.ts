@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { conversationDraftSchema, defaultBusiness } from '@/lib/whatsapp-business';
-import { NIGHT_MESSAGE, AFTERNOON_MESSAGES, CLOSING_MESSAGE, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
+import { NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, AFTERNOON_MESSAGES, CLOSING_MESSAGE, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
 import { STOCK_EXHAUSTED_MESSAGE } from '@/lib/whatsapp-stock-exhausted';
 vi.mock('@/lib/whatsapp.server', () => ({ gateway: vi.fn(), sendText: vi.fn(), sendTyping: vi.fn(), digits: (s: string) => s }));
 vi.mock('@lovable.dev/ai-gateway', () => ({ generateResponse: vi.fn(), GatewayError: class GatewayError extends Error {} }));
@@ -165,11 +165,15 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.requests).toEqual([]);
     expect(generateResponse).not.toHaveBeenCalled();
   });
-  it('apresenta a noite a partir das 17h e encerra às 22h10', async () => {
+  it('apresenta a noite a partir das 17h, envia o cardápio após 18h e encerra às 22h10', async () => {
     vi.useFakeTimers();
     const night = attendance();
     await night.receive('Olá', '17:00', 'night-1');
     expect(night.queued[0]?.payload.text).toBe(NIGHT_MESSAGE);
+    const afterPreparationStarts = attendance();
+    await afterPreparationStarts.receive('Boa noite', '18:00', 'night-after-18');
+    expect(afterPreparationStarts.queued[0]?.payload.text).toBe(NIGHT_MENU_MESSAGE);
+    expect(afterPreparationStarts.queued[0]?.payload.text).toContain('https://ultraconnectbrasa.com.br/cardapio');
     const closed = attendance();
     await closed.receive('Olá', '22:10', 'closed-1');
     expect(closed.queued[0]?.payload.text).toBe(CLOSING_MESSAGE);

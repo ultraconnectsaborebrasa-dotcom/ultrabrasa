@@ -5,6 +5,8 @@ import { validAddressField, validCustomerName } from './whatsapp-business';
 export const GREETING_MESSAGE = 'Olá, tudo bem?';
 export const LUNCH_CLOSED_MESSAGE = 'Infelizmente, os pedidos de marmitas de hoje já foram encerrados!\n\nAgradecemos muito pela procura e pela preferência.\n\nAmanhã estaremos recebendo novos pedidos a partir das 08:00.\n\nSerá um prazer atender você!';
 export const NIGHT_MESSAGE = 'Olá, tudo bem?\n\nJá estamos nos preparando para atender você nesta noite!\n\nA partir das 17:00 temos salgados, acompanhamentos e hambúrgueres disponíveis. Os preparos começam às 18:00.\n\nMe conta o que você gostaria de pedir!';
+export const NIGHT_MENU_MESSAGE = 'Boa noite, tudo bem? 😊\n\nJá estamos atendendo! Confira nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio\n\nDá uma olhadinha e me conta o que você gostaria de pedir.';
+export const nightOpeningMessage = (now = new Date()) => spHM(now) >= '18:00' ? NIGHT_MENU_MESSAGE : NIGHT_MESSAGE;
 export const AFTERNOON_MESSAGES = [
   'Boa tarde, tudo bem? 😊 Nosso atendimento da noite começa a partir das 17:00, com hambúrgueres, espetinhos, salgados e acompanhamentos. Os preparos começam às 18:00.',
   'Você já pode escolher seu pedido no nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio\n\nDá uma olhadinha e me conta o que você gostaria de pedir. Se precisar de ajuda, estou por aqui!',
@@ -91,7 +93,9 @@ export function faqReply(text: string, b: Business, price: number, now = new Dat
   if (win === 'lunch' && /preco|valor|quanto (custa|e|fica|sai)/.test(n) && /marmit|quentinh|almoco|hoje/.test(n)) return promotionMessage(b, price);
   if (/cardapio|menu|o que tem|o que voces tem|o que vcs tem/.test(n)) {
     if (win === 'lunch' && lunchMenuOpen(now)) return `Hoje temos ${b.lunchMenu}.`;
-    if (win === 'night') return 'A partir das 17:00 temos salgados, acompanhamentos e hambúrgueres. Os preparos começam às 18:00.';
+    if (win === 'night') return spHM(now) >= '18:00'
+      ? 'Já estamos atendendo! Confira nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio e me conta o que você gostaria de pedir.'
+      : 'A partir das 17:00 temos salgados, acompanhamentos e hambúrgueres. Os preparos começam às 18:00.';
     if (win === 'afterLunch') return LUNCH_CLOSED_MESSAGE;
   }
   return null;
