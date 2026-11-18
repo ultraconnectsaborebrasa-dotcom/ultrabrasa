@@ -5,6 +5,10 @@ import { validAddressField, validCustomerName } from './whatsapp-business';
 export const GREETING_MESSAGE = 'Olá, tudo bem?';
 export const LUNCH_CLOSED_MESSAGE = 'Infelizmente, os pedidos de marmitas de hoje já foram encerrados!\n\nAgradecemos muito pela procura e pela preferência.\n\nAmanhã estaremos recebendo novos pedidos a partir das 08:00.\n\nSerá um prazer atender você!';
 export const NIGHT_MESSAGE = 'Olá, tudo bem?\n\nJá estamos nos preparando para atender você nesta noite!\n\nA partir das 17:00 temos salgados, acompanhamentos e hambúrgueres disponíveis. Os preparos começam às 18:00.\n\nMe conta o que você gostaria de pedir!';
+export const AFTERNOON_MESSAGES = [
+  'Boa tarde, tudo bem? 😊 Nosso atendimento da noite começa a partir das 17:00, com hambúrgueres, espetinhos, salgados e acompanhamentos. Os preparos começam às 18:00.',
+  'Você já pode escolher seu pedido no nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio\n\nDá uma olhadinha e me conta o que você gostaria de pedir. Se precisar de ajuda, estou por aqui!',
+] as const;
 export const CLOSING_MESSAGE = 'Infelizmente, hoje já encerramos nossos atendimentos!\n\nNossa demanda foi muito alta e todos os pedidos foram atendidos.\n\nAmanhã estaremos funcionando normalmente. Então, já garanta seu pedido mais cedo para não ficar sem!\n\nAgradecemos pela compreensão e preferência. Deus abençoe!';
 export const HANDOFF_MESSAGE = 'Vou encaminhar sua mensagem para um atendente, que vai ajudar você por aqui.';
 export const CONFIRM_HINT = 'É só responder *SIM* para eu confirmar seu pedido. Se quiser mudar algo, me fala o que corrigir.';

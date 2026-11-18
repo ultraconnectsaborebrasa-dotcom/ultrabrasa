@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { botWindow, ruleParse, isEarlyLunch, windowStart, lunchMenuOpen, earlyLunchMessages, regularLunchMessages, faqReply, LUNCH_CLOSED_MESSAGE, NIGHT_MESSAGE, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
+import { botWindow, ruleParse, isEarlyLunch, windowStart, lunchMenuOpen, earlyLunchMessages, regularLunchMessages, faqReply, LUNCH_CLOSED_MESSAGE, NIGHT_MESSAGE, AFTERNOON_MESSAGES, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
 import { conversationDraftSchema, missingOrderFields, defaultBusiness } from '@/lib/whatsapp-business';
 const empty = conversationDraftSchema.parse({});
 const at = (hm: string) => new Date(`2026-11-16T${hm}:00-03:00`);
@@ -81,6 +81,17 @@ describe('bot tradicional', () => {
     expect(faqReply('O que tem hoje?', defaultBusiness, 19.9, at('14:20'))).toBe(LUNCH_CLOSED_MESSAGE);
     expect(NIGHT_MESSAGE).toContain('A partir das 17:00');
     expect(HANDOFF_MESSAGE).toContain('um atendente');
+  });
+  it('apresenta o atendimento da noite na primeira mensagem da tarde', () => {
+    expect(AFTERNOON_MESSAGES).toHaveLength(2);
+    expect(AFTERNOON_MESSAGES[0]).toContain('Boa tarde');
+    expect(AFTERNOON_MESSAGES[0]).toContain('atendimento da noite começa a partir das 17:00');
+    expect(AFTERNOON_MESSAGES[0]).toContain('preparos começam às 18:00');
+  });
+  it('envia o cardápio digital na segunda mensagem e convida o cliente a pedir', () => {
+    expect(AFTERNOON_MESSAGES[1]).toContain('https://ultraconnectbrasa.com.br/cardapio');
+    expect(AFTERNOON_MESSAGES[1]).toContain('me conta o que você gostaria de pedir');
+    expect(AFTERNOON_MESSAGES.join(' ')).not.toMatch(/PDF|marmita/i);
   });
   it('registra troco no dinheiro e não pede troco no cartão ou Pix', () => {
     const base = ruleParse('Quero 1 marmita, meu nome é Ana, Rua A, 12, bairro Centro', empty, 'm', missingOrderFields(empty));

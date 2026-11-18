@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { conversationDraftSchema, defaultBusiness } from '@/lib/whatsapp-business';
-import { NIGHT_MESSAGE, CLOSING_MESSAGE, LUNCH_CLOSED_MESSAGE, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
+import { NIGHT_MESSAGE, AFTERNOON_MESSAGES, CLOSING_MESSAGE, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
 import { STOCK_EXHAUSTED_MESSAGE } from '@/lib/whatsapp-stock-exhausted';
 vi.mock('@/lib/whatsapp.server', () => ({ gateway: vi.fn(), sendText: vi.fn(), sendTyping: vi.fn(), digits: (s: string) => s }));
 vi.mock('@lovable.dev/ai-gateway', () => ({ generateResponse: vi.fn(), GatewayError: class GatewayError extends Error {} }));
@@ -149,7 +149,21 @@ describe('marmitas: atendimento por regras', () => {
     await flow.receive('Sim', '14:20', 'in-2');
     expect(flow.requests).toEqual([]);
     expect(flow.draft().items[0]?.qty).toBe(2);
-    expect(flow.queued.at(-1)?.payload.text).toBe(LUNCH_CLOSED_MESSAGE);
+    expect(flow.queued.at(-1)?.payload.text).toBe(AFTERNOON_MESSAGES[1]);
+  });
+  it('à tarde envia horários e cardápio em sequência, sem repetir no mesmo período', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Boa tarde', '15:30', 'afternoon-1');
+    expect(flow.queued.map(job => job.payload.text)).toEqual([...AFTERNOON_MESSAGES]);
+    expect(flow.queued.map(job => job.dedup_key)).toEqual([
+      'campaign:2026-11-16T17:20:00.000Z:afternoon:0:test',
+      'campaign:2026-11-16T17:20:00.000Z:afternoon:1:test',
+    ]);
+    await flow.receive('Olá', '15:31', 'afternoon-2');
+    expect(flow.queued).toHaveLength(2);
+    expect(flow.requests).toEqual([]);
+    expect(generateResponse).not.toHaveBeenCalled();
   });
   it('apresenta a noite a partir das 17h e encerra às 22h10', async () => {
     vi.useFakeTimers();

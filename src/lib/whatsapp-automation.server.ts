@@ -1,7 +1,7 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
 // Delivery or lunch questions start the scripted lunch flow instead of a human handoff.
 const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
-import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,NIGHT_MESSAGE,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,isEarlyLunch,lunchMenuOpen,faqReply } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,NIGHT_MESSAGE,AFTERNOON_MESSAGES,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,isEarlyLunch,lunchMenuOpen,faqReply } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete,customerNameWithProfile } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
@@ -71,7 +71,11 @@ async function interpret(db:Admin,j:Job){
   if(parsed.wantsHuman&&!interactionConfirms){await handoff(db,j.phone,'Cliente pediu atendente',payload.inboundId,true);return;}
   const say=async(key:string,t:string)=>queueJob(db,`${key}:${payload.inboundId}`,j.phone,'text',{text:t,automatic:true});
   if(win==='afterLunch'){
-    if(!already(LUNCH_CLOSED_MESSAGE))await say('lunch-closed',LUNCH_CLOSED_MESSAGE);
+    for(let i=0;i<AFTERNOON_MESSAGES.length;i++){
+      const msg=AFTERNOON_MESSAGES[i];
+      if(!msg||already(msg))continue;
+      await queueJob(db,`campaign:${since}:afternoon:${i}:${j.phone}`,j.phone,'text',{text:msg,automatic:true,inboundId:payload.inboundId});
+    }
     return;
   }
   if(win==='night'){
