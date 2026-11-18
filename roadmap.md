@@ -10,7 +10,8 @@
 - [x] Credenciais da outra conta conferidas pelo responsável: recebimento configurado; retorno ainda não configurado.
 - [x] JSON de retorno confirmado: `event_id`, `event`, `revision`, `order_id`, `delivery_id`, `status`, datas e motoboy; callbacks devem ser monotônicos por revisão.
 - [ ] Obter os nomes dos cabeçalhos de assinatura do envio e do retorno; os valores secretos não devem ser copiados para a conversa.
-- [ ] Publicar a URL de retorno ao PDV solicitada pela outra conta; endpoint criado e conferido localmente, com assinatura obrigatória, teste de conexão, eventos monotônicos e 12 testes aprovados.
+- [x] URL `https://ultraconnectbrasa.com.br/api/public/entregas/retorno` publicada e conferida; segredo de retorno salvo com segurança, aguardando nova publicação para ficar disponível ao endpoint.
+- [x] Envio assinado no padrão Lovable verificado pela biblioteca de webhook; 13 testes aprovados, sem entrega real enviada.
 
 ## Valores completos na Epson
 - [x] Manter papel de 80 mm, margem direita de 6 mm e conteúdo de 42 colunas para evitar corte dos valores.
