@@ -3,8 +3,11 @@
 ## Integração com UltraBrasa Entregas
 - [x] Sincronização bidirecional confirmada: enviar pedidos Delivery e receber status como saiu para entrega e entregue.
 - [ ] Obter autenticação/assinatura da outra conta; contrato público de pedidos já identificado, mas recebimento responde não configurado.
+- [x] URLs confirmadas pelo responsável: recebimento `/api/public/pdv/orders` e verificação `/api/public/pdv/health` no endereço estável do UltraBrasa Entregas; ambas retornaram HTML do site na verificação de 18/11, indicando publicação/ativação pendente na outra conta.
 - [x] Preparar contrato de pedidos, endereço, itens, totais, coordenadas e eventos de retorno; 12 testes aprovados sem entregas reais.
-- [ ] Implementar envio seguro com deduplicação e preservação das rotas atuais após receber a assinatura; nenhuma entrega real foi enviada.
+- [x] Preparar envio HTTP para as URLs confirmadas, manter `order_id` estável para deduplicação, limitar espera e rejeitar resposta HTML como conexão válida; seis testes e tipagem aprovados, sem entregas reais.
+- [ ] Implementar assinatura, fila de envio e retorno de status após a outra conta publicar a verificação e confirmar o formato das credenciais; nenhuma entrega real foi enviada.
+- [x] Credenciais da outra conta conferidas pelo responsável: recebimento configurado; retorno ainda não configurado.
 
 ## Valores completos na Epson
 - [x] Manter papel de 80 mm, margem direita de 6 mm e conteúdo de 42 colunas para evitar corte dos valores.
