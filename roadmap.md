@@ -8,6 +8,9 @@
 - [x] Preparar envio HTTP para as URLs confirmadas, manter `order_id` estável para deduplicação, limitar espera e rejeitar resposta HTML como conexão válida; seis testes e tipagem aprovados, sem entregas reais.
 - [ ] Implementar assinatura, fila de envio e retorno de status após a outra conta publicar a verificação e confirmar o formato das credenciais; nenhuma entrega real foi enviada.
 - [x] Credenciais da outra conta conferidas pelo responsável: recebimento configurado; retorno ainda não configurado.
+- [x] JSON de retorno confirmado: `event_id`, `event`, `revision`, `order_id`, `delivery_id`, `status`, datas e motoboy; callbacks devem ser monotônicos por revisão.
+- [ ] Obter os nomes dos cabeçalhos de assinatura do envio e do retorno; os valores secretos não devem ser copiados para a conversa.
+- [ ] Publicar a URL de retorno ao PDV solicitada pela outra conta; endpoint criado e conferido localmente, com assinatura obrigatória, teste de conexão, eventos monotônicos e 12 testes aprovados.
 
 ## Valores completos na Epson
 - [x] Manter papel de 80 mm, margem direita de 6 mm e conteúdo de 42 colunas para evitar corte dos valores.

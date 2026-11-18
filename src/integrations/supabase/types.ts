@@ -282,6 +282,45 @@ export type Database = {
           },
         ]
       }
+      external_delivery_events: {
+        Row: {
+          event: string
+          event_id: string
+          external_delivery_id: string
+          occurred_at: string
+          order_id: string
+          payload: Json
+          processed_at: string | null
+          received_at: string
+          revision: number
+          status: string
+        }
+        Insert: {
+          event: string
+          event_id: string
+          external_delivery_id: string
+          occurred_at: string
+          order_id: string
+          payload: Json
+          processed_at?: string | null
+          received_at?: string
+          revision: number
+          status: string
+        }
+        Update: {
+          event?: string
+          event_id?: string
+          external_delivery_id?: string
+          occurred_at?: string
+          order_id?: string
+          payload?: Json
+          processed_at?: string | null
+          received_at?: string
+          revision?: number
+          status?: string
+        }
+        Relationships: []
+      }
       payment_receipt_events: {
         Row: {
           action: string
@@ -920,6 +959,19 @@ export type Database = {
       advance_pdv_cashier_order: {
         Args: { new_status: string; order_id: string }
         Returns: undefined
+      }
+      apply_external_delivery_callback: {
+        Args: {
+          p_delivery_id: string
+          p_event: string
+          p_event_id: string
+          p_occurred_at: string
+          p_order_id: string
+          p_payload: Json
+          p_revision: number
+          p_status: string
+        }
+        Returns: string
       }
       bulk_advance_pdv_cashier_orders: {
         Args: { action: string }

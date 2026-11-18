@@ -63,6 +63,26 @@ export function buildExternalDeliveryPayload(order: Order): ExternalDeliveryPayl
 export const DELIVERY_CALLBACK_EVENTS = ['order.received', 'courier.assigned', 'courier.accepted', 'order.collected', 'delivery.started', 'delivery.completed', 'delivery.cancelled', 'delivery.failed'] as const;
 export type DeliveryCallbackEvent = typeof DELIVERY_CALLBACK_EVENTS[number];
 
+const callbackDate = z.string().datetime({ offset: true }).nullable().optional();
+export const externalDeliveryCallbackSchema = z.object({
+  event_id: z.string().uuid(),
+  event: z.enum(DELIVERY_CALLBACK_EVENTS),
+  revision: z.number().int().min(0).max(2_147_483_647),
+  order_id: z.string().trim().min(1).max(120),
+  delivery_id: z.string().uuid(),
+  status: z.string().trim().min(1).max(120),
+  occurred_at: z.string().datetime({ offset: true }),
+  courier: z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120) }).strict().nullable().optional(),
+  assigned_at: callbackDate,
+  collected_at: callbackDate,
+  completed_at: callbackDate,
+}).strict();
+export type ExternalDeliveryCallback = z.infer<typeof externalDeliveryCallbackSchema>;
+
+export function shouldApplyDeliveryRevision(incoming: number, latest: number | null): boolean {
+  return latest === null || incoming > latest;
+}
+
 export function pdvStageForCallback(event: DeliveryCallbackEvent): 'entrega' | 'entregue' | 'cancelado' | null {
   if (event === 'delivery.started') return 'entrega';
   if (event === 'delivery.completed') return 'entregue';

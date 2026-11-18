@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MarmitaDoDiaRouteImport } from './routes/marmita-do-dia'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ApiPublicCatalogPhotoNameRouteImport } from './routes/api/public/catalog-photo.$name'
+import { Route as ApiPublicEntregasRetornoRouteImport } from './routes/api/public/entregas/retorno'
 import { Route as ApiPublicWhatsappProcessRouteImport } from './routes/api/public/whatsapp/process'
 import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/public/whatsapp/webhook'
 
@@ -55,6 +56,12 @@ const ApiPublicCatalogPhotoNameRoute =
     path: '/api/public/catalog-photo/$name',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicEntregasRetornoRoute =
+  ApiPublicEntregasRetornoRouteImport.update({
+    id: '/api/public/entregas/retorno',
+    path: '/api/public/entregas/retorno',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWhatsappProcessRoute =
   ApiPublicWhatsappProcessRouteImport.update({
     id: '/api/public/whatsapp/process',
@@ -76,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
+  '/api/public/entregas/retorno': typeof ApiPublicEntregasRetornoRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesByTo {
   '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
+  '/api/public/entregas/retorno': typeof ApiPublicEntregasRetornoRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -99,6 +108,7 @@ export interface FileRoutesById {
   '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
+  '/api/public/entregas/retorno': typeof ApiPublicEntregasRetornoRoute
   '/api/public/whatsapp/process': typeof ApiPublicWhatsappProcessRoute
   '/api/public/whatsapp/webhook': typeof ApiPublicWhatsappWebhookRoute
 }
@@ -112,6 +122,7 @@ export interface FileRouteTypes {
     | '/marmita-do-dia'
     | '/reset-password'
     | '/api/public/catalog-photo/$name'
+    | '/api/public/entregas/retorno'
     | '/api/public/whatsapp/process'
     | '/api/public/whatsapp/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -123,6 +134,7 @@ export interface FileRouteTypes {
     | '/marmita-do-dia'
     | '/reset-password'
     | '/api/public/catalog-photo/$name'
+    | '/api/public/entregas/retorno'
     | '/api/public/whatsapp/process'
     | '/api/public/whatsapp/webhook'
   id:
@@ -134,6 +146,7 @@ export interface FileRouteTypes {
     | '/marmita-do-dia'
     | '/reset-password'
     | '/api/public/catalog-photo/$name'
+    | '/api/public/entregas/retorno'
     | '/api/public/whatsapp/process'
     | '/api/public/whatsapp/webhook'
   fileRoutesById: FileRoutesById
@@ -146,6 +159,7 @@ export interface RootRouteChildren {
   MarmitaDoDiaRoute: typeof MarmitaDoDiaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicCatalogPhotoNameRoute: typeof ApiPublicCatalogPhotoNameRoute
+  ApiPublicEntregasRetornoRoute: typeof ApiPublicEntregasRetornoRoute
   ApiPublicWhatsappProcessRoute: typeof ApiPublicWhatsappProcessRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
 }
@@ -201,6 +215,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCatalogPhotoNameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/entregas/retorno': {
+      id: '/api/public/entregas/retorno'
+      path: '/api/public/entregas/retorno'
+      fullPath: '/api/public/entregas/retorno'
+      preLoaderRoute: typeof ApiPublicEntregasRetornoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/whatsapp/process': {
       id: '/api/public/whatsapp/process'
       path: '/api/public/whatsapp/process'
@@ -226,6 +247,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarmitaDoDiaRoute: MarmitaDoDiaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicCatalogPhotoNameRoute: ApiPublicCatalogPhotoNameRoute,
+  ApiPublicEntregasRetornoRoute: ApiPublicEntregasRetornoRoute,
   ApiPublicWhatsappProcessRoute: ApiPublicWhatsappProcessRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,
 }
