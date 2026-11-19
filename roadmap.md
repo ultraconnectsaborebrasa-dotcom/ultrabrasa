@@ -1,5 +1,12 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Robô não monta pedidos e comanda não permanece aberta
+- [x] Causas identificadas: o bloqueio da moeda interrompia também a interpretação; o pedido Delivery #900 foi finalizado como venda direta paga no lançamento.
+- [x] O robô monta o rascunho durante bloqueio técnico, mas não confirma pedido enquanto o resumo não for enviado; reativação preserva interpretações e resumos novos e cancela textos antigos.
+- [x] Venda direta fica limitada a Balcão, Mesa e Retirada no Administrador, Caixa e banco. #900 restaurado para Cozinha/Aguardando preparo, com Pix de R$ 25,90 e histórico preservados.
+- [x] 213 testes aprovados; regras do banco verificadas em transação revertida. Tela real confirmou ausência de venda direta Delivery e #900 na cozinha, sem criar pedidos ou enviar mensagens.
+- [ ] O envio real do WhatsApp continua dependendo da configuração da moeda como Real (BRL) na conta comercial; nenhuma configuração externa foi alterada.
+
 ## Robô não responde após ativação
 - [x] Causa identificada: envios automáticos aceitos e depois recusados pelo WhatsApp com erro 131042, pois a moeda da conta comercial não está configurada; conexão e agendamento estão ativos.
 - [x] Detectar essa recusa, mostrar “Envio bloqueado” e o motivo no controle; ativar limpa o bloqueio, preserva interpretações novas e cancela respostas antigas já montadas.

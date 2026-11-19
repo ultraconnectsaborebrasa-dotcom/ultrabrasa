@@ -610,6 +610,13 @@
       "when": 1795095202172,
       "tag": "0086_whatsapp_preserve_new_interpretation_on_activation",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1795095570717,
+      "tag": "0087_delivery_direct_sale_guard_and_whatsapp_summary_resume",
+      "breakpoints": true
     }
   ]
 }

@@ -29,7 +29,7 @@ async function interpret(db:Admin,j:Job){
   const cfg=check(await db.from('whatsapp_settings').select('business,auto_reply_enabled,account_state').eq('id',1).single());
   const b=businessSchema.parse(cfg.business??{});
   const c=check(await db.from('whatsapp_conversations').select('name,draft,draft_version,automation_paused,automation_pause_reason,order_confirmed_at,last_inbound_at').eq('phone',j.phone).single());
-  if(!cfg.auto_reply_enabled||cfg.account_state!=='ok'||b.circuitPaused)return;
+  if(!cfg.auto_reply_enabled||cfg.account_state!=='ok')return;
   const messages=check(await db.from('whatsapp_messages').select('direction,body,kind,wa_message_id,created_at').eq('phone',j.phone).order('provider_at',{ascending:false}).limit(30)).reverse();
   const current=messages.find(m=>m.wa_message_id===payload.inboundId);
   const latestInbound=messages.filter(m=>m.direction==='in').at(-1);
@@ -131,6 +131,8 @@ async function interpret(db:Admin,j:Job){
     return;
   }
   let reply:string;
+  const nextVersion=c.draft_version+1;
+  let pendingSummary=false;
   d.summarySent=false;d.quotedTotal=0;
   if(summaryReady(d,total,missing)){
     if(previous.summarySent&&!changed){reply=CONFIRM_HINT;d.summarySent=true;d.quotedTotal=total;}
@@ -140,7 +142,8 @@ async function interpret(db:Admin,j:Job){
       const where=d.type==='Delivery'?[`${titleAddr(d.address.street)}, ${d.address.number} — ${titleAddr(d.address.neighborhood)}`,d.address.reference?`Referência: ${d.address.reference}`:''].filter(Boolean).join('\n'):'Retirada no local';
       const troco=d.payment==='Dinheiro'?(d.cashFor?` (troco para ${brl(d.cashFor)})`:' (sem troco)'):'';
       reply=`Perfeito! ❤️ Confira seu pedido:\n\nNome: ${d.customer}\nQuantidade: ${qty} marmita${qty>1?'s':''}\nValor unitário: ${brl(lunchP.price)}\nTotal: ${brl(total)}\nEndereço: ${where}\nPagamento: ${d.payment}${troco}\n\nEstá tudo certinho? Posso confirmar seu pedido?`;
-      d.summarySent=true;d.quotedTotal=total;
+      if(b.circuitPaused)pendingSummary=true;
+      else{d.summarySent=true;d.quotedTotal=total;}
     }
   } else if(parsed.thanks&&!parsed.extracted){reply='Imagina! 😊 '+followUpMessage(missing);}
   else if(!parsed.extracted&&!parsed.greeting&&inProgress&&previous.summarySent){reply=CONFIRM_HINT;}
@@ -150,9 +153,10 @@ async function interpret(db:Admin,j:Job){
     const ask=missing.length>1?`Para finalizar, me fala ${missing.map(f=>f==='itens e quantidades'?'quantas marmitas':f==='entrega ou retirada'?'o endereço completo':f==='rua'?'a rua':f==='número'?'o número da casa':f==='forma de pagamento'?'a forma de pagamento (Pix, cartão ou dinheiro)':f==='troco (ou sem troco)'?'se precisa de troco':`o ${f}`).filter((v,i,a)=>a.indexOf(v)===i).join(', ').replace(/, ([^,]*)$/,' e $1')} 😊`:followUpMessage(missing);
     reply=`${ack}${ask}`.trim();
   }
-  const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
+  const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:nextVersion}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
-  await say('reply',reply);
+  if(pendingSummary)await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,summaryVersion:nextVersion,summaryTotal:total});
+  else await say('reply',reply);
 }
 export async function processJobs(db:Admin,limit=2){
   for(let n=0;n<limit;n++){
@@ -168,7 +172,7 @@ export async function processJobs(db:Admin,limit=2){
       if(p.automatic&&business.stockExhausted&&!['interpret','receipt'].includes(j.kind)&&!isStockExhaustedJob(j.dedup_key)){
         checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;
       }
-      if(j.kind!=='receipt'&&(business.circuitPaused||cfg.account_state!=='ok')){
+      if(!['interpret','receipt'].includes(j.kind)&&(business.circuitPaused||cfg.account_state!=='ok')){
         checkEmpty(await db.from('whatsapp_jobs').update({state:'pending',lease_until:null,next_attempt_at:new Date(Date.now()+60000).toISOString()}).eq('id',j.id));continue;
       }
       if(p.orderId||p.requestId){

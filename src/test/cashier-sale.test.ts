@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { submitCashierSale } from '@/lib/cashier-sale';
 import { supabase } from '@/integrations/supabase/client';
+import { canDirectSale } from '@/lib/pdv-sale';
 
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn() } }));
 
@@ -34,6 +35,13 @@ describe('envio de venda pelo caixa', () => {
       request,
       payment_method: 'Pix',
     });
+  });
+
+  it('não permite venda direta para Delivery', async () => {
+    expect(canDirectSale('Delivery')).toBe(false);
+    expect(canDirectSale('Balcão')).toBe(true);
+    await expect(submitCashierSale({ ...request, type: 'Delivery' }, 'Pix', 'direct')).rejects.toThrow('Delivery deve ser enviado à cozinha');
+    expect(supabase.rpc).not.toHaveBeenCalled();
   });
 
   it('não permite venda direta sem forma de pagamento', async () => {

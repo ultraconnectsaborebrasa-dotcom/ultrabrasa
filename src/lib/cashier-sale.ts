@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { canDirectSale } from './pdv-sale';
 
 export type CashierSaleResult = { number: number; id?: string };
 
@@ -8,6 +9,7 @@ export async function submitCashierSale(
   destination: 'kitchen' | 'direct' = 'kitchen',
 ): Promise<CashierSaleResult> {
   const paid = Boolean(paymentMethod);
+  if (destination === 'direct' && !canDirectSale(String(request['type'] ?? ''))) throw new Error('Delivery deve ser enviado à cozinha; receba sem finalizar a entrega');
   if (destination === 'direct' && !paid) throw new Error('Selecione a forma de pagamento');
   const functionName = destination === 'direct'
     ? 'submit_pdv_cashier_direct_paid'

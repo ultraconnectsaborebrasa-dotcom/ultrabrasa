@@ -7,7 +7,7 @@ vi.mock('@lovable.dev/ai-gateway', () => ({ generateResponse: vi.fn(), GatewayEr
 import { generateResponse } from '@lovable.dev/ai-gateway';
 import { processJobs } from '@/lib/whatsapp-automation.server';
 
-function attendance(whatsappName: string | null = null, stockExhausted = false) {
+function attendance(whatsappName: string | null = null, stockExhausted = false, circuitPaused = false) {
   let draft = conversationDraftSchema.parse({});
   let version = 0;
   let inbound = { body: '', wa_message_id: '', direction: 'in', kind: 'text', created_at: '' };
@@ -15,7 +15,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false) 
   let paused = false;
   let pauseReason: string | null = null;
   let confirmedAt: string | null = null;
-  const queued: { dedup_key: string; payload: { text?: string } }[] = [];
+  const queued: { dedup_key: string; payload: { text?: string; summaryVersion?: number; summaryTotal?: number } }[] = [];
   const outbound: { body: string; created_at: string }[] = [];
   const requests: string[] = [];
   const db = {
@@ -28,7 +28,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false) 
         update: (data: Record<string, unknown>) => { update = data; return q; },
         upsert: async (job: typeof queued[number]) => { if (!queued.some(j => j.dedup_key === job.dedup_key)) queued.push(job); return { data: null, error: null }; },
         single: async () => ({ error: null, data: table === 'whatsapp_settings'
-          ? { business: { ...defaultBusiness, lunchProductId: 'm', pixKey: 'configured', stockExhausted }, auto_reply_enabled: true, account_state: 'ok' }
+          ? { business: { ...defaultBusiness, lunchProductId: 'm', pixKey: 'configured', stockExhausted, circuitPaused }, auto_reply_enabled: true, account_state: 'ok' }
           : table === 'pdv_state' ? { data: { products: [{ id: 'm', name: 'Marmita', price: 19.9, stock: null, active: true }] } }
           : { name: whatsappName, draft, draft_version: version, automation_paused: paused, automation_pause_reason: pauseReason, order_confirmed_at: confirmedAt, attendance_status: paused ? 'finished' : 'new', assigned_to: null, last_inbound_at: inbound.created_at } }),
         then: (resolve: (value: unknown) => unknown) => {
@@ -91,6 +91,17 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.requests).toEqual(['wa_confirm_request']);
     expect(generateResponse).not.toHaveBeenCalled();
   });
+  it('monta o rascunho durante bloqueio de envio sem confirmar resumo não enviado', async () => {
+    vi.useFakeTimers();
+    const flow = attendance(null, false, true);
+    await flow.receive('Quero 1 marmita, meu nome é Maria, Rua A, 12, bairro Centro, Pix', '08:00', 'blocked-1');
+    expect(flow.draft().items).toEqual([{ productId: 'm', qty: 1, note: '' }]);
+    expect(flow.draft().summarySent).toBe(false);
+    expect(flow.queued.at(-1)?.payload.summaryVersion).toBe(1);
+    await flow.receive('Sim', '08:01', 'blocked-2');
+    expect(flow.requests).not.toContain('wa_confirm_request');
+  });
+
   it.each([{ text: '👍', kind: 'text' }, { text: '[imagem]', kind: 'image' }])('qualquer interação após o resumo confirma: $kind', async ({ text, kind }) => {
     vi.useFakeTimers();
     const flow = attendance();

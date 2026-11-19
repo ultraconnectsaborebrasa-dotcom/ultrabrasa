@@ -5,12 +5,13 @@ import {
   addToDraft, brl, commitDraft, setItem, setState, totals, updateDraft, useStore, emptyDraft, type OrderType, type Product,
 } from "@/lib/pdv-store";
 import { DeliveryFields } from "./DeliveryFields";
-import { emptyDelivery,validateDelivery,deliveryFeeFor } from "@/lib/delivery";
+import { emptyDelivery,deliveryFeeFor } from "@/lib/delivery";
 import { Checkout } from "./Checkout";
 import { EditProduct } from "./EditProduct";
 import { TableSelector } from './TableSelector';
 import { validTable, tableLabel } from '@/lib/pdv-tables';
 import { printOrder, printerPreferences } from '@/services/thermalPrinter';
+import { canDirectSale } from '@/lib/pdv-sale';
 
 const TYPES: OrderType[] = ["Balcão", "Mesa", "Retirada", "Delivery"];
 
@@ -61,8 +62,8 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
   };
   const charge = () => {
     if (!draft.items.length) return;
+    if(!canDirectSale(draft.type)){toast.error('Delivery deve ser enviado à cozinha; receba depois sem finalizar a entrega.');return;}
     if(draft.type==='Mesa'&&!validTable(draft.tableNumber)){toast.error('Escolha uma das cinco mesas.');return;}
-    if(draft.type==="Delivery"){const error=validateDelivery(draft.delivery);if(error){toast.error(error);return;}}
     if (!cashOpen) { toast.error("Abra o caixa antes de cobrar (aba Caixa)."); return; }
     setPay(true);
   };
@@ -215,7 +216,7 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
             <span className="text-sm text-muted-foreground">Total</span>
             <span className="font-display text-3xl font-bold">{brl(t.total)}</span>
           </div>
-          <button className="btn btn-primary w-full py-3 text-base" disabled={!draft.items.length} onClick={charge}>Cobrar pedido <span className="kbd">F4</span></button>
+          {canDirectSale(draft.type)&&<button className="btn btn-primary w-full py-3 text-base" disabled={!draft.items.length} onClick={charge}>Cobrar pedido <span className="kbd">F4</span></button>}
           <div className="grid grid-cols-2 gap-2">
             <button className="btn btn-ghost" disabled={!draft.items.length} onClick={sendKitchen}><ChefHat size={15} /> Cozinha <span className="kbd">F8</span></button>
             <button className="btn btn-ghost" disabled={!draft.items.length && !draft.editingId} onClick={() => setState((s) => ({ ...s, draft: emptyDraft() }))}>Limpar</button>
@@ -223,7 +224,7 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
         </div>
       </aside>
 
-      <Checkout open={pay} onClose={() => setPay(false)} total={t.total} methods={settings.paymentMethods} title="Cobrar pedido"
+      <Checkout open={pay&&canDirectSale(draft.type)} onClose={() => setPay(false)} total={t.total} methods={settings.paymentMethods} title="Cobrar pedido"
         onConfirm={(p) => { const o = commitDraft("pago", p); setPay(false); if (o) { toast.success(`Pedido #${o.number} pago — ${brl(t.total)}`); if (o.type === "Delivery") onDelivery?.(); } }} />
       <EditProduct product={editing} onClose={() => setEditing(null)} />
     </div>
