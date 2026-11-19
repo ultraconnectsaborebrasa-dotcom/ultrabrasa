@@ -14,6 +14,10 @@ export function currentKitchenDeliveries(deliveries: Delivery[], day = saoPauloD
   return deliveries.filter(delivery => isCurrentKitchenDelivery(delivery, day));
 }
 
+export function canMountDeliveryRoute(delivery: Pick<Delivery, 'route_id' | 'status'>): boolean {
+  return !delivery.route_id && !['Entregue', 'Cancelado', 'Em rota'].includes(delivery.status);
+}
+
 export function currentKitchenRoutes(routes: DeliveryRoute[], deliveries: Delivery[], day = saoPauloDay()): DeliveryRoute[] {
   const routeIds = new Set(currentKitchenDeliveries(deliveries, day).map(delivery => delivery.route_id).filter((id): id is string => Boolean(id)));
   return routes.filter(route => routeIds.has(route.id)).sort((a, b) => a.created_at.localeCompare(b.created_at));

@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Saída designada ao Mateus não chega ao aplicativo
+- [ ] Rastrear a saída real, o vínculo do entregador e a leitura do aplicativo; preservar pedido, pagamento e histórico.
+- [ ] Fazer a designação criar ou vincular uma rota válida e garantir acesso à montagem quando necessário.
+- [ ] Testar a leitura pelo entregador e o fluxo do administrador sem concluir entregas reais nem gerar cobranças.
+
 ## Rotas atuais e motoboys no mapa
 - [x] Limpar somente a tela operacional: exibir apenas rotas com saídas atuais da cozinha, mantendo concluídas no Histórico e preservando vendas, pagamentos e registros.
 - [x] Abrir o mapa operacional por padrão, mostrar base, motoboys com ícone de moto, situação do GPS e entregas prontas/em rota com legenda e foco simples.

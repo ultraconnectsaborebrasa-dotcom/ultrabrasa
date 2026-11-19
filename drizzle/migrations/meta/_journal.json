@@ -631,6 +631,13 @@
       "when": 1795095994490,
       "tag": "0089_keep_whatsapp_robot_active_on_currency_refusal",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1795130690285,
+      "tag": "0090_depart_delivery_creates_courier_route",
+      "breakpoints": true
     }
   ]
 }

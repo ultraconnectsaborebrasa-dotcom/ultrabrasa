@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currentKitchenDeliveries, currentKitchenRoutes } from '@/lib/delivery-operation';
+import { canMountDeliveryRoute, currentKitchenDeliveries, currentKitchenRoutes } from '@/lib/delivery-operation';
 import { emptyDelivery, type Delivery, type DeliveryRoute } from '@/lib/delivery';
 
 const DAY = '2026-11-19';
@@ -37,6 +37,13 @@ describe('operação das saídas atuais da cozinha', () => {
       delivery('entregue', 'Entregue', '2026-11-19T20:00:00Z', '2026-11-19T22:00:00Z'),
     ];
     expect(currentKitchenDeliveries(rows, DAY).map(item => item.id)).toEqual(['pronta-hoje', 'saiu-hoje']);
+  });
+
+  it('não deixa uma saída já designada continuar selecionada para montar outra rota', () => {
+    expect(canMountDeliveryRoute(delivery('pronta', 'Pronto para entrega', '2026-11-19T20:00:00Z'))).toBe(true);
+    expect(canMountDeliveryRoute(delivery('saiu', 'Em rota', '2026-11-19T20:00:00Z', '2026-11-19T22:00:00Z'))).toBe(false);
+    expect(canMountDeliveryRoute(delivery('roteirizada', 'Pronto para entrega', '2026-11-19T20:00:00Z', null, 'rota-1'))).toBe(false);
+    expect(canMountDeliveryRoute(delivery('entregue', 'Entregue', '2026-11-19T20:00:00Z'))).toBe(false);
   });
 
   it('mantém na tela somente rotas ligadas às saídas atuais e preserva as demais fora dela', () => {
