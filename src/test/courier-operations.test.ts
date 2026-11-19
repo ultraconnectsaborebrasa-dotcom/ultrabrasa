@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { COURIER_SHIFTS, courierTimeTotals, currentCourierShift, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, type CourierLiveLocation } from '@/lib/courier-operations';
+import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, currentCourierShift, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, type CourierLiveLocation } from '@/lib/courier-operations';
 
 describe('ponto e localização dos entregadores', () => {
+  it('limita a operação ao vivo ao administrador e ao próprio entregador', () => {
+    expect(canReadCourierOperations({ admin: true })).toBe(true);
+    expect(canReadCourierOperations({ courier: true })).toBe(true);
+    expect(canReadCourierOperations({})).toBe(false);
+  });
   it('fixa a manhã das 11:00 às 14:00 e o valor em R$ 60', () => {
     expect(COURIER_SHIFTS.morning).toMatchObject({ start: '11:00', end: '14:00', amount: 60 });
   });

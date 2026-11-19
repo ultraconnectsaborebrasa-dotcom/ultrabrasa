@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
-import { COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, shouldSendCourierPosition, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
+import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, shouldSendCourierPosition, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 import { courierMarmitaStock as stockFor, type Courier, type Delivery, type DeliveryRoute } from '@/lib/delivery';
 import { calculateDeliveryRoute } from '@/lib/delivery-route.functions';
 import { LiveDeliveryMap, type DeliveryMapFocus } from './LiveDeliveryMap';
@@ -35,6 +35,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
   const calculate = useServerFn(calculateDeliveryRoute);
   const query = useQuery({
     queryKey: ['courier-operations', day],
+    enabled: canReadCourierOperations({ admin, courier }),
     queryFn: async () => {
       const { data, error } = await supabase.rpc('read_courier_operations', { p_from: day, p_to: day });
       if (error) throw new Error(error.message);
@@ -53,6 +54,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
   const liveLocations = operations.locations.filter(location => !isCourierLocationStale(location.located_at));
 
   useEffect(() => {
+    if (!canReadCourierOperations({ admin, courier })) return;
     const channel = supabase.channel(`courier-locations-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'courier_locations' }, () => { void query.refetch(); })
       .subscribe();
@@ -107,6 +109,8 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
       setStockBusy(false);
     }
   }
+
+  if (!canReadCourierOperations({ admin, courier })) return <section className="rounded-xl border bg-card p-4"><div className="flex items-start gap-3"><div className="rounded-lg bg-primary/10 p-2 text-primary"><MapPin size={20} /></div><div><h2 className="font-semibold">Rotas do Caixa</h2><p className="mt-1 text-sm text-muted-foreground">As paradas e o status Em rota estão abaixo. O mapa de GPS e o ponto da equipe ficam disponíveis no acesso do Administrador.</p></div></div></section>;
 
   return <section className="space-y-4 rounded-xl border bg-card p-3 sm:p-4">
     <div className="flex flex-wrap items-center gap-3">

@@ -15,6 +15,6 @@ export async function receiptOrderWithDelivery(order: Order): Promise<Order> {
   return {
     ...order,
     customerPhone: order.customerPhone || delivery.phone,
-    delivery: { ...order.delivery, address: delivery.address, paymentMethod: delivery.payment_method, cashFor: '' },
+    delivery: { ...order.delivery, address: delivery.address, paymentMethod: delivery.payment_method ?? order.delivery?.paymentMethod ?? '', cashFor: '' },
   };
 }

@@ -8,5 +8,5 @@ export function storeDay(value: string | number | Date = Date.now()) {
 export function storeDayStart(now = Date.now()) { return `${storeDay(now)}T00:00:00-03:00`; }
 export function isStoreToday(value: string | number, now = Date.now()) { return storeDay(value) === storeDay(now); }
 export function pendingPayment(order: { status: string; paymentStatus?: string; hasPayment?: boolean; total: number }) {
-  return order.status !== 'cancelado' && order.status !== 'pago' && order.paymentStatus !== 'pago' && !order.hasPayment && order.total > 0;
+  return order.status !== 'cancelado' && order.status !== 'pago' && order.status !== 'entrega' && order.paymentStatus !== 'pago' && !order.hasPayment && order.total > 0;
 }

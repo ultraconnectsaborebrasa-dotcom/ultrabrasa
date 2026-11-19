@@ -6,7 +6,7 @@ export const deliveryFeeFor = (type:string,input:DeliveryInput|undefined,configu
 export const canFinishDelivery = (status:DeliveryStatus) => !['Entregue','Cancelado'].includes(status);
 export const DELIVERY_STATUSES = ['Aguardando preparo','Pronto para entrega','Em rota','Entregue','Cancelado'] as const;
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number];
-export type Delivery = { id:string; order_id:string; number:number; customer:string; phone:string; address:DeliveryAddress; created_at:string; delivered_at:string|null; departed_at?:string|null; order_status?:string; payment_status?:string; status:DeliveryStatus; route_id:string|null; position:number; courier_id:string|null; total:number|null; due:number|null; payment_method:string; change:number|null; problem:string|null; items:{name:string;qty:number;note?:string}[] };
+export type Delivery = { id:string; order_id:string; number:number; customer:string; phone:string; address:DeliveryAddress; created_at:string; delivered_at:string|null; departed_at?:string|null; order_status?:string; payment_status?:string; status:DeliveryStatus; route_id:string|null; position:number; courier_id:string|null; total:number|null; due:number|null; payment_method:string|undefined; change:number|null; problem:string|null; items:{name:string;qty:number;note?:string}[] };
 export type Courier = {id:string;name:string;phone:string;user_id:string|null;active:boolean;initial_quantity?:number|null;remaining_quantity?:number|null;reserved_quantity?:number|null;available_quantity?:number|null;stock_updated_at?:string|null};
 export type DeliveryRoute = {id:string;name:string;courier_id:string|null;created_at:string;origin:string;distance_meters:number|null;duration_seconds:number|null};
 export const deliveryMarmitaQuantity = (delivery:Pick<Delivery,'items'>) => delivery.items.reduce((total,item)=>total+(/marmita/i.test(item.name)?Math.max(0,Number(item.qty)||0):0),0);
@@ -49,7 +49,7 @@ export function routeMapsLink(deliveries:Delivery[],origin:string):string|null {
 export const sortDeliveries = (deliveries:Delivery[]) => [...deliveries].sort((a,b)=>`${a.address.neighborhood} ${a.address.street}`.localeCompare(`${b.address.neighborhood} ${b.address.street}`,'pt-BR',{sensitivity:'base'})||a.address.number.localeCompare(b.address.number,'pt-BR',{numeric:true}));
 export function routeTotals(deliveries:Delivery[]) {
   const result={total:0,cash:0,card:0,pix:0,other:0};
-  deliveries.forEach(d=>{result.total+=d.total??0;const due=d.due??0;const method=d.payment_method.toLowerCase();if(method==='dinheiro')result.cash+=due;else if(method==='pix')result.pix+=due;else if(/crédito|débito|cartão/.test(method))result.card+=due;else result.other+=due;});return result;
+  deliveries.forEach(d=>{result.total+=d.total??0;const due=d.due??0;const method=(d.payment_method??'').toLowerCase();if(method==='dinheiro')result.cash+=due;else if(method==='pix')result.pix+=due;else if(/crédito|débito|cartão/.test(method))result.card+=due;else result.other+=due;});return result;
 }
 export const isLateDelivery=(d:Pick<Delivery,'created_at'|'status'>,minutes:number,now=Date.now())=>!['Entregue','Cancelado'].includes(d.status)&&now-new Date(d.created_at).getTime()>minutes*60000;
 

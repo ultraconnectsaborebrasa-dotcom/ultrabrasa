@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Comandas não devem repetir pedidos em rota
+- [x] Etapa `entrega` removida de Comandas, Receber, preparação do Atendente e do contador de comandas; aba Em entrega retirada do Caixa sem mudar pagamento, baixa ou histórico.
+- [x] Pedidos permanecem em Rotas como Saiu para entrega; resumo de Rotas corrigido para não quebrar quando o Caixa não pode ver pagamentos concluídos e consulta administrativa de GPS/ponto bloqueada no Caixa.
+- [x] Trinta e quatro testes e typecheck aprovados. Administrador e Caixa verificados no navegador: #917/#918 fora das comandas e presentes em “Saídas · Mateus”; nenhum pedido real alterado e acessos temporários removidos.
+
 ## Saída designada ao Mateus não chega ao aplicativo
 - [x] Causa corrigida: a saída rápida guardava o entregador sem criar rota, enquanto o aplicativo e a montagem dependiam do vínculo de rota.
 - [x] Saída com entregador agora cria uma rota ou acrescenta a parada à rota atual dele; seleção antiga não deixa mais “Montar rota” sem resposta.

@@ -12,6 +12,7 @@ describe('Organização diária de Eunápolis', () => {
   });
   it('mantém pedido entregue sem pagamento disponível para baixa manual', () => {
     expect(pendingPayment({status:'entregue',total:19.9})).toBe(true);
+    expect(pendingPayment({status:'entrega',total:19.9})).toBe(false);
   });
   it('exclui quitados e cancelados da fila de baixa', () => {
     expect(pendingPayment({status:'cozinha',paymentStatus:'pago',total:19.9})).toBe(false);

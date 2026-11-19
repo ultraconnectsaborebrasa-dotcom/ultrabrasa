@@ -47,6 +47,10 @@ export type DeliveryRouteCalculation = {
   stops: RouteStopLocation[];
 };
 
+export function canReadCourierOperations(access: { admin?: boolean; courier?: boolean }): boolean {
+  return Boolean(access.admin || access.courier);
+}
+
 export function saoPauloDay(date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',

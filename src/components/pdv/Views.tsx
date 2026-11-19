@@ -37,7 +37,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
   const [paying, setPaying] = useState<Order | null>(null);
   const [search,setSearch]=useState('');
   // Comanda paga sai daqui; a etapa de cozinha/entrega continua nas telas próprias.
-  const open = orders.filter((o) => o.status !== 'cancelado' && o.status !== 'pago' && o.paymentStatus !== 'pago' && totals(o,settings.serviceFeePct).total-paid(o)>0.004);
+  const open = orders.filter((o) => o.status !== 'cancelado' && o.status !== 'pago' && o.status !== 'entrega' && o.paymentStatus !== 'pago' && totals(o,settings.serviceFeePct).total-paid(o)>0.004);
   const visible=open.filter(o=>`${o.number} ${o.customer} ${tableLabel(o)}`.toLowerCase().includes(search.toLowerCase()));
 
   return (
