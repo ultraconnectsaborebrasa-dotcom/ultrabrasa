@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Aplicativo do entregador com fluxo de corridas
+- [x] Destacar o pedido designado e a próxima parada, com sequência visual de todos os destinos.
+- [x] Manter Iniciar rota, navegação, contato, problema e baixa manual usando as permissões e gravações atuais.
+- [x] Oferecer mapa, GPS e carga sob comando, sem consultas automáticas adicionais nem alterar pagamentos.
+- [x] 23 testes aprovados; fluxo móvel simulado em 390×844 com início, conclusão da primeira parada e avanço automático para a seguinte, sem dados reais, erros, overflow ou chamadas ao Google Maps. Ponto compacto após a entrada; acesso temporário removido.
+
 ## Pedido manual facilitado no WhatsApp
 - [x] Reconhecer por regras somente nome, endereço, referência e pagamento enviados pelo cliente, usando a correção mais recente e o perfil como alternativa segura.
 - [x] Mostrar um resumo editável na conversa manual e preencher o pedido no PDV sem criar ou enviar automaticamente.

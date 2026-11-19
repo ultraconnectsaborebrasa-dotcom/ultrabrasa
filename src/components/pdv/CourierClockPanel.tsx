@@ -82,109 +82,36 @@ export function CourierClockPanel() {
   }
 
   return (
-    <section
-      aria-label="Ponto do entregador"
-      className="mb-5 overflow-hidden rounded-2xl border bg-card shadow-sm"
-    >
-      <div className="flex items-center gap-3 border-b px-4 py-3 sm:px-5">
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <Clock3 size={20} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold">Meu ponto</h2>
-          <p className="text-xs text-muted-foreground">Acompanhe seus registros de hoje</p>
-        </div>
-        <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold">
-          {brl(60)} <span className="font-normal text-muted-foreground">por turno</span>
-        </span>
+    <section aria-label="Ponto do entregador" className="mb-4 overflow-hidden rounded-2xl border bg-card shadow-sm">
+      <div className="flex items-center gap-3 border-b px-4 py-2.5">
+        <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Clock3 size={18} /></div>
+        <div className="min-w-0 flex-1"><h2 className="font-bold">Meu ponto</h2><p className="text-[11px] text-muted-foreground">Registros de hoje</p></div>
+        <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold">{brl(60)} <span className="font-normal text-muted-foreground">por turno</span></span>
       </div>
 
-      <div className="p-4 sm:p-5">
-        {query.error && (
-          <p role="alert" className="mb-3 text-sm text-destructive">
-            {query.error.message}
-          </p>
-        )}
+      <div className={entry ? "p-3" : "p-4"}>
+        {query.error && <p role="alert" className="mb-3 text-sm text-destructive">{query.error.message}</p>}
         {!now || query.isPending ? (
-          <div className="rounded-xl border bg-background p-5" role="status">
-            <p className="text-sm text-muted-foreground">Carregando seu ponto…</p>
-          </div>
-        ) : (
-          <article className="rounded-xl border bg-background p-4 sm:p-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Ponto de hoje
-                </p>
-                <h3 className="mt-1 text-xl font-bold">{shift.label}</h3>
-              </div>
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${isClosed ? "bg-success/10 text-success" : isOpen ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
-              >
-                {isClosed && <CheckCircle2 size={14} />}
-                {isClosed ? "Concluído" : isOpen ? "Em andamento" : "Não iniciado"}
+          <div className="rounded-xl border bg-background p-4" role="status"><p className="text-sm text-muted-foreground">Carregando seu ponto…</p></div>
+        ) : entry ? (
+          <article className="rounded-xl border bg-background p-3.5">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Ponto de hoje</p><h3 className="mt-0.5 font-bold">{shift.label}</h3></div>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${isClosed ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>
+                {isClosed && <CheckCircle2 size={13} />}{isClosed ? "Concluído" : "Em andamento"}
               </span>
             </div>
-
-            {!entry && (
-              <div className="mt-5 rounded-xl border border-dashed p-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Registre seu horário para começar este turno.
-                </p>
-                <Button
-                  className="mt-4 w-full sm:w-auto"
-                  size="lg"
-                  disabled={Boolean(busy)}
-                  onClick={() => void clock("entry", shiftCode)}
-                >
-                  <LogIn size={17} />
-                  {busy === `entry:${shiftCode}` ? "Salvando…" : "Bater ponto"}
-                </Button>
-              </div>
-            )}
-
-            {entry && (
-              <dl className={`mt-5 grid gap-3 ${isClosed ? "sm:grid-cols-2" : ""}`}>
-                <div className="rounded-xl bg-muted/60 p-4">
-                  <dt className="text-xs text-muted-foreground">Entrada registrada</dt>
-                  <dd className="mt-1 text-2xl font-bold tracking-tight">{time(entry.entry_at)}</dd>
-                </div>
-                {isClosed && (
-                  <div className="rounded-xl bg-success/10 p-4">
-                    <dt className="text-xs text-muted-foreground">Saída registrada</dt>
-                    <dd className="mt-1 text-2xl font-bold tracking-tight text-success">
-                      {time(entry.exit_at ?? "")}
-                    </dd>
-                  </div>
-                )}
-              </dl>
-            )}
-
-            {isOpen && (
-              <div className="mt-4 border-t pt-4">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  disabled={Boolean(busy)}
-                  onClick={() => void clock("exit", shiftCode)}
-                >
-                  <LogOut size={16} />
-                  {busy === `exit:${shiftCode}` ? "Salvando…" : "Registrar saída"}
-                </Button>
-                <p className="mt-3 text-center text-xs text-muted-foreground">
-                  Ao registrar a saída, o compartilhamento da localização será encerrado.
-                </p>
-              </div>
-            )}
-            {isClosed && (
-              <p
-                role="status"
-                className="mt-4 flex items-center justify-center gap-2 text-center text-sm text-success"
-              >
-                <CheckCircle2 size={16} />
-                Turno concluído e horários salvos.
-              </p>
-            )}
+            <dl className={`mt-3 grid gap-2 ${isClosed ? "grid-cols-2" : ""}`}>
+              <div className="rounded-lg bg-muted/60 px-3 py-2"><dt className="text-[10px] text-muted-foreground">Entrada registrada</dt><dd className="mt-0.5 text-lg font-bold">{time(entry.entry_at)}</dd></div>
+              {isClosed && <div className="rounded-lg bg-success/10 px-3 py-2"><dt className="text-[10px] text-muted-foreground">Saída registrada</dt><dd className="mt-0.5 text-lg font-bold text-success">{time(entry.exit_at ?? "")}</dd></div>}
+            </dl>
+            {isOpen && <div className="mt-3"><Button className="w-full" size="sm" variant="outline" disabled={Boolean(busy)} onClick={() => void clock("exit", shiftCode)}><LogOut size={15} />{busy === `exit:${shiftCode}` ? "Salvando…" : "Registrar saída"}</Button><p className="mt-2 text-center text-[10px] text-muted-foreground">Ao sair, a localização será desativada.</p></div>}
+            {isClosed && <p role="status" className="mt-3 flex items-center justify-center gap-1.5 text-xs text-success"><CheckCircle2 size={14} />Turno concluído e horários salvos.</p>}
+          </article>
+        ) : (
+          <article className="rounded-xl border bg-background p-4">
+            <div className="flex items-center gap-3"><div className="min-w-0 flex-1"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ponto de hoje</p><h3 className="mt-1 text-xl font-bold">{shift.label}</h3></div><span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">Não iniciado</span></div>
+            <div className="mt-4 rounded-xl border border-dashed p-4 text-center"><p className="text-sm text-muted-foreground">Registre seu horário para começar este turno.</p><Button className="mt-4 w-full sm:w-auto" size="lg" disabled={Boolean(busy)} onClick={() => void clock("entry", shiftCode)}><LogIn size={17} />{busy === `entry:${shiftCode}` ? "Salvando…" : "Bater ponto"}</Button></div>
           </article>
         )}
       </div>
