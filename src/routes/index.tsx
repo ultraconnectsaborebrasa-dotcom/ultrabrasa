@@ -73,7 +73,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
     updateDraft({type:order.type??'Balcão',customer:order.customer,customerPhone:order.phone,delivery:order.delivery,note:'',discount:0,fee:0,serviceFee:false,tableNumber:undefined,editingId:undefined});
     setWhatsAppPhone(order.phone);
     setTab('pdv');
-    toast.message('Dados da conversa preenchidos. Revise, escolha os produtos e envie quando estiver pronto.');
+    toast.message('Pedido manual aberto. Preencha os dados e escolha os produtos.');
   };
   const saving = useSaving();
   const sync = useSyncStatus();

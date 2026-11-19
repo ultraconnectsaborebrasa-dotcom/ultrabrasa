@@ -83,7 +83,7 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
   setNote('');
   setWaLink(order.phone);
   setTab('sell');
-  toast.message('Dados da conversa preenchidos. Revise, escolha os produtos e envie quando estiver pronto.');
+  toast.message('Pedido manual aberto. Preencha os dados e escolha os produtos.');
  }
  async function submitSale(paymentMethod?:string,destination:'direct'|'kitchen'='kitchen'){
   if(!cart.length)return;
