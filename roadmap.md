@@ -1,5 +1,13 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Entrega disponível e motoboy mais próximo
+- [x] Mostrar entregas prontas e sem rota no mapa, com seleção destacada e orientação em três passos.
+- [x] Ao escolher uma entrega, ordenar motoboys pela distância real em linha reta do GPS e destacar o mais próximo; GPS desatualizado não é recomendado.
+- [x] Designar o pedido selecionado diretamente para o motoboy escolhido, mantendo estoque e revisão da rota.
+- [x] Permitir localizar endereços sem coordenadas somente sob comando, sem inventar posições nem gerar consultas automáticas.
+- [x] 29 testes aprovados, incluindo proximidade e designação; busca e apresentação verificadas em desktop e celular, sem overflow ou erros de console.
+- [ ] Validar geocodificação e mapa Google ao vivo em um domínio autorizado; essas chamadas não foram executadas no ambiente de desenvolvimento.
+
 ## Mapa operacional e estoque dos motoboys
 - [x] Mostrar base, motoboys e entregas em um mapa mais legível, com foco por pessoa e controles simples de enquadramento.
 - [x] Registrar a carga de marmitas de cada saída e mostrar quantas estão com o entregador, reservadas e disponíveis para novas entregas.

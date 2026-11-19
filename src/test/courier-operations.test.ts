@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COURIER_SHIFTS, courierTimeTotals, decodeRoutePolyline, isCourierLocationStale, shouldSendCourierPosition } from '@/lib/courier-operations';
+import { COURIER_SHIFTS, courierTimeTotals, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, type CourierLiveLocation } from '@/lib/courier-operations';
 
 describe('ponto e localização dos entregadores', () => {
   it('fixa a manhã das 11:00 às 14:00 e o valor em R$ 60', () => {
@@ -22,6 +22,14 @@ describe('ponto e localização dos entregadores', () => {
     expect(shouldSendCourierPosition(previous, { latitude: -16.3504, longitude: -39.57 }, 115_000)).toBe(true);
     expect(shouldSendCourierPosition(previous, { latitude: -16.35, longitude: -39.57 }, 159_999)).toBe(false);
     expect(shouldSendCourierPosition(previous, { latitude: -16.35, longitude: -39.57 }, 160_000)).toBe(true);
+  });
+  it('ordena os motoboys pela distância real até a entrega', () => {
+    const location = (courier_id: string, latitude: number): CourierLiveLocation => ({ courier_id, name: courier_id, latitude, longitude: -39.57, accuracy_meters: 10, located_at: '2026-11-19T03:00:00Z', consent_at: '2026-11-19T02:00:00Z' });
+    const ranked = rankCourierLocations({ latitude: -16.35, longitude: -39.57 }, [location('longe', -16.36), location('perto', -16.35)]);
+    expect(ranked.map(item => item.courier_id)).toEqual(['perto', 'longe']);
+    expect(Math.round(ranked[0]?.distanceMeters ?? -1)).toBe(0);
+    expect(Math.round(ranked[1]?.distanceMeters ?? -1)).toBe(1112);
+    expect(formatCourierDistance(ranked[1]?.distanceMeters ?? 0)).toBe('1,1 km');
   });
   it('decodifica o trajeto devolvido pelo Google sem biblioteca adicional', () => {
     expect(decodeRoutePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@')).toEqual([

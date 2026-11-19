@@ -17,7 +17,7 @@ export function DeliveryRoutesView({ admin, courier, deliveries, routes, courier
   routes: DeliveryRoute[];
   couriers: Courier[];
   busy: boolean;
-  onAssign: (courierId: string, baseAddress: string) => void;
+  onAssign: (courierId: string, baseAddress: string, deliveryIds?: string[]) => void;
   onEdit: (route: EditorRoute) => void;
   onFinish: (id: string, name: string, status: 'Entregue' | 'Cancelado') => void;
   onStart: (id: string) => void;

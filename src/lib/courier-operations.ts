@@ -76,6 +76,17 @@ export function haversineMeters(a: { latitude: number; longitude: number }, b: {
   return 2 * earth * Math.asin(Math.sqrt(h));
 }
 
+export function rankCourierLocations(point: { latitude: number; longitude: number }, locations: CourierLiveLocation[]) {
+  return locations.map(location => ({ ...location, distanceMeters: haversineMeters(point, location) }))
+    .filter(location => Number.isFinite(location.distanceMeters))
+    .sort((a, b) => a.distanceMeters - b.distanceMeters);
+}
+
+export function formatCourierDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1).replace('.', ',')} km`;
+}
+
 export function shouldSendCourierPosition(
   previous: { latitude: number; longitude: number; sentAt: number } | null,
   next: { latitude: number; longitude: number },

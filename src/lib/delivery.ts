@@ -33,6 +33,11 @@ export function validateDelivery(input:DeliveryInput|undefined):string|null {
 }
 export const addressText = (a:DeliveryAddress) => [a.street,a.number,a.complement,a.neighborhood,a.city,a.state,a.postalCode].filter(Boolean).join(', ');
 export const mapLocation = (a:DeliveryAddress) => a.latitude&&a.longitude?`${a.latitude},${a.longitude}`:addressText(a);
+export function deliveryCoordinates(delivery:Pick<Delivery,'address'>):{latitude:number;longitude:number}|null {
+  const latitude=Number(delivery.address.latitude);const longitude=Number(delivery.address.longitude);
+  if(!delivery.address.latitude||!delivery.address.longitude||!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)return null;
+  return {latitude,longitude};
+}
 export function googleMapsLink(address:DeliveryAddress) {return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapLocation(address))}`;}
 export function routeMapsLink(deliveries:Delivery[],origin:string):string|null {
   if(!deliveries.length||deliveries.length>10)return null;

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapPinned } from 'lucide-react';
-import { deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
+import { deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
 import { decodeRoutePolyline, isCourierLocationStale, type CourierLiveLocation, type DeliveryBase, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 
 type GoogleApi = any;
 type MapMarker = { setMap: (map: unknown) => void };
-export type DeliveryMapFocus = { type: 'all' | 'base' | 'courier'; courierId?: string | undefined; token: number };
+export type DeliveryMapFocus = { type: 'all' | 'base' | 'courier' | 'delivery'; courierId?: string | undefined; deliveryId?: string | undefined; token: number };
 let mapsLoader: Promise<GoogleApi> | null = null;
 
 function loadGoogleMaps(): Promise<GoogleApi> {
@@ -30,14 +30,16 @@ function loadGoogleMaps(): Promise<GoogleApi> {
 
 const tokenColor = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
 
-export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, focus, onSelectCourier }: {
+export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, focus, selectedDeliveryId, onSelectCourier, onSelectDelivery }: {
   base: DeliveryBase | null;
   locations: CourierLiveLocation[];
   deliveries: Delivery[];
   couriers: Courier[];
   route: (DeliveryRouteCalculation & { routeId: string }) | null;
   focus?: DeliveryMapFocus | null;
+  selectedDeliveryId?: string | null;
   onSelectCourier?: (courierId: string) => void;
+  onSelectDelivery?: (deliveryId: string) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<GoogleApi>(null);
@@ -70,10 +72,11 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
     if (line.current) line.current.setMap(null);
     const bounds = new api.maps.LatLngBounds();
     const info = new api.maps.InfoWindow();
-    const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void) => {
+    const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void, selected = false) => {
       const marker = new api.maps.Marker({
-        map: map.current, position, title, label,
-        icon: { path: api.maps.SymbolPath.CIRCLE, fillColor: tokenColor(color), fillOpacity: 1, strokeColor: tokenColor('background'), strokeWeight: 2, scale },
+        map: map.current, position, title, label, zIndex: selected ? 20 : 1,
+        animation: selected ? api.maps.Animation.DROP : undefined,
+        icon: { path: api.maps.SymbolPath.CIRCLE, fillColor: tokenColor(color), fillOpacity: 1, strokeColor: tokenColor(selected ? 'primary' : 'background'), strokeWeight: selected ? 4 : 2, scale: selected ? scale + 2 : scale },
       });
       marker.addListener('click', () => {
         const content = document.createElement('div');
@@ -102,12 +105,22 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       );
     });
     const routeStops = new Map(route?.stops.map(stop => [stop.delivery_id, stop]) ?? []);
-    deliveries.forEach(delivery => {
+    const pointForDelivery = (delivery: Delivery) => {
       const routed = routeStops.get(delivery.id);
-      const latitude = routed?.latitude ?? Number(delivery.address.latitude);
-      const longitude = routed?.longitude ?? Number(delivery.address.longitude);
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (!routed && (!delivery.address.latitude || !delivery.address.longitude))) return;
-      addMarker({ lat: latitude, lng: longitude }, `#${delivery.number} · ${delivery.customer} · ${deliveryMarmitaQuantity(delivery)} marmita(s) · ${delivery.status}`, String(delivery.position || delivery.number), 'warning', 7);
+      if (routed) return { latitude: routed.latitude, longitude: routed.longitude };
+      return deliveryCoordinates(delivery);
+    };
+    deliveries.forEach(delivery => {
+      const point = pointForDelivery(delivery);
+      if (!point) return;
+      const available = !delivery.route_id && delivery.status === 'Pronto para entrega';
+      const selected = delivery.id === selectedDeliveryId;
+      addMarker(
+        { lat: point.latitude, lng: point.longitude },
+        `#${delivery.number} · ${delivery.customer} · ${available ? 'DISPONÍVEL · ' : ''}${deliveryMarmitaQuantity(delivery)} marmita(s) · ${delivery.status}`,
+        String(delivery.position || delivery.number), selected ? 'destructive' : available ? 'ember' : 'warning', available ? 8 : 6,
+        available ? () => onSelectDelivery?.(delivery.id) : undefined, selected,
+      );
     });
     if (route?.polyline) {
       const path = decodeRoutePolyline(route.polyline).map(point => ({ lat: point.latitude, lng: point.longitude }));
@@ -120,6 +133,10 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       if (focus.type === 'courier') {
         const location = locations.find(item => item.courier_id === focus.courierId);
         if (location) { map.current.panTo({ lat: location.latitude, lng: location.longitude }); map.current.setZoom(16); }
+      } else if (focus.type === 'delivery') {
+        const delivery = deliveries.find(item => item.id === focus.deliveryId);
+        const point = delivery ? pointForDelivery(delivery) : null;
+        if (point) { map.current.panTo({ lat: point.latitude, lng: point.longitude }); map.current.setZoom(16); }
       } else if (focus.type === 'base') {
         map.current.panTo(basePosition); map.current.setZoom(15);
       } else if (!bounds.isEmpty()) {
@@ -132,7 +149,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       fitted.current = fitKey;
     }
     return () => { info.close(); };
-  }, [api, base, locations, deliveries, couriers, route, focus, onSelectCourier]);
+  }, [api, base, locations, deliveries, couriers, route, focus, selectedDeliveryId, onSelectCourier, onSelectDelivery]);
 
   if (!base) return <p className="rounded-lg border p-4 text-sm text-muted-foreground">A base ainda não foi configurada.</p>;
   return <div>

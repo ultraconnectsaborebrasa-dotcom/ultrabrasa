@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { addressText, type Delivery, type DeliveryRoute } from '@/lib/delivery';
 import type { CourierOperations, DeliveryRouteCalculation } from '@/lib/courier-operations';
+import { deliveryCoordinates } from '@/lib/delivery';
+import type { Json } from '@/integrations/supabase/types';
 
 export const calculateDeliveryRoute = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
@@ -111,4 +113,53 @@ export const calculateDeliveryRoute = createServerFn({ method: 'POST' })
       duration_seconds: Number(calculated.duration?.replace(/s$/, '')) || 0,
       stops,
     };
+  });
+
+export const locateDeliveryOnMap = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ deliveryId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'admin' });
+    if (!isAdmin) throw new Error('Somente o administrador pode localizar entregas para designação.');
+    const boardResult = await context.supabase.rpc('read_delivery_board');
+    if (boardResult.error) throw new Error(boardResult.error.message);
+    const board = boardResult.data as unknown as { deliveries: Delivery[] };
+    const delivery = board.deliveries.find(item => item.id === data.deliveryId && item.status === 'Pronto para entrega' && !item.route_id);
+    if (!delivery) throw new Error('Esta entrega não está mais disponível para designação.');
+    const existing = deliveryCoordinates(delivery);
+    if (existing) return { deliveryId: delivery.id, ...existing };
+
+    const gatewayKey = process.env['LOVABLE_API_KEY'];
+    const connectionKey = process.env['GOOGLE_MAPS_API_KEY_1'];
+    if (!gatewayKey || !connectionKey) throw new Error('A conexão com o Google Maps ainda não está configurada.');
+    const query = encodeURIComponent(`${addressText(delivery.address)}, Eunápolis, BA, Brasil`);
+    const response = await fetch(`https://connector-gateway.lovable.dev/google_maps/maps/api/geocode/json?address=${query}&region=br&language=pt-BR`, {
+      headers: { Authorization: `Bearer ${gatewayKey}`, 'X-Connection-Api-Key': connectionKey, Accept: 'application/json' },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      console.error(`Google Maps geocoding failed [${response.status}]: ${body}`);
+      if (response.status === 403) {
+        const details = (() => {
+          try { return (JSON.parse(body) as { error?: { details?: { reason?: string }[] } }).error?.details ?? []; }
+          catch { return []; }
+        })();
+        const reason = details.find(detail => detail.reason)?.reason;
+        if (reason === 'API_KEY_HTTP_REFERRER_BLOCKED') throw new Error('A chave UltraBrasa Servidor está restrita a sites. No Google Cloud, deixe as restrições de aplicativo dela como "Nenhum" ou "Endereços IP".');
+        if (reason === 'API_KEY_SERVICE_BLOCKED') throw new Error('A chave UltraBrasa Servidor não libera a Geocoding API. No Google Cloud, adicione esse serviço às permissões da chave.');
+        throw new Error('O Google Maps recusou a chave do servidor. Confira as restrições da chave UltraBrasa Servidor no Google Cloud.');
+      }
+      throw new Error(`O Google Maps respondeu com erro ${response.status}: ${body.slice(0, 240)}`);
+    }
+    const result = await response.json() as { status?: string; error_message?: string; results?: { geometry?: { location?: { lat?: number; lng?: number } } }[] };
+    const location = result.results?.[0]?.geometry?.location;
+    if (result.status !== 'OK' || typeof location?.lat !== 'number' || typeof location.lng !== 'number' || Math.abs(location.lat) > 90 || Math.abs(location.lng) > 180) {
+      throw new Error(`Não foi possível localizar o endereço do pedido #${delivery.number}. Revise o endereço. ${result.error_message ?? result.status ?? ''}`.trim());
+    }
+    const position = { latitude: location.lat, longitude: location.lng };
+    const address = { ...delivery.address, latitude: String(position.latitude), longitude: String(position.longitude) };
+    const { error } = await context.supabase.rpc('update_delivery_address', { delivery_id: delivery.id, input: address as unknown as Json });
+    if (error) throw new Error(`O endereço foi localizado, mas não foi possível salvar: ${error.message}`);
+    return { deliveryId: delivery.id, ...position };
   });

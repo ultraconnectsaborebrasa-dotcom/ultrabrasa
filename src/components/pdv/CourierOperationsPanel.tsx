@@ -10,6 +10,7 @@ import { COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay,
 import { courierMarmitaStock as stockFor, type Courier, type Delivery, type DeliveryRoute } from '@/lib/delivery';
 import { calculateDeliveryRoute } from '@/lib/delivery-route.functions';
 import { LiveDeliveryMap, type DeliveryMapFocus } from './LiveDeliveryMap';
+import { AvailableDeliveryPanel } from './AvailableDeliveryPanel';
 
 const clockTime = (value: string | null) => value ? new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
 
@@ -19,7 +20,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
   deliveries: Delivery[];
   routes: DeliveryRoute[];
   couriers: Courier[];
-  onAssign: (courierId: string, baseAddress: string) => void;
+  onAssign: (courierId: string, baseAddress: string, deliveryIds?: string[]) => void;
 }) {
   const client = useQueryClient();
   const [day, setDay] = useState(saoPauloDay);
@@ -27,6 +28,8 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
   const [route, setRoute] = useState<(DeliveryRouteCalculation & { routeId: string }) | null>(null);
   const [routeBusy, setRouteBusy] = useState(false);
   const [focus, setFocus] = useState<DeliveryMapFocus>({ type: 'all', token: 0 });
+  const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
+  const [locatedPositions, setLocatedPositions] = useState<Record<string, { latitude: string; longitude: string }>>({});
   const [stockForm, setStockForm] = useState<{ driver: Courier; mode: 'load' | 'correct'; quantity: string } | null>(null);
   const [stockBusy, setStockBusy] = useState(false);
   const calculate = useServerFn(calculateDeliveryRoute);
@@ -40,7 +43,9 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
     refetchInterval: 15_000,
   });
   const operations = query.data ?? { base: null, current_courier_id: null, locations: [], time_entries: [] };
-  const activeDeliveries = deliveries.filter(delivery => !['Entregue', 'Cancelado'].includes(delivery.status));
+  const mappedDeliveries = deliveries.map(delivery => locatedPositions[delivery.id] ? { ...delivery, address: { ...delivery.address, ...locatedPositions[delivery.id] } } : delivery);
+  const activeDeliveries = mappedDeliveries.filter(delivery => !['Entregue', 'Cancelado'].includes(delivery.status));
+  const availableDeliveries = activeDeliveries.filter(delivery => !delivery.route_id && delivery.status === 'Pronto para entrega');
   const activeRoutes = routes.filter(item => activeDeliveries.some(delivery => delivery.route_id === item.id));
   const mapDeliveries = focus.type === 'courier' ? activeDeliveries.filter(delivery => delivery.courier_id === focus.courierId) : activeDeliveries;
   const ownCourier = couriers.find(driver => driver.id === operations.current_courier_id);
@@ -56,6 +61,17 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
     setFocus(current => ({ type, courierId, token: current.token + 1 }));
   }, []);
   const selectCourier = useCallback((courierId: string) => focusMap('courier', courierId), [focusMap]);
+  const focusDelivery = useCallback((delivery: Delivery) => {
+    setSelectedDeliveryId(delivery.id);
+    setFocus(current => ({ type: 'delivery', deliveryId: delivery.id, token: current.token + 1 }));
+  }, []);
+  const deliveryLocated = useCallback((delivery: Delivery, position: { latitude: number; longitude: number }) => {
+    setLocatedPositions(current => ({ ...current, [delivery.id]: { latitude: String(position.latitude), longitude: String(position.longitude) } }));
+  }, []);
+  const selectDelivery = useCallback((deliveryId: string) => {
+    const delivery = activeDeliveries.find(item => item.id === deliveryId);
+    if (delivery) focusDelivery(delivery);
+  }, [activeDeliveries, focusDelivery]);
 
   async function showRoute() {
     if (!routeId) return;
@@ -105,8 +121,11 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
         <Button size="sm" variant={focus.type === 'all' ? 'default' : 'outline'} onClick={() => focusMap('all')}><Crosshair size={15} />Visão geral</Button>
         <Button size="sm" variant={focus.type === 'base' ? 'default' : 'outline'} onClick={() => focusMap('base')}><MapPin size={15} />Ir para a base</Button>
         {focus.type === 'courier' && <span className="inline-flex items-center rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">Mostrando {couriers.find(driver => driver.id === focus.courierId)?.name ?? 'motoboy'} e suas entregas</span>}
+        {focus.type === 'delivery' && <span className="inline-flex items-center rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">Entrega #{activeDeliveries.find(delivery => delivery.id === focus.deliveryId)?.number ?? ''} em destaque</span>}
       </div>
-      <LiveDeliveryMap base={operations.base} locations={operations.locations} deliveries={mapDeliveries} couriers={couriers} route={route} focus={focus} onSelectCourier={selectCourier} />
+      <LiveDeliveryMap base={operations.base} locations={operations.locations} deliveries={mapDeliveries} couriers={couriers} route={route} focus={focus} selectedDeliveryId={selectedDeliveryId} onSelectCourier={selectCourier} onSelectDelivery={selectDelivery} />
+
+      {admin && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={couriers} locations={operations.locations} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} onFocusDelivery={focusDelivery} onLocated={deliveryLocated} onAssign={onAssign} />}
 
       {admin && <div className="space-y-3">
         <div><h3 className="flex items-center gap-2 font-semibold"><Users size={18} /> Motoboys e cargas</h3><p className="text-xs text-muted-foreground">Localize, registre a carga ou escolha quem receberá as próximas entregas.</p></div>
