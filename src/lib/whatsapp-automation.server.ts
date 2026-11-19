@@ -251,7 +251,8 @@ export async function processJobs(db:Admin,limit=2){
       const reason=e instanceof Error?e.message:String(e);
       const ambiguous=!['interpret','receipt'].includes(j.kind)||e instanceof GatewayError&&(e.outcome==='unknown'||['NetworkError','TimeoutError'].includes(e.name));
       checkEmpty(await db.from('whatsapp_jobs').update({state:ambiguous?'unknown':'failed',processing_error:reason.slice(0,1000),lease_until:null}).eq('id',j.id));
-      if(j.kind!=='receipt')await handoff(db,j.phone,reason);
+      // A recusa de moeda do provedor fica registrada no envio, mas não pausa o robô nem a conversa.
+      if(j.kind!=='receipt'&&!/\b131042\b/.test(reason))await handoff(db,j.phone,reason);
       if(e instanceof GatewayError&&[402,403,429].includes(e.httpStatus??0)){
         const b=businessSchema.parse(cfg.business);checkEmpty(await db.from('whatsapp_settings').update({business:{...b,circuitPaused:true,circuitReason:reason.slice(0,500)}}).eq('id',1));return;
       }

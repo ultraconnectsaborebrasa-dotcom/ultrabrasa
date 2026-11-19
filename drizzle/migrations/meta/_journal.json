@@ -617,6 +617,20 @@
       "when": 1795095570717,
       "tag": "0087_delivery_direct_sale_guard_and_whatsapp_summary_resume",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1795095863121,
+      "tag": "0088_remove_whatsapp_currency_circuit_break",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1795095994490,
+      "tag": "0089_keep_whatsapp_robot_active_on_currency_refusal",
+      "breakpoints": true
     }
   ]
 }

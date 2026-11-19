@@ -1,17 +1,22 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Robô sem bloqueio por moeda
+- [x] Remover a pausa automática pelo erro 131042 e limpar somente esse bloqueio atual, mantendo o robô ativado.
+- [x] Preservar pedidos, atendimentos humanos, estoque e mensagens antigas sem reenvio retroativo; uma conversa recente afetada foi liberada.
+- [x] 192 testes aprovados, proteção do banco verificada contra nova pausa e tela conferida com “Robô ligado”, sem aviso de moeda ou erros; nenhum envio real de teste.
+
 ## Robô não monta pedidos e comanda não permanece aberta
 - [x] Causas identificadas: o bloqueio da moeda interrompia também a interpretação; o pedido Delivery #900 foi finalizado como venda direta paga no lançamento.
 - [x] O robô monta o rascunho durante bloqueio técnico, mas não confirma pedido enquanto o resumo não for enviado; reativação preserva interpretações e resumos novos e cancela textos antigos.
 - [x] Venda direta fica limitada a Balcão, Mesa e Retirada no Administrador, Caixa e banco. #900 restaurado para Cozinha/Aguardando preparo, com Pix de R$ 25,90 e histórico preservados.
 - [x] 213 testes aprovados; regras do banco verificadas em transação revertida. Tela real confirmou ausência de venda direta Delivery e #900 na cozinha, sem criar pedidos ou enviar mensagens.
-- [ ] O envio real do WhatsApp continua dependendo da configuração da moeda como Real (BRL) na conta comercial; nenhuma configuração externa foi alterada.
+- [x] Nenhuma configuração externa de moeda foi alterada; por decisão do responsável, essa recusa não pausa mais o robô.
 
 ## Robô não responde após ativação
 - [x] Causa identificada: envios automáticos aceitos e depois recusados pelo WhatsApp com erro 131042, pois a moeda da conta comercial não está configurada; conexão e agendamento estão ativos.
 - [x] Detectar essa recusa, mostrar “Envio bloqueado” e o motivo no controle; ativar limpa o bloqueio, preserva interpretações novas e cancela respostas antigas já montadas.
 - [x] 190 testes de WhatsApp aprovados; função autorizada testada em transação revertida com interpretação nova pendente e texto antigo cancelado. Painel verificado com o responsável em 1280×1800, sem erros, cliques de ativação ou mensagens reais de teste.
-- [ ] Configuração da moeda como Real (BRL) no Gerenciador do WhatsApp aguarda ação do responsável pela conta; nenhuma cobrança ou configuração externa foi alterada.
+- [x] O responsável optou por não alterar a moeda; nenhuma cobrança ou configuração externa foi feita e o bloqueio automático foi removido.
 
 ## Aplicativo do entregador com fluxo de corridas
 - [x] Destacar o pedido designado e a próxima parada, com sequência visual de todos os destinos.

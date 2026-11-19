@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { processEvent, WHATSAPP_CURRENCY_ERROR } from '@/lib/whatsapp.server';
+import { processEvent } from '@/lib/whatsapp.server';
 import { defaultBusiness } from '@/lib/whatsapp-business';
 
 type Db = Parameters<typeof processEvent>[0];
@@ -28,17 +28,9 @@ function event(errors: unknown) {
 }
 
 describe('falha definitiva de entrega do WhatsApp', () => {
-  it('pausa o envio automático quando a moeda da conta não está configurada', async () => {
-    const { db, updates } = statusDb([{ code: 131042 }]);
-    await processEvent(db, 'whatsapp.status', event([{ code: 131042 }]));
-    expect(updates).toContainEqual(expect.objectContaining({
-      business: expect.objectContaining({ circuitPaused: true, circuitReason: WHATSAPP_CURRENCY_ERROR }),
-    }));
-  });
-
-  it('não pausa o robô por uma falha diferente', async () => {
-    const { db, updates } = statusDb([{ code: 131026 }]);
-    await processEvent(db, 'whatsapp.status', event([{ code: 131026 }]));
+  it.each([131042, 131026])('não pausa o robô pela falha %s do provedor', async code => {
+    const { db, updates } = statusDb([{ code }]);
+    await processEvent(db, 'whatsapp.status', event([{ code }]));
     expect(updates).toHaveLength(0);
   });
 });

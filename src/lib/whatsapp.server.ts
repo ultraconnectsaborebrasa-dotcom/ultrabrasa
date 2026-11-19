@@ -2,24 +2,6 @@
 import { ATTACHMENT_ACK, isAttachment } from './whatsapp-attachments';
 import { businessSchema, conversationDraftSchema } from './whatsapp-business';
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/whatsapp';
-export const WHATSAPP_CURRENCY_ERROR = 'O WhatsApp recusou os envios porque a moeda da conta comercial não está configurada. Defina Real (BRL) no Gerenciador do WhatsApp e ative o robô novamente.';
-
-function hasCurrencyConfigurationError(errors: unknown) {
-  return Array.isArray(errors) && errors.some(error => Number((error as { code?: unknown })?.code) === 131042);
-}
-
-async function recordDeliveryFailure(db: Admin, errors: unknown) {
-  if (!hasCurrencyConfigurationError(errors)) return;
-  const settings = await db.from('whatsapp_settings').select('business').eq('id', 1).single();
-  if (settings.error) throw new Error(settings.error.message);
-  const business = businessSchema.parse(settings.data.business ?? {});
-  const updated = await db.from('whatsapp_settings').update({
-    business: { ...business, circuitPaused: true, circuitReason: WHATSAPP_CURRENCY_ERROR },
-    updated_at: new Date().toISOString(),
-  }).eq('id', 1);
-  if (updated.error) throw new Error(updated.error.message);
-}
-
 function keys() {
   const lovable = process.env['LOVABLE_API_KEY'];
   const wa = process.env['WHATSAPP_API_KEY'];
@@ -170,7 +152,6 @@ export async function processEvent(db: Admin, event: string, payload: any) {
     for (const s of value.statuses ?? []) {
       const r = await db.rpc('wa_apply_status', { _id: s.id, _status: s.status, _at: tsOf(s.timestamp), _errors: s.errors ?? null });
       if (r.error) throw new Error(r.error.message);
-      if (s.status === 'failed') await recordDeliveryFailure(db, s.errors ?? null);
     }
   } else if (event === 'whatsapp.smb_message_echoes') {
     for (const m of value.message_echoes ?? []) await storeMessage(db, m, 'out', 'phone', digits(m.to ?? ''));
