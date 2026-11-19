@@ -1,5 +1,13 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Mapa operacional e estoque dos motoboys
+- [x] Mostrar base, motoboys e entregas em um mapa mais legível, com foco por pessoa e controles simples de enquadramento.
+- [x] Registrar a carga de marmitas de cada saída e mostrar quantas estão com o entregador, reservadas e disponíveis para novas entregas.
+- [x] Facilitar selecionar um motoboy e designar entregas prontas, validando a quantidade disponível no banco.
+- [x] Baixar o estoque automaticamente ao concluir cada entrega, sem alterar vendas ou pagamentos e sem duplicar baixas.
+- [x] 26 testes aprovados; gravação de carga e bloqueio de designação verificados na tela, baixa 12→10 e deduplicação testadas em transação revertida. Sem overflow móvel ou erros de console; dados temporários removidos.
+- [ ] Validar o mapa Google ao vivo em um domínio autorizado; essa verificação não é suportada no ambiente de desenvolvimento.
+
 ## Rotas limpas e fáceis de operar
 - [x] Visual moderno de aplicativo de mobilidade, prático no celular e no PDV, mantendo as ações existentes.
 - [x] Consumo levantado: chaves próprias do Google, sem IA/imagens novas, mapa fechado por padrão e trajeto somente sob comando; verificações de avisos ocultos não são feitas em Rotas.

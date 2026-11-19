@@ -106,6 +106,86 @@ export type Database = {
           },
         ]
       }
+      courier_marmita_movements: {
+        Row: {
+          actor_id: string | null
+          courier_id: string
+          created_at: string
+          delivery_id: string | null
+          id: string
+          kind: string
+          quantity_change: number
+          resulting_quantity: number
+        }
+        Insert: {
+          actor_id?: string | null
+          courier_id: string
+          created_at?: string
+          delivery_id?: string | null
+          id?: string
+          kind: string
+          quantity_change: number
+          resulting_quantity: number
+        }
+        Update: {
+          actor_id?: string | null
+          courier_id?: string
+          created_at?: string
+          delivery_id?: string | null
+          id?: string
+          kind?: string
+          quantity_change?: number
+          resulting_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_marmita_movements_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_marmita_movements_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: true
+            referencedRelation: "delivery_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_marmita_stock: {
+        Row: {
+          courier_id: string
+          initial_quantity: number
+          remaining_quantity: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          courier_id: string
+          initial_quantity: number
+          remaining_quantity: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          courier_id?: string
+          initial_quantity?: number
+          remaining_quantity?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_marmita_stock_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: true
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_time_entries: {
         Row: {
           amount: number
@@ -1172,6 +1252,10 @@ export type Database = {
         Args: { _id: string; _method?: string }
         Returns: Json
       }
+      delivery_marmita_quantity: {
+        Args: { p_order_id: string }
+        Returns: number
+      }
       delivery_staff: { Args: never; Returns: boolean }
       depart_delivery: {
         Args: { _courier?: string; _order: string }
@@ -1312,6 +1396,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_courier_marmita_stock: {
+        Args: { p_courier_id: string; p_mode?: string; p_quantity: number }
+        Returns: undefined
       }
       set_pdv_role: {
         Args: {

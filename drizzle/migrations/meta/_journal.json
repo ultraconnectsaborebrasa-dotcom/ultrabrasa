@@ -589,6 +589,13 @@
       "when": 1795057607640,
       "tag": "0083_courier_time_tracking_and_live_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1795060592944,
+      "tag": "0084_courier_marmita_stock",
+      "breakpoints": true
     }
   ]
 }

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapPinned } from 'lucide-react';
-import type { Delivery } from '@/lib/delivery';
-import { decodeRoutePolyline, type CourierLiveLocation, type DeliveryBase, type DeliveryRouteCalculation } from '@/lib/courier-operations';
+import { deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
+import { decodeRoutePolyline, isCourierLocationStale, type CourierLiveLocation, type DeliveryBase, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 
 type GoogleApi = any;
 type MapMarker = { setMap: (map: unknown) => void };
+export type DeliveryMapFocus = { type: 'all' | 'base' | 'courier'; courierId?: string | undefined; token: number };
 let mapsLoader: Promise<GoogleApi> | null = null;
 
 function loadGoogleMaps(): Promise<GoogleApi> {
@@ -27,17 +28,23 @@ function loadGoogleMaps(): Promise<GoogleApi> {
   return mapsLoader;
 }
 
-export function LiveDeliveryMap({ base, locations, deliveries, route }: {
+const tokenColor = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
+
+export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, focus, onSelectCourier }: {
   base: DeliveryBase | null;
   locations: CourierLiveLocation[];
   deliveries: Delivery[];
+  couriers: Courier[];
   route: (DeliveryRouteCalculation & { routeId: string }) | null;
+  focus?: DeliveryMapFocus | null;
+  onSelectCourier?: (courierId: string) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<GoogleApi>(null);
   const markers = useRef<MapMarker[]>([]);
   const line = useRef<GoogleApi>(null);
   const fitted = useRef('');
+  const lastFocus = useRef(0);
   const [api, setApi] = useState<GoogleApi>(null);
   const [error, setError] = useState('');
 
@@ -49,6 +56,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, route }: {
       window.gm_authFailure = () => { if (active) setError('O Google Maps não autorizou este endereço. Configure uma chave própria para o domínio da loja.'); };
       map.current = new google.maps.Map(container.current, {
         center: { lat: base.base_latitude, lng: base.base_longitude }, zoom: 14, clickableIcons: false,
+        mapTypeControl: false, streetViewControl: false, fullscreenControl: true, zoomControl: true,
       });
       setApi(google);
     }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Não foi possível carregar o mapa.'); });
@@ -62,48 +70,73 @@ export function LiveDeliveryMap({ base, locations, deliveries, route }: {
     if (line.current) line.current.setMap(null);
     const bounds = new api.maps.LatLngBounds();
     const info = new api.maps.InfoWindow();
-    const addMarker = (position: { lat: number; lng: number }, title: string, label: string) => {
-      const marker = new api.maps.Marker({ map: map.current, position, title, label });
+    const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void) => {
+      const marker = new api.maps.Marker({
+        map: map.current, position, title, label,
+        icon: { path: api.maps.SymbolPath.CIRCLE, fillColor: tokenColor(color), fillOpacity: 1, strokeColor: tokenColor('background'), strokeWeight: 2, scale },
+      });
       marker.addListener('click', () => {
         const content = document.createElement('div');
         content.textContent = title;
         info.setContent(content);
         info.open(map.current, marker);
+        onClick?.();
       });
       markers.current.push(marker);
       bounds.extend(position);
     };
     const basePosition = { lat: base.base_latitude, lng: base.base_longitude };
-    addMarker(basePosition, `Base · ${base.base_address}`, 'B');
-    locations.forEach(location => addMarker(
-      { lat: location.latitude, lng: location.longitude },
-      `${location.name} · atualizado ${new Date(location.located_at).toLocaleTimeString('pt-BR')}`,
-      location.name.trim().slice(0, 1).toUpperCase() || 'E',
-    ));
+    addMarker(basePosition, `BASE · ${base.base_address}`, 'B', 'success', 11);
+    locations.forEach(location => {
+      const driver = couriers.find(item => item.id === location.courier_id);
+      const assigned = deliveries.filter(delivery => delivery.courier_id === location.courier_id);
+      const marmitas = assigned.reduce((total, delivery) => total + deliveryMarmitaQuantity(delivery), 0);
+      const available = driver?.available_quantity;
+      const stock = available === null || available === undefined ? 'carga não registrada' : `${available} marmita(s) disponível(is) para novas entregas`;
+      addMarker(
+        { lat: location.latitude, lng: location.longitude },
+        `${location.name} · ${stock} · ${marmitas} marmita(s) nas entregas abertas · GPS ${new Date(location.located_at).toLocaleTimeString('pt-BR')}`,
+        location.name.trim().slice(0, 1).toUpperCase() || 'M',
+        isCourierLocationStale(location.located_at) ? 'muted-foreground' : 'primary', 10,
+        () => onSelectCourier?.(location.courier_id),
+      );
+    });
     const routeStops = new Map(route?.stops.map(stop => [stop.delivery_id, stop]) ?? []);
     deliveries.forEach(delivery => {
       const routed = routeStops.get(delivery.id);
       const latitude = routed?.latitude ?? Number(delivery.address.latitude);
       const longitude = routed?.longitude ?? Number(delivery.address.longitude);
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (!routed && (!delivery.address.latitude || !delivery.address.longitude))) return;
-      addMarker({ lat: latitude, lng: longitude }, `#${delivery.number} · ${delivery.customer}`, String(delivery.position || delivery.number));
+      addMarker({ lat: latitude, lng: longitude }, `#${delivery.number} · ${delivery.customer} · ${deliveryMarmitaQuantity(delivery)} marmita(s) · ${delivery.status}`, String(delivery.position || delivery.number), 'warning', 7);
     });
     if (route?.polyline) {
       const path = decodeRoutePolyline(route.polyline).map(point => ({ lat: point.latitude, lng: point.longitude }));
-      line.current = new api.maps.Polyline({ map: map.current, path, strokeWeight: 5, strokeOpacity: 0.8 });
+      line.current = new api.maps.Polyline({ map: map.current, path, strokeWeight: 5, strokeOpacity: 0.8, strokeColor: tokenColor('primary') });
       path.forEach(point => bounds.extend(point));
     }
     const fitKey = `${base.base_latitude}:${base.base_longitude}:${route?.routeId ?? ''}:${deliveries.map(item => item.id).join(',')}:${locations.map(item => item.courier_id).join(',')}`;
-    if (!bounds.isEmpty() && fitted.current !== fitKey) {
-      map.current.fitBounds(bounds, 48);
+    const explicitFocus = focus && focus.token !== lastFocus.current;
+    if (explicitFocus) {
+      if (focus.type === 'courier') {
+        const location = locations.find(item => item.courier_id === focus.courierId);
+        if (location) { map.current.panTo({ lat: location.latitude, lng: location.longitude }); map.current.setZoom(16); }
+      } else if (focus.type === 'base') {
+        map.current.panTo(basePosition); map.current.setZoom(15);
+      } else if (!bounds.isEmpty()) {
+        map.current.fitBounds(bounds, 56);
+      }
+      fitted.current = fitKey;
+      lastFocus.current = focus.token;
+    } else if (!bounds.isEmpty() && fitted.current !== fitKey) {
+      map.current.fitBounds(bounds, 56);
       fitted.current = fitKey;
     }
     return () => { info.close(); };
-  }, [api, base, locations, deliveries, route]);
+  }, [api, base, locations, deliveries, couriers, route, focus, onSelectCourier]);
 
   if (!base) return <p className="rounded-lg border p-4 text-sm text-muted-foreground">A base ainda não foi configurada.</p>;
   return <div>
-    {error ? <div role="alert" className="grid h-[320px] place-items-center rounded-lg border bg-muted p-6 text-center md:h-[420px]"><div><MapPinned className="mx-auto mb-3 text-muted-foreground" /><p className="max-w-lg text-sm text-muted-foreground">{error}</p><p className="mt-2 text-xs text-muted-foreground">Os endereços e os botões para abrir a navegação continuam disponíveis.</p></div></div> : <div ref={container} className="h-[320px] w-full rounded-lg border md:h-[420px]" aria-label="Mapa da base, entregadores e entregas" />}
+    {error ? <div role="alert" className="grid h-[360px] place-items-center rounded-xl border bg-muted p-6 text-center md:h-[480px]"><div><MapPinned className="mx-auto mb-3 text-muted-foreground" /><p className="max-w-lg text-sm text-muted-foreground">{error}</p><p className="mt-2 text-xs text-muted-foreground">Os endereços e os botões para abrir a navegação continuam disponíveis.</p></div></div> : <div ref={container} className="h-[360px] w-full rounded-xl border md:h-[480px]" aria-label="Mapa da base, entregadores e entregas" />}
   </div>;
 }
 

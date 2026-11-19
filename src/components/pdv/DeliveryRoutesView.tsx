@@ -62,9 +62,9 @@ export function DeliveryRoutesView({ admin, courier, deliveries, routes, courier
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
       <div className="flex items-center gap-3">
         <div className="rounded-lg bg-primary/10 p-2 text-primary"><Map size={20} /></div>
-        <div><h3 className="font-semibold">Mapa e equipe ao vivo</h3><p className="text-xs text-muted-foreground">Abra somente quando precisar acompanhar ou calcular um trajeto.</p></div>
+        <div><h3 className="font-semibold">Mapa, motoboys e cargas</h3><p className="text-xs text-muted-foreground">Abra para localizar a equipe, registrar marmitas e designar entregas.</p></div>
       </div>
-      <Button variant="outline" size="sm" onClick={() => setMapOpen(open => !open)}>{mapOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{mapOpen ? 'Ocultar mapa' : 'Abrir mapa'}</Button>
+      <Button variant="outline" size="sm" onClick={() => setMapOpen(open => !open)}>{mapOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{mapOpen ? 'Ocultar operação' : 'Abrir mapa e equipe'}</Button>
     </div>
 
     {mapOpen && <CourierOperationsPanel admin={admin} courier={courier} deliveries={deliveries} routes={routes} couriers={couriers} onAssign={onAssign} />}
