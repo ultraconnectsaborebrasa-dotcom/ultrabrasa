@@ -1,5 +1,12 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## APK Android com atualização pelo site oficial
+- [x] Apresentar o aplicativo como “Ultraconnect Entregas”, voltado ao ponto, GPS e rotas dos motoboys.
+- [x] Apontar o aplicativo para o domínio oficial, preservando o endereço publicado como alternativa segura.
+- [x] Permitir GPS somente após autorização do entregador, sem ponte JavaScript, banco separado ou tráfego sem HTTPS.
+- [x] Gerar um APK instalável e verificar assinatura, pacote, versão, permissões e endereço incorporado.
+- [x] Entregar o APK em Files; compilação e análise nativa aprovadas, mas instalação, login e GPS no aparelho real não foram verificados neste ambiente.
+
 ## Ponto atual e rotas mais práticas
 - [x] Mostrar somente o turno atual, sem os horários fixos nem o cartão do outro turno.
 - [x] Exibir “Bater ponto” apenas antes da entrada e substituí-lo pelo horário real registrado.
