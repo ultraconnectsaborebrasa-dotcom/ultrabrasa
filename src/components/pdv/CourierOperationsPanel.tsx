@@ -98,7 +98,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
         </div>
       </div>}
 
-      {admin && <section className="space-y-4 border-t pt-5">
+      {admin && <details className="rounded-lg border bg-background p-4"><summary className="cursor-pointer font-semibold">Ponto e valores da equipe</summary><section className="mt-5 space-y-4 border-t pt-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div><h3 className="flex items-center gap-2 text-lg font-semibold"><Clock3 size={18} /> Ponto da equipe</h3><p className="text-sm text-muted-foreground">Entradas, saídas e valores por turno</p></div>
           <label className="text-sm">Dia<input aria-label="Dia do ponto" className="field ml-2 w-auto" type="date" value={day} onChange={event => setDay(event.target.value)} /></label>
@@ -107,7 +107,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
         <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="bg-muted text-left"><tr><th className="p-3">Entregador</th><th>Turno</th><th>Horário previsto</th><th>Entrada</th><th>Saída</th><th className="text-right">Valor</th></tr></thead><tbody>
           {operations.time_entries.map(entry => <tr key={entry.id} className="border-b"><td className="p-3 font-medium">{entry.courier_name}</td><td>{COURIER_SHIFTS[entry.shift_code]?.label ?? entry.shift_code}</td><td>{COURIER_SHIFTS[entry.shift_code]?.start}–{COURIER_SHIFTS[entry.shift_code]?.end}</td><td>{new Date(entry.entry_at).toLocaleString('pt-BR')}</td><td>{entry.exit_at ? new Date(entry.exit_at).toLocaleString('pt-BR') : <span className="text-warning">Turno aberto</span>}</td><td className="text-right font-semibold">{brl(entry.amount)}</td></tr>)}
         </tbody></table>{!operations.time_entries.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum ponto registrado neste dia.</p>}</div>
-      </section>}
+       </section></details>}
     </>}
   </section>;
 }

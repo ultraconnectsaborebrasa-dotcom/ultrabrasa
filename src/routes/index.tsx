@@ -119,7 +119,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
           </Button>
         </div>
       </header>
-      <div className={tab==='whatsapp'?'hidden':''}>
+      <div className={tab==='whatsapp'||tab==='rotas'?'hidden':''}>
         <NewOrderAlerts orders={orders} onOpen={() => setTab('cozinha')}/>
         {admin&&<WhatsAppNotifications onOpen={phone=>{setWhatsAppPhone(phone);setTab('whatsapp');}} onAccept={acceptWhatsAppOrder} productName={id=>products.find(p=>p.id===id)?.name??'item'}/>}
       </div>

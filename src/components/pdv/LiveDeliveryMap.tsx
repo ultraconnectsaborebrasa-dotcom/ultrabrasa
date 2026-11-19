@@ -103,7 +103,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, route }: {
 
   if (!base) return <p className="rounded-lg border p-4 text-sm text-muted-foreground">A base ainda não foi configurada.</p>;
   return <div>
-    {error ? <div role="alert" className="grid h-[430px] place-items-center rounded-lg border bg-muted p-6 text-center"><div><MapPinned className="mx-auto mb-3 text-muted-foreground" /><p className="max-w-lg text-sm text-muted-foreground">{error}</p><p className="mt-2 text-xs text-muted-foreground">Os endereços e os botões para abrir a navegação continuam disponíveis.</p></div></div> : <div ref={container} className="h-[430px] w-full rounded-lg border md:h-[520px]" aria-label="Mapa da base, entregadores e entregas" />}
+    {error ? <div role="alert" className="grid h-[320px] place-items-center rounded-lg border bg-muted p-6 text-center md:h-[420px]"><div><MapPinned className="mx-auto mb-3 text-muted-foreground" /><p className="max-w-lg text-sm text-muted-foreground">{error}</p><p className="mt-2 text-xs text-muted-foreground">Os endereços e os botões para abrir a navegação continuam disponíveis.</p></div></div> : <div ref={container} className="h-[320px] w-full rounded-lg border md:h-[420px]" aria-label="Mapa da base, entregadores e entregas" />}
   </div>;
 }
 

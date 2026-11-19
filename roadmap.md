@@ -1,12 +1,21 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Rotas limpas e fáceis de operar
+- [x] Visual moderno de aplicativo de mobilidade, prático no celular e no PDV, mantendo as ações existentes.
+- [x] Consumo levantado: chaves próprias do Google, sem IA/imagens novas, mapa fechado por padrão e trajeto somente sob comando; verificações de avisos ocultos não são feitas em Rotas.
+- [x] Rotas em andamento e concluídas separadas, com cartões, busca, ações principais e mapa/equipe recolhíveis.
+- [x] Designação, início, navegação, impressão, problemas e baixa manual preservados, sem alterar pagamentos.
+- [x] Nenhuma rota aberta encontrada; cinco rotas concluídas preservadas no histórico e vendas/pagamentos intactos.
+- [x] Regras testadas e fluxo visual verificado em 1280×1800, 890×674 e 390×844, sem overflow, erros de console ou chamadas ao Google ao abrir.
+
 ## Ponto e mapa em tempo real dos entregadores
 - [x] Entrada e saída logo após o login, turnos 11:00–14:00 e 18:00–22:00 e R$ 60 por turno; fluxo móvel verificado com conta temporária.
 - [x] Histórico administrativo por entregador, com horários reais e total de turnos/valores; tela verificada em 890×674.
 - [x] Mapa administrativo com base confirmada, posições reais protegidas por permissão e designação de entregas para revisão, sem salvar rotas de teste.
 - [x] Tela móvel do entregador com trajeto sob comando, cliente, itens/quantidades, endereço, pagamento e observações; dados existentes preservados.
 - [x] Google conectado e cálculo limitado à atribuição/consulta explícita; 392 testes aprovados, build OK e dados temporários removidos.
-- [ ] Para o domínio personalizado, conectar uma chave própria do Google Maps e validar o mapa publicado; o teste ao vivo do Google não foi executado. GPS em segundo plano não é garantido pelo navegador.
+- [x] Chaves próprias do Google Maps conectadas para o domínio personalizado; trajetos usam a credencial própria do servidor.
+- [ ] Validar o mapa publicado em um domínio autorizado; o teste ao vivo do Google não é suportado no ambiente de desenvolvimento. GPS em segundo plano não é garantido pelo navegador.
 
 ## Modo de estoque esgotado no WhatsApp
 - [x] Botão “Estoque esgotado” junto ao controle do robô, autorizado para Administrador e Caixa e com estado persistido no banco.

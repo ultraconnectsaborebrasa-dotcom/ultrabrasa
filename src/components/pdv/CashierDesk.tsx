@@ -139,8 +139,8 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
  const payBadge=(o:Order)=>o.paymentStatus==='pago'||o.hasPayment?<span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">Pago</span>:receiptOrders.includes(o.id)?<span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning">Comprovante aguardando conferência</span>:<span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">{o.type==='Delivery'?'A receber na entrega':'A receber'} · {brl(o.total)}</span>;
  return <div className="min-h-dvh p-5 space-y-5">
   <header className="flex flex-wrap items-center gap-3 border-b pb-4"><Brand/><div><h1 className="text-xl font-bold">Caixa · Ultrabrasa</h1><p className="text-sm text-muted-foreground">{name} · Acesso limitado</p></div><Button className="ml-auto" variant="outline" onClick={()=>void signOut()}>Sair</Button></header>
-  <WhatsAppNotifications onOpen={phone=>{setWaPhone(phone);setTab('whatsapp');}} onAccept={acceptWhatsAppOrder} productName={id=>data.products.find(p=>p.id===id)?.name??'item'}/>
-  <NewOrderAlerts orders={data.orders} ready={data !== empty} onOpen={()=>setTab('kitchen')}/>
+  <div className={tab==='routes'||tab==='whatsapp'?'hidden':''}><WhatsAppNotifications onOpen={phone=>{setWaPhone(phone);setTab('whatsapp');}} onAccept={acceptWhatsAppOrder} productName={id=>data.products.find(p=>p.id===id)?.name??'item'}/>
+  <NewOrderAlerts orders={data.orders} ready={data !== empty} onOpen={()=>setTab('kitchen')}/></div>
   <nav className="flex flex-wrap gap-2">
    <Button variant={tab==='sell'?'default':'outline'} onClick={()=>setTab('sell')}><ShoppingBag className="mr-1 h-4 w-4"/>Vender produtos</Button>
    <Button variant={tab==='kitchen'?'default':'outline'} onClick={()=>setTab('kitchen')}><ChefHat className="mr-1 h-4 w-4"/>Cozinha ({kitchenOrders.length})</Button>

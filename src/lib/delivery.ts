@@ -32,3 +32,15 @@ export function routeTotals(deliveries:Delivery[]) {
   deliveries.forEach(d=>{result.total+=d.total??0;const due=d.due??0;const method=d.payment_method.toLowerCase();if(method==='dinheiro')result.cash+=due;else if(method==='pix')result.pix+=due;else if(/crédito|débito|cartão/.test(method))result.card+=due;else result.other+=due;});return result;
 }
 export const isLateDelivery=(d:Pick<Delivery,'created_at'|'status'>,minutes:number,now=Date.now())=>!['Entregue','Cancelado'].includes(d.status)&&now-new Date(d.created_at).getTime()>minutes*60000;
+
+export function partitionDeliveryRoutes(routes:DeliveryRoute[],deliveries:Delivery[]) {
+  const active:DeliveryRoute[]=[];
+  const completed:DeliveryRoute[]=[];
+  routes.forEach(route=>{
+    const open=deliveries.some(delivery=>delivery.route_id===route.id&&canFinishDelivery(delivery.status));
+    (open?active:completed).push(route);
+  });
+  active.sort((a,b)=>a.created_at.localeCompare(b.created_at));
+  completed.sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  return {active,completed};
+}
