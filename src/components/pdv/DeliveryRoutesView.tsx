@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Check, CheckCircle2, ChevronDown, ChevronUp, CircleDollarSign, Clock3, Map, MapPin, MessageCircle, Navigation, Phone, Printer, Route as RouteIcon, Search, Truck, UserRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { addressText, canFinishDelivery, googleMapsLink, partitionDeliveryRoutes, routeMapsLink, routeTotals, type Courier, type Delivery, type DeliveryRoute } from '@/lib/delivery';
+import { addressText, canFinishDelivery, googleMapsLink, routeMapsLink, routeTotals, type Courier, type Delivery, type DeliveryRoute } from '@/lib/delivery';
+import { currentKitchenDeliveries, currentKitchenRoutes } from '@/lib/delivery-operation';
 import { brl } from '@/lib/pdv-store';
 import { whatsappLink } from '@/lib/pdv-customers';
 import { printDeliveryTicket, printRouteSheet } from '@/services/thermalPrinter';
@@ -25,26 +26,23 @@ export function DeliveryRoutesView({ admin, courier, deliveries, routes, courier
   onProblem: (id: string, problem: string) => void;
   onPrepare: () => void;
 }) {
-  const [mode, setMode] = useState<'active' | 'completed'>('active');
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<string | null | undefined>(undefined);
   const [limit, setLimit] = useState(20);
-  const [mapOpen, setMapOpen] = useState(courier);
-  const partitioned = useMemo(() => partitionDeliveryRoutes(routes, deliveries), [routes, deliveries]);
+  const [mapOpen, setMapOpen] = useState(!courier);
+  const currentDeliveries = useMemo(() => currentKitchenDeliveries(deliveries), [deliveries]);
+  const currentRoutes = useMemo(() => currentKitchenRoutes(routes, deliveries), [routes, deliveries]);
   const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR');
-  const visibleRoutes = partitioned[mode].filter(route => {
+  const visibleRoutes = currentRoutes.filter(route => {
     if (!normalizedQuery) return true;
-    const stops = deliveries.filter(delivery => delivery.route_id === route.id);
+    const stops = currentDeliveries.filter(delivery => delivery.route_id === route.id);
     const courierName = couriers.find(driver => driver.id === route.courier_id)?.name ?? '';
     return `${route.name} ${courierName} ${stops.map(stop => `${stop.number} ${stop.customer} ${addressText(stop.address)}`).join(' ')}`.toLocaleLowerCase('pt-BR').includes(normalizedQuery);
   });
   const displayedRoutes = visibleRoutes.slice(0, limit);
-  const activeExpanded = expanded === undefined ? partitioned.active[0]?.id ?? null : expanded;
-  const readyCount = partitioned.active.filter(route => {
-    const stops = deliveries.filter(delivery => delivery.route_id === route.id);
-    return stops.length > 0 && stops.every(stop => stop.status === 'Pronto para entrega');
-  }).length;
-  const movingCount = partitioned.active.filter(route => deliveries.some(stop => stop.route_id === route.id && stop.status === 'Em rota')).length;
+  const activeExpanded = expanded === undefined ? currentRoutes[0]?.id ?? null : expanded;
+  const readyCount = currentDeliveries.filter(delivery => delivery.status === 'Pronto para entrega').length;
+  const movingCount = currentDeliveries.filter(delivery => delivery.status === 'Em rota').length;
 
   function openMaps(url: string | null) {
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
@@ -62,41 +60,38 @@ export function DeliveryRoutesView({ admin, courier, deliveries, routes, courier
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
       <div className="flex items-center gap-3">
         <div className="rounded-lg bg-primary/10 p-2 text-primary"><Map size={20} /></div>
-        <div><h3 className="font-semibold">Mapa, motoboys e cargas</h3><p className="text-xs text-muted-foreground">Abra para localizar a equipe, registrar marmitas e designar entregas.</p></div>
+        <div><h3 className="font-semibold">Mapa da cidade e equipe ao vivo</h3><p className="text-xs text-muted-foreground">Toque em uma moto para localizar o motoboy e ver as entregas dele.</p></div>
       </div>
-      <Button variant="outline" size="sm" onClick={() => setMapOpen(open => !open)}>{mapOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{mapOpen ? 'Ocultar operação' : 'Abrir mapa e equipe'}</Button>
+      <Button variant="outline" size="sm" onClick={() => setMapOpen(open => !open)}>{mapOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{mapOpen ? 'Recolher mapa' : 'Abrir mapa e equipe'}</Button>
     </div>
 
-    {mapOpen && <CourierOperationsPanel admin={admin} courier={courier} deliveries={deliveries} routes={routes} couriers={couriers} onAssign={onAssign} />}
+    {mapOpen && <CourierOperationsPanel admin={admin} courier={courier} deliveries={currentDeliveries} routes={currentRoutes} couriers={couriers} onAssign={onAssign} />}
 
     <div className="grid grid-cols-3 gap-2 sm:max-w-xl">
-      <div className="rounded-xl border bg-card p-3"><p className="text-xs text-muted-foreground">Em andamento</p><p className="mt-1 text-xl font-bold">{partitioned.active.length}</p></div>
+      <div className="rounded-xl border bg-card p-3"><p className="text-xs text-muted-foreground">Saídas de hoje</p><p className="mt-1 text-xl font-bold">{currentDeliveries.length}</p></div>
       <div className="rounded-xl border bg-card p-3"><p className="text-xs text-muted-foreground">Prontas para sair</p><p className="mt-1 text-xl font-bold">{readyCount}</p></div>
       <div className="rounded-xl border bg-card p-3"><p className="text-xs text-muted-foreground">Na rua</p><p className="mt-1 text-xl font-bold">{movingCount}</p></div>
     </div>
 
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="inline-flex w-fit rounded-lg bg-muted p-1">
-        <Button size="sm" variant={mode === 'active' ? 'default' : 'ghost'} onClick={() => { setMode('active'); setLimit(20); }}>Em andamento · {partitioned.active.length}</Button>
-        <Button size="sm" variant={mode === 'completed' ? 'default' : 'ghost'} onClick={() => { setMode('completed'); setLimit(20); }}>Concluídas · {partitioned.completed.length}</Button>
-      </div>
+      <div><h3 className="font-semibold">Rotas das saídas atuais <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{currentRoutes.length}</span></h3><p className="mt-1 text-xs text-muted-foreground">Somente pedidos prontos ou na rua hoje. As concluídas continuam guardadas no Histórico.</p></div>
       <label className="relative block sm:w-80"><Search size={16} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="Buscar rotas" className="field pl-9" placeholder="Pedido, cliente ou entregador" value={query} onChange={event => { setQuery(event.target.value); setLimit(20); }} /></label>
     </div>
 
-    {!visibleRoutes.length && <div className="rounded-xl border border-dashed bg-card px-5 py-12 text-center">
+    {!visibleRoutes.length && <div className="rounded-xl border border-dashed bg-card px-5 py-10 text-center">
       <CheckCircle2 size={32} className="mx-auto mb-3 text-success" />
-      <h3 className="font-semibold">{mode === 'active' ? 'Nenhuma rota em andamento' : 'Nenhuma rota concluída encontrada'}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{mode === 'active' ? 'Os próximos pedidos designados aparecerão aqui.' : 'As rotas entregues ou canceladas ficam guardadas nesta área.'}</p>
-      {mode === 'active' && !courier && <Button className="mt-4" variant="outline" onClick={onPrepare}><RouteIcon size={16} />Montar uma rota</Button>}
+      <h3 className="font-semibold">{normalizedQuery ? 'Nenhuma rota encontrada nesta busca' : 'Nenhuma rota montada com as saídas atuais'}</h3>
+      <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">As saídas de hoje continuam visíveis no mapa. Para organizar uma nova rota, escolha uma entrega pronta e um motoboy.</p>
+      {!courier && <Button className="mt-4" variant="outline" onClick={onPrepare}><RouteIcon size={16} />Ver pedidos e montar rota</Button>}
     </div>}
 
     <div className="space-y-4">{displayedRoutes.map(route => {
-      const stops = deliveries.filter(delivery => delivery.route_id === route.id).sort((a, b) => a.position - b.position);
+      const stops = currentDeliveries.filter(delivery => delivery.route_id === route.id).sort((a, b) => a.position - b.position);
       const open = stops.some(stop => canFinishDelivery(stop.status));
       const ready = stops.length > 0 && stops.every(stop => stop.status === 'Pronto para entrega');
       const moving = stops.some(stop => stop.status === 'Em rota');
       const waiting = stops.some(stop => stop.status === 'Aguardando preparo');
-      const isExpanded = mode === 'active' ? activeExpanded === route.id : expanded === route.id;
+      const isExpanded = activeExpanded === route.id;
       const courierName = couriers.find(driver => driver.id === route.courier_id)?.name ?? 'Sem entregador';
       const totals = routeTotals(stops);
       const status = !open ? 'Concluída' : moving ? 'Saiu para entrega' : ready ? 'Pronta para sair' : waiting ? 'Aguardando preparo' : 'Em organização';

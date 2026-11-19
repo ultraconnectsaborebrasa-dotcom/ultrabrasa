@@ -25,6 +25,8 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
   const [locatingId, setLocatingId] = useState<string | null>(null);
   const filtered = deliveries.filter(delivery => `${delivery.number} ${delivery.customer} ${addressText(delivery.address)}`.toLocaleLowerCase('pt-BR').includes(query.trim().toLocaleLowerCase('pt-BR')));
   const selected = deliveries.find(delivery => delivery.id === selectedDeliveryId) ?? null;
+  const selectedAvailable = selected?.status === 'Pronto para entrega';
+  const hasAvailableDeliveries = deliveries.some(delivery => delivery.status === 'Pronto para entrega');
   const point = selected ? deliveryCoordinates(selected) : null;
   const ranked = useMemo(() => point ? rankCourierLocations(point, locations) : [], [point?.latitude, point?.longitude, locations]);
   const distanceByCourier = new Map(ranked.map(location => [location.courier_id, location.distanceMeters]));
@@ -53,33 +55,33 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
     }
   }
 
-  return <section className="space-y-4 rounded-xl border bg-background p-4" aria-label="Designar entrega por proximidade">
-    <div className="grid gap-2 sm:grid-cols-3">
-      <Step number={1} title="Escolha a entrega" active={!selected} done={Boolean(selected)} />
-      <Step number={2} title="Veja quem está perto" active={Boolean(selected)} done={Boolean(selected && nearestId)} />
-      <Step number={3} title="Toque em Designar" active={Boolean(selected)} />
-    </div>
+  return <section className="space-y-4 rounded-xl border bg-background p-4" aria-label="Saídas atuais e designação por proximidade">
+    {hasAvailableDeliveries && (!selected || selectedAvailable) ? <div className="grid gap-2 sm:grid-cols-3">
+      <Step number={1} title="Escolha a saída" active={!selected} done={Boolean(selected)} />
+      <Step number={2} title="Veja quem está perto" active={selectedAvailable} done={Boolean(selectedAvailable && nearestId)} />
+      <Step number={3} title="Toque em Designar" active={selectedAvailable} />
+    </div> : <p className="rounded-lg bg-primary/10 p-3 text-sm text-primary"><b>{selected && !selectedAvailable ? 'Entrega já na rua.' : 'Saídas em andamento.'}</b> Toque em um endereço para localizar no mapa; entregas na rua não serão designadas novamente.</p>}
 
     <div className="flex flex-wrap items-end justify-between gap-3 border-t pt-4">
-      <div><h3 className="flex items-center gap-2 text-lg font-bold"><Package size={19} className="text-primary" />Entregas disponíveis <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{deliveries.length}</span></h3><p className="text-xs text-muted-foreground">Prontas e ainda sem rota. Toque para mostrar no mapa.</p></div>
-      <label className="relative block w-full sm:w-72"><Search size={15} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="Buscar entrega disponível" className="field pl-9" placeholder="Número, cliente ou endereço" value={query} onChange={event => { setQuery(event.target.value); setLimit(6); }} /></label>
+      <div><h3 className="flex items-center gap-2 text-lg font-bold"><Package size={19} className="text-primary" />Saídas atuais sem rota <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{deliveries.length}</span></h3><p className="text-xs text-muted-foreground">Prontas ou na rua hoje. Toque em uma saída para localizar o endereço no mapa.</p></div>
+      <label className="relative block w-full sm:w-72"><Search size={15} className="absolute left-3 top-3 text-muted-foreground" /><input aria-label="Buscar saída atual" className="field pl-9" placeholder="Número, cliente ou endereço" value={query} onChange={event => { setQuery(event.target.value); setLimit(6); }} /></label>
     </div>
 
-    {!deliveries.length ? <p className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Nenhuma entrega pronta aguardando designação.</p> : <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+    {!deliveries.length ? <p className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Nenhuma saída atual aguardando rota.</p> : <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
       {filtered.slice(0, limit).map(delivery => {
         const selectedCard = delivery.id === selectedDeliveryId;
         const hasPoint = Boolean(deliveryCoordinates(delivery));
         const loading = locatingId === delivery.id;
         return <button type="button" key={delivery.id} aria-pressed={selectedCard} disabled={Boolean(locatingId)} onClick={() => void chooseDelivery(delivery)} className={`group flex items-start gap-3 rounded-xl border bg-card p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary ${selectedCard ? 'border-primary shadow-glow ring-1 ring-primary' : ''}`}>
           <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${selectedCard ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>{loading ? <LoaderCircle size={18} className="animate-spin" /> : <MapPin size={18} />}</span>
-          <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><b>#{delivery.number} · {delivery.customer}</b><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{deliveryMarmitaQuantity(delivery)} marmita(s)</span></span><span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">{addressText(delivery.address)}</span><span className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${hasPoint ? 'text-success' : 'text-primary'}`}>{loading ? 'Localizando endereço…' : hasPoint ? <><Check size={13} />No mapa · toque para destacar</> : <><Crosshair size={13} />Toque para localizar</>}</span></span>
+          <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><b>#{delivery.number} · {delivery.customer}</b><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{deliveryMarmitaQuantity(delivery)} marmita(s) · {delivery.status === 'Em rota' ? 'Na rua' : 'Pronta'}</span></span><span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">{addressText(delivery.address)}</span><span className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${hasPoint ? 'text-success' : 'text-primary'}`}>{loading ? 'Localizando endereço…' : hasPoint ? <><Check size={13} />No mapa · toque para destacar</> : <><Crosshair size={13} />Toque para localizar</>}</span></span>
         </button>;
       })}
     </div>}
-    {filtered.length > limit && <Button variant="ghost" size="sm" onClick={() => setLimit(current => current + 6)}>Mostrar mais entregas · restam {filtered.length - limit}</Button>}
+    {filtered.length > limit && <Button variant="ghost" size="sm" onClick={() => setLimit(current => current + 6)}>Mostrar mais saídas · restam {filtered.length - limit}</Button>}
     {!filtered.length && deliveries.length > 0 && <p className="text-sm text-muted-foreground">Nenhuma entrega encontrada nesta busca.</p>}
 
-    {selected && <div className="space-y-4 rounded-xl border border-primary/40 bg-card p-4 pdv-item-enter">
+    {selected && selectedAvailable && <div className="space-y-4 rounded-xl border border-primary/40 bg-card p-4 pdv-item-enter">
       <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">#{selected.number}</span><div className="min-w-0 flex-1"><h3 className="font-bold">{selected.customer}</h3><p className="text-sm text-muted-foreground">{addressText(selected.address)}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Selecionada</span></div>
       <div><h4 className="flex items-center gap-2 font-semibold"><Navigation size={17} className="text-primary" />Motoboys próximos</h4><p className="mt-1 text-xs text-muted-foreground">Distância em linha reta até o endereço, usando o GPS mais recente. Não considera trânsito.</p></div>
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{sortedCouriers.map(driver => {
@@ -95,7 +97,7 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
       })}</div>
       {!sortedCouriers.length && <p className="text-sm text-muted-foreground">Cadastre um motoboy para designar esta entrega.</p>}
     </div>}
-    <p className="text-xs text-muted-foreground">Para economizar, um endereço sem ponto é consultado no Google somente quando você toca nele; a posição fica salva para as próximas vezes.</p>
+    <p className="text-xs text-muted-foreground">Para economizar, o endereço é consultado no Google somente quando você toca na saída; a posição fica salva. O botão Designar aparece somente para pedidos prontos.</p>
   </section>;
 }
 

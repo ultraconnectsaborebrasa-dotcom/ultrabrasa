@@ -124,8 +124,8 @@ export const locateDeliveryOnMap = createServerFn({ method: 'POST' })
     const boardResult = await context.supabase.rpc('read_delivery_board');
     if (boardResult.error) throw new Error(boardResult.error.message);
     const board = boardResult.data as unknown as { deliveries: Delivery[] };
-    const delivery = board.deliveries.find(item => item.id === data.deliveryId && item.status === 'Pronto para entrega' && !item.route_id);
-    if (!delivery) throw new Error('Esta entrega não está mais disponível para designação.');
+    const delivery = board.deliveries.find(item => item.id === data.deliveryId && ['Pronto para entrega', 'Em rota'].includes(item.status) && !item.route_id);
+    if (!delivery) throw new Error('Esta saída não está mais disponível no acompanhamento atual.');
     const existing = deliveryCoordinates(delivery);
     if (existing) return { deliveryId: delivery.id, ...existing };
 

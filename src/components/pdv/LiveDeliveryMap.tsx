@@ -30,6 +30,16 @@ function loadGoogleMaps(): Promise<GoogleApi> {
 
 const tokenColor = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
 
+function markerIcon(api: GoogleApi, kind: 'base' | 'courier', color: string, selected: boolean) {
+  const foreground = tokenColor('primary-foreground');
+  const drawing = kind === 'courier'
+    ? `<g fill="none" stroke="${foreground}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="17" cy="39" r="7"/><circle cx="46" cy="39" r="7"/><path d="M17 39l8-17h9l12 17M25 22l7 17h14M27 17h9M34 22l-4-8M40 17h7"/></g>`
+    : `<g fill="none" stroke="${foreground}" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 29l17-13 17 13v21H15z"/><path d="M24 50V35h16v15M11 29h42"/></g>`;
+  const size = selected ? 58 : 50;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="${tokenColor(color)}" stroke="${tokenColor(selected ? 'warning' : 'background')}" stroke-width="${selected ? 5 : 3}"/>${drawing}</svg>`;
+  return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, scaledSize: new api.maps.Size(size, size), anchor: new api.maps.Point(size / 2, size / 2) };
+}
+
 export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, focus, selectedDeliveryId, onSelectCourier, onSelectDelivery }: {
   base: DeliveryBase | null;
   locations: CourierLiveLocation[];
@@ -59,6 +69,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       map.current = new google.maps.Map(container.current, {
         center: { lat: base.base_latitude, lng: base.base_longitude }, zoom: 14, clickableIcons: false,
         mapTypeControl: false, streetViewControl: false, fullscreenControl: true, zoomControl: true,
+        gestureHandling: 'cooperative',
       });
       setApi(google);
     }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Não foi possível carregar o mapa.'); });
@@ -72,11 +83,13 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
     if (line.current) line.current.setMap(null);
     const bounds = new api.maps.LatLngBounds();
     const info = new api.maps.InfoWindow();
-    const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void, selected = false) => {
+    const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void, selected = false, kind: 'circle' | 'base' | 'courier' = 'circle') => {
       const marker = new api.maps.Marker({
-        map: map.current, position, title, label, zIndex: selected ? 20 : 1,
+        map: map.current, position, title, label: kind === 'circle' ? label : null, zIndex: selected ? 20 : kind === 'courier' ? 10 : 1,
         animation: selected ? api.maps.Animation.DROP : undefined,
-        icon: { path: api.maps.SymbolPath.CIRCLE, fillColor: tokenColor(color), fillOpacity: 1, strokeColor: tokenColor(selected ? 'primary' : 'background'), strokeWeight: selected ? 4 : 2, scale: selected ? scale + 2 : scale },
+        icon: kind === 'circle'
+          ? { path: api.maps.SymbolPath.CIRCLE, fillColor: tokenColor(color), fillOpacity: 1, strokeColor: tokenColor(selected ? 'primary' : 'background'), strokeWeight: selected ? 4 : 2, scale: selected ? scale + 2 : scale }
+          : markerIcon(api, kind, color, selected),
       });
       marker.addListener('click', () => {
         const content = document.createElement('div');
@@ -89,7 +102,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       bounds.extend(position);
     };
     const basePosition = { lat: base.base_latitude, lng: base.base_longitude };
-    addMarker(basePosition, `BASE · ${base.base_address}`, 'B', 'success', 11);
+    addMarker(basePosition, `BASE · ${base.base_address}`, 'B', 'success', 11, undefined, false, 'base');
     locations.forEach(location => {
       const driver = couriers.find(item => item.id === location.courier_id);
       const assigned = deliveries.filter(delivery => delivery.courier_id === location.courier_id);
@@ -98,10 +111,12 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       const stock = available === null || available === undefined ? 'carga não registrada' : `${available} marmita(s) disponível(is) para novas entregas`;
       addMarker(
         { lat: location.latitude, lng: location.longitude },
-        `${location.name} · ${stock} · ${marmitas} marmita(s) nas entregas abertas · GPS ${new Date(location.located_at).toLocaleTimeString('pt-BR')}`,
+        `${location.name} · ${isCourierLocationStale(location.located_at) ? 'GPS DESATUALIZADO' : 'GPS AO VIVO'} · ${stock} · ${marmitas} marmita(s) nas entregas abertas · atualizado ${new Date(location.located_at).toLocaleTimeString('pt-BR')}`,
         location.name.trim().slice(0, 1).toUpperCase() || 'M',
         isCourierLocationStale(location.located_at) ? 'muted-foreground' : 'primary', 10,
         () => onSelectCourier?.(location.courier_id),
+        focus?.type === 'courier' && focus.courierId === location.courier_id,
+        'courier',
       );
     });
     const routeStops = new Map(route?.stops.map(stop => [stop.delivery_id, stop]) ?? []);

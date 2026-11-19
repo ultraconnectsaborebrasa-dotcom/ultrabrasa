@@ -1,5 +1,12 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Rotas atuais e motoboys no mapa
+- [x] Limpar somente a tela operacional: exibir apenas rotas com saídas atuais da cozinha, mantendo concluídas no Histórico e preservando vendas, pagamentos e registros.
+- [x] Abrir o mapa operacional por padrão, mostrar base, motoboys com ícone de moto, situação do GPS e entregas prontas/em rota com legenda e foco simples.
+- [x] Manter posições reais atualizadas automaticamente, sem inventar localização nem consultar rotas do Google em segundo plano; endereços são localizados somente sob clique.
+- [x] 56 testes aprovados e tela verificada em 1280×1800 e 390×844: seis rotas concluídas fora da operação, 14 saídas atuais preservadas, controle do mapa funcional e sem overflow; nenhum dado real alterado.
+- [ ] Validar o mapa Google ao vivo em um domínio autorizado; essa renderização não é suportada no ambiente de desenvolvimento.
+
 ## Robô sem bloqueio por moeda
 - [x] Remover a pausa automática pelo erro 131042 e limpar somente esse bloqueio atual, mantendo o robô ativado.
 - [x] Preservar pedidos, atendimentos humanos, estoque e mensagens antigas sem reenvio retroativo; uma conversa recente afetada foi liberada.

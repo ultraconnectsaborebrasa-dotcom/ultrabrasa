@@ -9,6 +9,7 @@ import { ArrowDown,ArrowUp,Check,GripVertical,MapPin,Phone,Printer,Route as Rout
 import { printDeliveryTicket } from '@/services/thermalPrinter';
 import { brl } from '@/lib/pdv-store';
 import { addressText,canFinishDelivery,courierMarmitaStock,deliveryMarmitaQuantity,DELIVERY_STATUSES,googleMapsLink,isLateDelivery,marmitaSelectionError,routeTotals,sortDeliveries,type Delivery,type DeliveryRoute,type Courier } from '@/lib/delivery';
+import { currentKitchenRoutes } from '@/lib/delivery-operation';
 import type { Json } from '@/integrations/supabase/types';
 import { DeliveryFields } from './DeliveryFields';
 import { emptyDelivery,validateDelivery,type DeliveryInput } from '@/lib/delivery';
@@ -37,7 +38,7 @@ export function DeliveryBoard({admin=false,courier=false}:{admin?:boolean;courie
  const[noticeErrors,setNoticeErrors]=useState<{id:string;payload:unknown;processing_error:string|null}[]>([]);
  useEffect(()=>{if(courier||view!=='pending'){setNoticeErrors([]);return;}const load=async()=>{const r=await supabase.from('whatsapp_jobs').select('id,payload,processing_error').like('dedup_key','departed:%').in('state',['failed','unknown']);if(!r.error)setNoticeErrors(r.data);};void load();const t=setInterval(()=>void load(),4000);return()=>clearInterval(t);},[courier,view]);
  const pending=data.deliveries.filter(d=>!['Entregue','Cancelado'].includes(d.status));
- const openRoutes=data.routes.filter(r=>data.deliveries.some(d=>d.route_id===r.id&&canFinishDelivery(d.status)));
+ const openRoutes=currentKitchenRoutes(data.routes,data.deliveries);
  const base=view==='history'||view==='routes'||courier||status?data.deliveries:pending;
  const visible=base.filter(d=>(!date||day(d.created_at)===date)&&(!zone||(deliveryZone(d.address)?.id??'unassigned')===zone)&&(!borough||d.address.neighborhood===borough)&&(!status||(status==='new'?d.order_status==='aberta':d.status===status))&&(!driver||d.courier_id===driver)&&`${d.customer} ${d.phone} ${addressText(d.address)}`.toLowerCase().includes(q.toLowerCase()));
  const neighborhoods=[...new Set(data.deliveries.map(d=>d.address.neighborhood).filter(Boolean))].sort();const counts=neighborhoods.map(n=>({n,count:pending.filter(d=>d.address.neighborhood===n).length})).filter(n=>n.count);

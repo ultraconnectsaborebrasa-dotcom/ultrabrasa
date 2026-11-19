@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Boxes, Clock3, Crosshair, LocateFixed, MapPin, Navigation, PackagePlus, Radio, Route as RouteIcon, Users } from 'lucide-react';
+import { Boxes, Clock3, Crosshair, LocateFixed, MapPin, Motorbike, Navigation, PackageCheck, PackagePlus, Radio, Route as RouteIcon, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -45,10 +45,12 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
   const operations = query.data ?? { base: null, current_courier_id: null, locations: [], time_entries: [] };
   const mappedDeliveries = deliveries.map(delivery => locatedPositions[delivery.id] ? { ...delivery, address: { ...delivery.address, ...locatedPositions[delivery.id] } } : delivery);
   const activeDeliveries = mappedDeliveries.filter(delivery => !['Entregue', 'Cancelado'].includes(delivery.status));
-  const availableDeliveries = activeDeliveries.filter(delivery => !delivery.route_id && delivery.status === 'Pronto para entrega');
+  const availableDeliveries = activeDeliveries.filter(delivery => !delivery.route_id);
+  const hasReadyToAssign = availableDeliveries.some(delivery => delivery.status === 'Pronto para entrega');
   const activeRoutes = routes.filter(item => activeDeliveries.some(delivery => delivery.route_id === item.id));
   const mapDeliveries = focus.type === 'courier' ? activeDeliveries.filter(delivery => delivery.courier_id === focus.courierId) : activeDeliveries;
   const ownCourier = couriers.find(driver => driver.id === operations.current_courier_id);
+  const liveLocations = operations.locations.filter(location => !isCourierLocationStale(location.located_at));
 
   useEffect(() => {
     const channel = supabase.channel(`courier-locations-${Math.random().toString(36).slice(2)}`)
@@ -109,8 +111,9 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
   return <section className="space-y-4 rounded-xl border bg-card p-3 sm:p-4">
     <div className="flex flex-wrap items-center gap-3">
       <div className="rounded-lg bg-primary/10 p-2 text-primary"><MapPin size={20} /></div>
-      <div className="min-w-0 flex-1"><h2 className="text-xl font-bold">Mapa da operação</h2><p className="text-sm text-muted-foreground">Base, motoboys e entregas em tempo real</p></div>
-      {operations.base && <span className="max-w-xl text-xs text-muted-foreground">{operations.base.base_address}</span>}
+      <div className="min-w-0 flex-1"><h2 className="text-xl font-bold">Operação na cidade</h2><p className="text-sm text-muted-foreground">Acompanhe as motos, toque para focar e designe sem sair da tela.</p></div>
+      <div className="flex w-full items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs font-medium sm:w-auto"><span className={`size-2 rounded-full ${liveLocations.length ? 'bg-success' : 'bg-warning'}`} />{liveLocations.length ? `${liveLocations.length} motoboy(s) ao vivo` : 'Nenhum GPS ao vivo agora'}</div>
+      {operations.base && <span className="w-full text-xs text-muted-foreground">Base: {operations.base.base_address}</span>}
     </div>
 
     {courier && <CourierLocationControl operations={operations} refetch={query.refetch} />}
@@ -123,7 +126,14 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
         {focus.type === 'courier' && <span className="inline-flex items-center rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">Mostrando {couriers.find(driver => driver.id === focus.courierId)?.name ?? 'motoboy'} e suas entregas</span>}
         {focus.type === 'delivery' && <span className="inline-flex items-center rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">Entrega #{activeDeliveries.find(delivery => delivery.id === focus.deliveryId)?.number ?? ''} em destaque</span>}
       </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5"><MapPin size={14} className="text-success" />Base</span>
+        <span className="inline-flex items-center gap-1.5"><Motorbike size={16} className="text-primary" />Motoboy</span>
+        <span className="inline-flex items-center gap-1.5"><PackageCheck size={14} className="text-warning" />Entrega atual</span>
+        <span className="ml-auto inline-flex items-center gap-1.5"><Radio size={13} className={query.isFetching ? 'animate-pulse text-primary' : ''} />{query.isFetching ? 'Atualizando posições…' : `Atualizado às ${new Date(query.dataUpdatedAt).toLocaleTimeString('pt-BR')}`}</span>
+      </div>
       <LiveDeliveryMap base={operations.base} locations={operations.locations} deliveries={mapDeliveries} couriers={couriers} route={route} focus={focus} selectedDeliveryId={selectedDeliveryId} onSelectCourier={selectCourier} onSelectDelivery={selectDelivery} />
+      {!liveLocations.length && <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">Para ver uma moto se movendo, o entregador precisa bater a entrada, ativar a localização no celular e manter a página aberta. Posições antigas aparecem em cinza.</p>}
 
       {admin && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={couriers} locations={operations.locations} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} onFocusDelivery={focusDelivery} onLocated={deliveryLocated} onAssign={onAssign} />}
 
@@ -137,7 +147,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
             const selected = focus.type === 'courier' && focus.courierId === driver.id;
             return <article key={driver.id} className={`space-y-3 rounded-xl border bg-background p-4 ${selected ? 'border-primary ring-1 ring-primary' : ''}`}>
               <div className="flex items-start gap-2">
-                <div className="rounded-lg bg-primary/10 p-2 text-primary"><Radio size={17} /></div>
+                <div className={`rounded-lg p-2 ${location && !stale ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}><Motorbike size={20} /></div>
                 <div className="min-w-0 flex-1"><b>{driver.name}</b><p className={`mt-1 flex items-center gap-1 text-xs ${location && !stale ? 'text-success' : 'text-muted-foreground'}`}><span className={`size-2 rounded-full ${location && !stale ? 'bg-success' : 'bg-muted-foreground'}`} />{location ? `${stale ? 'Sem atualização recente' : 'Ao vivo'} · ${clockTime(location.located_at)} · ${Math.round(location.accuracy_meters)} m` : 'Localização não compartilhada'}</p></div>
               </div>
               {stock.remaining === null ? <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Nenhuma carga registrada. Informe quantas marmitas ele levou.</div> : <div className="grid grid-cols-3 gap-2 text-center">
@@ -147,7 +157,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
               </div>}
               <div className="grid grid-cols-2 gap-2">
                 <Button size="sm" variant="outline" disabled={!location} onClick={() => focusMap('courier', driver.id)}><LocateFixed size={14} />Localizar</Button>
-                <Button size="sm" disabled={!operations.base} onClick={() => operations.base && onAssign(driver.id, operations.base.base_address)}><RouteIcon size={14} />Designar</Button>
+                <Button size="sm" disabled={!operations.base || !hasReadyToAssign} title={hasReadyToAssign ? 'Escolher entregas prontas para este motoboy' : 'Nenhuma entrega pronta para designar agora'} onClick={() => operations.base && onAssign(driver.id, operations.base.base_address)}><RouteIcon size={14} />Designar</Button>
               </div>
               <div className="flex flex-wrap gap-2 border-t pt-3">
                 <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'load', quantity: '' })}><PackagePlus size={14} />Nova carga</Button>

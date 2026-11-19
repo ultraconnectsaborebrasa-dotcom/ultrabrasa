@@ -20,9 +20,9 @@ const couriers: Courier[] = [
 ];
 const location = (courier_id: string, latitude: number, located_at: string): CourierLiveLocation => ({ courier_id, name: courier_id, latitude, longitude: -39.57, accuracy_meters: 10, located_at, consent_at: located_at });
 
-function renderPanel(locations: CourierLiveLocation[], onAssign = vi.fn()) {
+function renderPanel(locations: CourierLiveLocation[], onAssign = vi.fn(), currentDelivery = delivery) {
   const client = new QueryClient();
-  render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[delivery]} couriers={couriers} locations={locations} baseAddress="Base Teste" selectedDeliveryId={delivery.id} onFocusDelivery={vi.fn()} onLocated={vi.fn()} onAssign={onAssign} /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[currentDelivery]} couriers={couriers} locations={locations} baseAddress="Base Teste" selectedDeliveryId={currentDelivery.id} onFocusDelivery={vi.fn()} onLocated={vi.fn()} onAssign={onAssign} /></QueryClientProvider>);
   return onAssign;
 }
 
@@ -46,5 +46,12 @@ describe('designação da entrega pelo motoboy mais próximo', () => {
     expect(farCard?.textContent).toContain('Mais próximo');
     expect(nearCard?.textContent).toContain('GPS desatualizado');
     expect(nearCard?.textContent).not.toContain('Mais próximo');
+  });
+
+  it('permite localizar uma saída que já está na rua sem oferecer nova designação', () => {
+    const assign = renderPanel([], vi.fn(), { ...delivery, status: 'Em rota' });
+    expect(screen.getByText('Entrega já na rua.', { exact: false })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Designar/ })).toBeNull();
+    expect(assign).not.toHaveBeenCalled();
   });
 });
