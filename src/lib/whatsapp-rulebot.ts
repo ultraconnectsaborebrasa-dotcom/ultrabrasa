@@ -18,6 +18,10 @@ export const AFTERNOON_MESSAGES = [
 export const CLOSING_MESSAGE = 'Infelizmente, hoje já encerramos nossos atendimentos!\n\nNossa demanda foi muito alta e todos os pedidos foram atendidos.\n\nAmanhã estaremos funcionando normalmente. Então, já garanta seu pedido mais cedo para não ficar sem!\n\nAgradecemos pela compreensão e preferência. Deus abençoe!';
 export const HANDOFF_MESSAGE = 'Vou encaminhar sua mensagem para um atendente, que vai ajudar você por aqui.';
 export const CONFIRM_HINT = 'É só responder *SIM* para eu confirmar seu pedido. Se quiser mudar algo, me fala o que corrigir.';
+export const MENU_REMINDER_MESSAGE = 'Oi! Tudo bem? 😊 Já escolheu o que vai pedir? Aproveite nossa promoção com entrega grátis para toda Eunápolis. Estamos esperando seu pedido! ❤️';
+export const MENU_REMINDER_DELAY_MS = 5 * 60 * 1000;
+/** Identifica os cardápios automáticos atuais; o lembrete é agendado somente após o envio ser aceito. */
+export const isMenuCardMessage = (text: string) => text.includes('Hoje de cardápio temos') || text.startsWith('Hoje temos ') || text.includes('https://ultraconnectbrasa.com.br/cardapio');
 
 const brl = (price: number) => price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const promotionMessage = (b: Business, price: number) => `Nossa marmita está em promoção por apenas ${brl(price)}${b.freeDelivery ? ', com FRETE GRÁTIS para qualquer lugar de Eunápolis' : ''}!`;

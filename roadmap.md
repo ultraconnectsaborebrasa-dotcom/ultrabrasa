@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Lembrete cinco minutos após o cardápio
+- [x] Agendar um único lembrete cinco minutos depois do envio automático do cardápio, usando o texto confirmado pelo responsável.
+- [x] Cancelar o lembrete se o cliente responder, a conversa for assumida, o robô for desligado ou o pedido já estiver confirmado.
+- [x] Seis testes do lembrete e 48 testes do atendimento aprovados; agendador ativo, sem pedidos ou mensagens reais de teste.
+
 ## Comandas não devem repetir pedidos em rota
 - [x] Etapa `entrega` removida de Comandas, Receber, preparação do Atendente e do contador de comandas; aba Em entrega retirada do Caixa sem mudar pagamento, baixa ou histórico.
 - [x] Pedidos permanecem em Rotas como Saiu para entrega; resumo de Rotas corrigido para não quebrar quando o Caixa não pode ver pagamentos concluídos e consulta administrativa de GPS/ponto bloqueada no Caixa.
