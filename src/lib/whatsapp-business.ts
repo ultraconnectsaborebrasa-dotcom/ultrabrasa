@@ -46,8 +46,8 @@ export function validAddressField(field: 'street' | 'number' | 'neighborhood', v
   const v = value.trim();
   if (field === 'number') return /^(?:\d{1,5}[a-z]?|s\/n)$/i.test(v);
   if (field === 'street') {
-    const body = v.replace(/^(?:rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s*/i, '').trim();
-    return /^(?:rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s+\S/i.test(v)
+    const body = v.replace(/^(?:rua|r\.?|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s*/i, '').trim();
+    return /^(?:rua|r\.?|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia|loteamento|condominio|condomínio|praça|praca)\s+\S/i.test(v)
       && body.length > 0 && !/\b(fica|depois|em cima|perto|em frente|ao lado|esquerda|direita)\b/i.test(body);
   }
   return v.length >= 2 && v.length <= 120 && /[a-zà-ú]{2}/i.test(v) && !/^(?:de|da|do|n[º°o.])\b/i.test(v)

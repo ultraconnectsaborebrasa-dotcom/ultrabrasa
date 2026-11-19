@@ -127,4 +127,27 @@ describe('nome e endereço sem adivinhação', () => {
     ];
     expect(recentInboundChunks(messages, 'current', '2026-11-16T10:00:00.000Z')).toEqual(['Maria']);
   });
+
+  it('lê rua, número e bairro antes de "atrás da" e guarda só o final como referência', () => {
+    const d = parse('Rua Raimundo nascimento, 225 centauro, atrás da prime fit', { ...valid, address: { street: '', number: '', neighborhood: '', city: '', reference: '', complement: '' } });
+    expect(d.address).toMatchObject({ street: 'Rua Raimundo nascimento', number: '225', neighborhood: 'centauro', reference: 'atrás da prime fit' });
+    expect(summaryReady(d, 19.9)).toBe(true);
+  });
+
+  it('entende a rua abreviada com "R" e o número com "n."', () => {
+    const d = parse('R guaratinga n.55 centro', { ...valid, address: { street: '', number: '', neighborhood: '', city: '', reference: '', complement: '' } });
+    expect(d.address).toMatchObject({ street: 'R guaratinga', number: '55', neighborhood: 'centro' });
+    expect(summaryReady(d, 19.9)).toBe(true);
+  });
+
+  it('aceita "não tem número" como S/N quando só falta o número', () => {
+    const d = parse('Não tem número E uma guarita', { ...valid, address: { ...valid.address, number: '' } });
+    expect(d.address.number).toBe('S/N');
+    expect(summaryReady(d, 19.9)).toBe(true);
+  });
+
+  it('não grava "e centro" como bairro', () => {
+    const d = parse('Bairro e centro', { ...valid, address: { ...valid.address, neighborhood: '' } });
+    expect(d.address.neighborhood).toBe('centro');
+  });
 });
