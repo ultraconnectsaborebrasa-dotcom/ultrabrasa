@@ -65,6 +65,100 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_locations: {
+        Row: {
+          accuracy_meters: number
+          consent_at: string
+          courier_id: string
+          latitude: number
+          located_at: string
+          longitude: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy_meters?: number
+          consent_at?: string
+          courier_id: string
+          latitude: number
+          located_at?: string
+          longitude: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy_meters?: number
+          consent_at?: string
+          courier_id?: string
+          latitude?: number
+          located_at?: string
+          longitude?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_locations_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: true
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_time_entries: {
+        Row: {
+          amount: number
+          courier_id: string
+          created_at: string
+          entry_at: string
+          exit_at: string | null
+          id: string
+          scheduled_end: string
+          scheduled_start: string
+          shift_code: string
+          shift_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          courier_id: string
+          created_at?: string
+          entry_at?: string
+          exit_at?: string | null
+          id?: string
+          scheduled_end: string
+          scheduled_start: string
+          shift_code: string
+          shift_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          courier_id?: string
+          created_at?: string
+          entry_at?: string
+          exit_at?: string | null
+          id?: string
+          scheduled_end?: string
+          scheduled_start?: string
+          shift_code?: string
+          shift_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_time_entries_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_identity_changes: {
         Row: {
           changed_by: string | null
@@ -159,6 +253,36 @@ export type Database = {
           name?: string
           phone?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      delivery_operation_settings: {
+        Row: {
+          base_address: string
+          base_latitude: number
+          base_longitude: number
+          base_place_id: string | null
+          id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_address: string
+          base_latitude: number
+          base_longitude: number
+          base_place_id?: string | null
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_address?: string
+          base_latitude?: number
+          base_longitude?: number
+          base_place_id?: string | null
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -1023,6 +1147,10 @@ export type Database = {
         Returns: Json
       }
       claim_pdv_admin: { Args: never; Returns: boolean }
+      clock_courier_shift: {
+        Args: { p_action: string; p_shift: string }
+        Returns: undefined
+      }
       close_pdv_order: {
         Args: { _id: string; _reason: string }
         Returns: undefined
@@ -1049,6 +1177,7 @@ export type Database = {
         Args: { _courier?: string; _order: string }
         Returns: undefined
       }
+      disable_courier_location: { Args: never; Returns: undefined }
       finish_delivery_route: {
         Args: { new_status: string; route_id: string }
         Returns: undefined
@@ -1092,6 +1221,10 @@ export type Database = {
       pay_pdv_kitchen: {
         Args: { order_id: string; payment_method: string }
         Returns: undefined
+      }
+      read_courier_operations: {
+        Args: { p_from?: string; p_to?: string }
+        Returns: Json
       }
       read_delivery_board: { Args: never; Returns: Json }
       read_pdv_cashier: { Args: never; Returns: Json }
@@ -1205,6 +1338,10 @@ export type Database = {
       submit_pdv_operator_with_contact: {
         Args: { request: Json }
         Returns: Json
+      }
+      update_courier_location: {
+        Args: { p_accuracy?: number; p_latitude: number; p_longitude: number }
+        Returns: undefined
       }
       update_customer_identity: {
         Args: { _id: string; _name: string; _phone: string }

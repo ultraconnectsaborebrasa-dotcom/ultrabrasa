@@ -1,12 +1,12 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Ponto e mapa em tempo real dos entregadores
-- [ ] Entrada e saída logo após o login do entregador, com turnos 11:00–14:00 e 18:00–22:00 e valor fixo de R$ 60 por turno.
-- [ ] Histórico administrativo por entregador, com horários reais e total de turnos/valores.
-- [ ] Mapa administrativo com base e posições reais dos entregadores, atualização autorizada e designação de entregas.
-- [ ] Tela móvel do entregador com rota, cliente, itens/quantidades, endereço, pagamento e observações.
-- [ ] Configurar Google Maps sem recalcular rotas a cada movimento; validar regras, permissões, build e fluxos sem movimentar entregas reais.
-- [ ] Endereço/coordenadas da base aguardando resposta do usuário; localização em segundo plano não é garantida pelo navegador.
+- [x] Entrada e saída logo após o login, turnos 11:00–14:00 e 18:00–22:00 e R$ 60 por turno; fluxo móvel verificado com conta temporária.
+- [x] Histórico administrativo por entregador, com horários reais e total de turnos/valores; tela verificada em 890×674.
+- [x] Mapa administrativo com base confirmada, posições reais protegidas por permissão e designação de entregas para revisão, sem salvar rotas de teste.
+- [x] Tela móvel do entregador com trajeto sob comando, cliente, itens/quantidades, endereço, pagamento e observações; dados existentes preservados.
+- [x] Google conectado e cálculo limitado à atribuição/consulta explícita; 392 testes aprovados, build OK e dados temporários removidos.
+- [ ] Para o domínio personalizado, conectar uma chave própria do Google Maps e validar o mapa publicado; o teste ao vivo do Google não foi executado. GPS em segundo plano não é garantido pelo navegador.
 
 ## Modo de estoque esgotado no WhatsApp
 - [x] Botão “Estoque esgotado” junto ao controle do robô, autorizado para Administrador e Caixa e com estado persistido no banco.
