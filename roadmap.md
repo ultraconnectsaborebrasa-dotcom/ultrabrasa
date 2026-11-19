@@ -1,10 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Pedido manual facilitado no WhatsApp
-- [ ] Reconhecer por regras somente nome, endereço, referência e pagamento enviados pelo cliente, usando a correção mais recente e o perfil como alternativa segura.
-- [ ] Mostrar um resumo editável na conversa manual e preencher o pedido no PDV sem criar ou enviar automaticamente.
-- [ ] Integrar Administrador e Caixa preservando carrinho, estoque, aceite, pagamentos e dados existentes.
-- [ ] Testar extração, preenchimento e apresentação sem criar pedidos nem enviar mensagens reais.
+- [x] Reconhecer por regras somente nome, endereço, referência e pagamento enviados pelo cliente, usando a correção mais recente e o perfil como alternativa segura.
+- [x] Mostrar um resumo editável na conversa manual e preencher o pedido no PDV sem criar ou enviar automaticamente.
+- [x] Integrar Administrador e Caixa preservando carrinho, estoque, aceite, pagamentos e dados existentes.
+- [x] 27 testes aprovados; fluxo do administrador verificado com conversa real no histórico, sem salvar pedido nem enviar mensagem. Nome, rua, número, bairro e pagamento preenchidos corretamente; build OK.
 
 ## APK Android com atualização pelo site oficial
 - [x] Apresentar o aplicativo como “Ultraconnect Entregas”, voltado ao ponto, GPS e rotas dos motoboys.

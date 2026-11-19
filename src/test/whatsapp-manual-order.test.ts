@@ -3,7 +3,7 @@ import { suggestWhatsAppManualOrder } from '@/lib/whatsapp-manual-order';
 
 const inbound = (body: string) => ({ direction: 'in', kind: 'text', body });
 
- describe('montagem manual a partir da conversa do WhatsApp', () => {
+describe('montagem manual a partir da conversa do WhatsApp', () => {
   it('preenche nome, rua, número, bairro, referência e pagamento para revisão', () => {
     const order = suggestWhatsAppManualOrder('5573999990000', 'Perfil', [
       inbound('Meu nome é Núbia Dantas Ramos'),
@@ -49,5 +49,21 @@ const inbound = (body: string) => ({ direction: 'in', kind: 'text', body });
   it('não transforma uma resposta operacional em nome do cliente', () => {
     const order = suggestWhatsAppManualOrder('5573999990000', 'ok tbem', [inbound('Quero uma marmita')]);
     expect(order.customer).toBe('');
+  });
+
+  it('não usa uma dúvida como nome e recorre ao perfil do WhatsApp', () => {
+    const order = suggestWhatsAppManualOrder('5573999990000', 'Gildair Almeida', [
+      inbound('Não entendi'),
+      inbound('Rua São Francisco n 204, bairro Jardim América'),
+    ]);
+    expect(order.customer).toBe('Gildair Almeida');
+  });
+
+  it('aceita nome simples quando é resposta direta à pergunta da equipe', () => {
+    const order = suggestWhatsAppManualOrder('5573999990000', 'Perfil', [
+      { direction: 'out', kind: 'text', body: 'E qual seu nome?' },
+      inbound('João Silva'),
+    ]);
+    expect(order.customer).toBe('João Silva');
   });
 });

@@ -26,6 +26,8 @@ import { recoverReceiptAttachment } from '@/lib/receipt-actions.functions';
 import { isStoreToday, storeDayStart } from '@/lib/daily-inbox';
 import { needsStaffReply, sortQueue, type QueueOrder } from '@/lib/whatsapp-queue';
 import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
+import { WhatsAppManualOrderCard } from './WhatsAppManualOrderCard';
+import { suggestWhatsAppManualOrder, type WhatsAppManualOrder } from '@/lib/whatsapp-manual-order';
 
 type Conv = { phone: string; name: string | null; last_message: string | null; last_message_at: string; unread: number; last_inbound_at: string | null; attendance_status: string; assigned_name: string | null; automation_paused: boolean; awaiting_since: string | null };
 type Msg = { id: string; direction: string; source: string; kind: string; body: string | null; sent_by_name?: string | null; status: string; error: string | null; provider_at: string; order_id: string | null };
@@ -53,7 +55,7 @@ const waitingTime = (value: string | null) => {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 };
 
-export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuildOrder, paidIds }: { openPhone?: string | null; isAdmin?: boolean; externalOrders?: Order[]; onBuildOrder?: (phone: string, name: string) => void; paidIds?: string[] }) {
+export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuildOrder, paidIds }: { openPhone?: string | null; isAdmin?: boolean; externalOrders?: Order[]; onBuildOrder?: (order: WhatsAppManualOrder) => void; paidIds?: string[] }) {
   const [recent, setRecent] = useState<{ phone: string; status: string; order_id: string | null }[]>([]);
   const [paidPhones, setPaidPhones] = useState<string[]>([]);
   const [staff, setStaff] = useState<{ id: string; name: string }[]>([]);
@@ -237,6 +239,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
   const waiting = sortQueue(convs.filter(c => columns.some(column => column.key === situation(c)) && situation(c) !== 'archived' && matches(c) && needsStaffReply(c)), 'arrival');
   const conv = convs.find(c => c.phone === active);
   const activeRequest = requests.find(r => r.phone === active);
+  const manualOrder = useMemo(() => active ? suggestWhatsAppManualOrder(active, conv?.name, msgs) : null, [active, conv?.name, msgs]);
   const linked: Order[] = useMemo(() => active ? orders.filter(o => o.customerPhone && normalizePhone(o.customerPhone) === active).sort((a, b) => b.createdAt - a.createdAt).slice(0, 8) : [], [orders, active]);
   const windowOpen = conv?.last_inbound_at ? Date.now() - new Date(conv.last_inbound_at).getTime() < 24 * 3600_000 : false;
   const orderMsg = (o: Order) => `Olá${o.customer ? `, ${o.customer}` : ''}! Pedido #${o.number}: ${STATUS_LABEL[o.status] ?? o.status}.`;
@@ -403,7 +406,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
             <Button size="sm" variant="outline" className="shrink-0" onClick={() => void action('take')}><UserRound /> Assumir</Button>
             <Button size="sm" variant="outline" className="shrink-0" onClick={() => void action('resume')}><Bot /> Retomar robô</Button>
             <Button size="sm" variant="outline" className="shrink-0" onClick={() => void action('waiting')}><Clock3 /> Aguardar cliente</Button>
-            {onBuildOrder && <Button size="sm" className="shrink-0" onClick={() => onBuildOrder(active, conv?.name ?? '')}><ShoppingBag /> Montar pedido</Button>}
+            {onBuildOrder && manualOrder && <Button size="sm" className="shrink-0" onClick={() => onBuildOrder(manualOrder)}><ShoppingBag /> Montar pedido</Button>}
             <select aria-label="Transferir para" className="field h-8 w-auto min-w-36 shrink-0 py-0 text-xs" value={transferTo} onChange={e => setTransferTo(e.target.value)}><option value="">Transferir para…</option>{staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
             <Button size="sm" variant="outline" className="shrink-0" disabled={!transferTo} onClick={() => void action('transfer')}>Transferir</Button>
             <Button size="sm" variant="ghost" className="shrink-0" onClick={() => void action('finish')}><Archive /> Arquivar</Button>
@@ -418,6 +421,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
               <details className="mt-2"><summary className="cursor-pointer text-xs font-semibold">Conferir dados do pedido</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-card p-2 text-xs">{JSON.stringify(activeRequest.request, null, 2)}</pre></details>
               <div className="mt-3 flex gap-2"><EditWhatsAppRequest key={activeRequest.id + activeRequest.quoted_total} id={activeRequest.id} request={activeRequest.request} whatsappName={conv?.name} onSaved={() => void loadRequests()} /><Button size="sm" disabled={busy} onClick={() => void accept(activeRequest.id, true)}>Confirmar e enviar</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => void accept(activeRequest.id, false)}>Recusar pedido</Button></div>
             </div>}
+            {!activeRequest && onBuildOrder && manualOrder && <div className="m-3 mb-0 shrink-0"><WhatsAppManualOrderCard order={manualOrder} onBuildOrder={onBuildOrder} /></div>}
             <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-3 sm:p-5">
               <div className="mx-auto max-w-3xl space-y-2.5">
                 {!msgs.length && <p className="py-16 text-center text-sm text-muted-foreground">Nenhuma mensagem neste período.</p>}

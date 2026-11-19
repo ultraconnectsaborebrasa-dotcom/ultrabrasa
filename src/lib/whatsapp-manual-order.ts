@@ -12,7 +12,7 @@ export type WhatsAppManualOrder = {
   phone: string;
   customer: string;
   type: 'Delivery' | 'Retirada' | null;
-  delivery?: DeliveryInput;
+  delivery?: DeliveryInput | undefined;
   paymentLabel: string;
 };
 
@@ -26,10 +26,29 @@ export function suggestWhatsAppManualOrder(
   messages: ManualOrderMessage[],
 ): WhatsAppManualOrder {
   let draft = conversationDraftSchema.parse({});
+  let nameWasRequested = false;
   for (const message of messages) {
     const body = message.body?.trim();
+    if (message.direction === 'out') {
+      nameWasRequested = !!body && /(?:qual\s+(?:é\s+)?(?:o\s+)?seu\s+nome|como\s+você\s+se\s+chama|me\s+(?:diz|fala|passa).*nome|nome\s+do\s+cliente)/i.test(body);
+      continue;
+    }
     if (message.direction !== 'in' || message.kind !== 'text' || !body) continue;
+    const previous = draft;
+    const answerToNameQuestion = nameWasRequested;
+    nameWasRequested = false;
     draft = ruleParse(body, draft, '', missingOrderFields(draft)).draft;
+    const explicitName = /(?:meu\s+nome\s+[eé]|meu\s+nome\s+eh|me\s+chamo|nome\s*:|aqui\s+[eé]\s+(?:o|a))\s+/i.test(body);
+    const nameWithAddress = /\b(?:rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|estrada|rodovia)\s+\S/i.test(body);
+    if (draft.customer !== previous.customer && !explicitName && !nameWithAddress && !answerToNameQuestion) {
+      draft.customer = previous.customer;
+    }
+    // Uma mensagem exclusiva de referência não pode trocar "Praça..." pela rua já confirmada.
+    if (/^\s*(?:ponto\s+de\s+)?refer[eê]ncia\s*:?/i.test(body)) {
+      draft.address.street = previous.address.street;
+      draft.address.number = previous.address.number;
+      draft.address.neighborhood = previous.address.neighborhood;
+    }
   }
 
   const customer = customerNameWithProfile(draft.customer, whatsappName);

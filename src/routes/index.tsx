@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Armchair, Bell, BellOff, ShoppingCart, ClipboardList, ChefHat, Package, Wallet, Settings, History, ShieldCheck, LogOut, Wifi, WifiOff, LoaderCircle, Users, MessageCircle, BookOpen } from "lucide-react";
-import { brl, paid, useStore, useSaving } from "@/lib/pdv-store";
+import { brl, getState, paid, updateDraft, useStore, useSaving } from "@/lib/pdv-store";
 import { paidSalesSince } from "@/lib/sales-history";
 import { AccountGate, AdminTeam } from "@/components/pdv/AccountGate";
 import { SalesHistory } from "@/components/pdv/SalesHistory";
@@ -24,6 +24,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
 import { whatsappRequestAction } from '@/lib/whatsapp-attendance.functions';
 import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
+import type { WhatsAppManualOrder } from '@/lib/whatsapp-manual-order';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,6 +67,14 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const whatsappPending=useWhatsAppPendingOrders();
   const requestFn=useServerFn(whatsappRequestAction);
   const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');const orderId=(accepted as {id?:unknown}|null)?.id;if(typeof orderId==='string')void autoPrintKitchenOrderById(orderId);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
+  const buildWhatsAppOrder=(order:WhatsAppManualOrder)=>{
+    const current=getState().draft;
+    if(current.editingId||current.items.length){toast.warning('Conclua ou limpe o pedido atual antes de montar outro pelo WhatsApp.');return;}
+    updateDraft({type:order.type??'Balcão',customer:order.customer,customerPhone:order.phone,delivery:order.delivery,note:'',discount:0,fee:0,serviceFee:false,tableNumber:undefined,editingId:undefined});
+    setWhatsAppPhone(order.phone);
+    setTab('pdv');
+    toast.message('Dados da conversa preenchidos. Revise, escolha os produtos e envie quando estiver pronto.');
+  };
   const saving = useSaving();
   const sync = useSyncStatus();
   const alerts = useOrderAlerts();
@@ -125,7 +134,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
       </div>
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
         {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin} onDelivery={()=>setTab('rotas')}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
-          : tab === "whatsapp" && admin ? <WhatsAppView openPhone={whatsappPhone}/> : tab === "cardapio" && admin ? <CatalogAdmin/> : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
+          : tab === "whatsapp" && admin ? <WhatsAppView openPhone={whatsappPhone} onBuildOrder={buildWhatsAppOrder}/> : tab === "cardapio" && admin ? <CatalogAdmin/> : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
       </main>
       {saving && <div role="status" className="fixed inset-0 z-50 flex items-center justify-center gap-3 bg-background/70 text-foreground"><LoaderCircle className="animate-spin"/>Salvando…</div>}
     </div>
