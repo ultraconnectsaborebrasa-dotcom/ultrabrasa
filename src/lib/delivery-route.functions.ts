@@ -29,7 +29,7 @@ export const calculateDeliveryRoute = createServerFn({ method: 'POST' })
     if (deliveries.length > 10) throw new Error('Para calcular o trajeto no mapa, divida a rota em grupos de até 10 entregas.');
 
     const gatewayKey = process.env['LOVABLE_API_KEY'];
-    const connectionKey = process.env['GOOGLE_MAPS_API_KEY'];
+    const connectionKey = process.env['GOOGLE_MAPS_API_KEY_1'];
     if (!gatewayKey || !connectionKey) throw new Error('A conexão com o Google Maps ainda não está configurada.');
     const callGoogle = async (path: string, init?: RequestInit): Promise<Response> => {
       const response = await fetch(`https://connector-gateway.lovable.dev/google_maps${path}`, {
@@ -46,6 +46,23 @@ export const calculateDeliveryRoute = createServerFn({ method: 'POST' })
       if (!response.ok) {
         const body = await response.text();
         console.error(`Google Maps request failed [${response.status}]: ${body}`);
+        if (response.status === 403) {
+          const details = (() => {
+            try {
+              return (JSON.parse(body) as { error?: { details?: { reason?: string }[] } }).error?.details ?? [];
+            } catch {
+              return [];
+            }
+          })();
+          const reason = details.find(detail => detail.reason)?.reason;
+          if (reason === 'API_KEY_HTTP_REFERRER_BLOCKED') {
+            throw new Error('A chave UltraBrasa Servidor está restrita a sites. No Google Cloud, deixe as restrições de aplicativo dela como "Nenhum" ou "Endereços IP".');
+          }
+          if (reason === 'API_KEY_SERVICE_BLOCKED') {
+            throw new Error('A chave UltraBrasa Servidor não libera um serviço necessário. No Google Cloud, permita Routes API e Geocoding API nessa chave.');
+          }
+          throw new Error('O Google Maps recusou a chave do servidor. Confira as restrições da chave UltraBrasa Servidor no Google Cloud.');
+        }
         throw new Error(`O Google Maps respondeu com erro ${response.status}: ${body.slice(0, 240)}`);
       }
       return response;
