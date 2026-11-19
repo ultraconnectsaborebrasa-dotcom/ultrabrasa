@@ -1,5 +1,12 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Ponto atual e rotas mais práticas
+- [x] Mostrar somente o turno atual, sem os horários fixos nem o cartão do outro turno.
+- [x] Exibir “Bater ponto” apenas antes da entrada e substituí-lo pelo horário real registrado.
+- [x] Manter “Registrar saída” disponível durante o turno aberto e ocultar os botões depois da conclusão.
+- [x] Organizar o ponto em um único cartão compacto, preservando rotas, entregas, estoque, GPS e pagamentos.
+- [x] Treze testes aprovados e três estados verificados em 890×674 e 390×844, sem rolagem horizontal, erros de execução ou ponto real.
+
 ## Entrega disponível e motoboy mais próximo
 - [x] Mostrar entregas prontas e sem rota no mapa, com seleção destacada e orientação em três passos.
 - [x] Ao escolher uma entrega, ordenar motoboys pela distância real em linha reta do GPS e destacar o mais próximo; GPS desatualizado não é recomendado.

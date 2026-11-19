@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COURIER_SHIFTS, courierTimeTotals, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, type CourierLiveLocation } from '@/lib/courier-operations';
+import { COURIER_SHIFTS, courierTimeTotals, currentCourierShift, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, type CourierLiveLocation } from '@/lib/courier-operations';
 
 describe('ponto e localização dos entregadores', () => {
   it('fixa a manhã das 11:00 às 14:00 e o valor em R$ 60', () => {
@@ -7,6 +7,11 @@ describe('ponto e localização dos entregadores', () => {
   });
   it('fixa a noite das 18:00 às 22:00 e o valor em R$ 60', () => {
     expect(COURIER_SHIFTS.night).toMatchObject({ start: '18:00', end: '22:00', amount: 60 });
+  });
+  it('mostra a manhã antes das 18h e somente a noite a partir das 18h em São Paulo', () => {
+    expect(currentCourierShift(new Date('2026-11-19T11:23:00Z'))).toBe('morning');
+    expect(currentCourierShift(new Date('2026-11-19T20:59:00Z'))).toBe('morning');
+    expect(currentCourierShift(new Date('2026-11-19T21:00:00Z'))).toBe('night');
   });
   it('soma R$ 60 por turno registrado e separa os concluídos', () => {
     expect(courierTimeTotals([{ amount: 60, exit_at: null }, { amount: 60, exit_at: '2026-11-19T01:00:00Z' }])).toEqual({ registered: 120, completed: 60 });

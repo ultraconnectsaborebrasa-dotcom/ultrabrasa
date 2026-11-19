@@ -53,6 +53,15 @@ export function saoPauloDay(date = new Date()): string {
   }).format(date);
 }
 
+export function currentCourierShift(date = new Date()): CourierShiftCode {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const hour = Number(parts.find(part => part.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find(part => part.type === 'minute')?.value ?? 0);
+  return hour * 60 + minute >= 18 * 60 ? 'night' : 'morning';
+}
+
 export function courierTimeTotals(entries: Pick<CourierTimeEntry, 'amount' | 'exit_at'>[]) {
   return {
     registered: entries.reduce((sum, entry) => sum + Number(entry.amount), 0),
