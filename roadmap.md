@@ -1,9 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Saída designada ao Mateus não chega ao aplicativo
-- [ ] Rastrear a saída real, o vínculo do entregador e a leitura do aplicativo; preservar pedido, pagamento e histórico.
-- [ ] Fazer a designação criar ou vincular uma rota válida e garantir acesso à montagem quando necessário.
-- [ ] Testar a leitura pelo entregador e o fluxo do administrador sem concluir entregas reais nem gerar cobranças.
+- [x] Causa corrigida: a saída rápida guardava o entregador sem criar rota, enquanto o aplicativo e a montagem dependiam do vínculo de rota.
+- [x] Saída com entregador agora cria uma rota ou acrescenta a parada à rota atual dele; seleção antiga não deixa mais “Montar rota” sem resposta.
+- [x] Entregas reais #918 Lorena e #917 Maurilando recuperadas na rota “Saídas · Mateus”, posições 1 e 2, ainda Em rota e sem alterar pagamentos ou conclusão.
+- [x] Vinte testes aprovados, typecheck e build OK; nova saída e leitura do Mateus validadas no banco em transação revertida, sem resíduos. Aplicativo móvel real conferido com as duas paradas e dados do #917, sem erros nem concluir entregas.
 
 ## Rotas atuais e motoboys no mapa
 - [x] Limpar somente a tela operacional: exibir apenas rotas com saídas atuais da cozinha, mantendo concluídas no Histórico e preservando vendas, pagamentos e registros.
