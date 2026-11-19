@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Robô não responde após ativação
+- [x] Causa identificada: envios automáticos aceitos e depois recusados pelo WhatsApp com erro 131042, pois a moeda da conta comercial não está configurada; conexão e agendamento estão ativos.
+- [x] Detectar essa recusa, mostrar “Envio bloqueado” e o motivo no controle; ativar limpa o bloqueio, preserva interpretações novas e cancela respostas antigas já montadas.
+- [x] 190 testes de WhatsApp aprovados; função autorizada testada em transação revertida com interpretação nova pendente e texto antigo cancelado. Painel verificado com o responsável em 1280×1800, sem erros, cliques de ativação ou mensagens reais de teste.
+- [ ] Configuração da moeda como Real (BRL) no Gerenciador do WhatsApp aguarda ação do responsável pela conta; nenhuma cobrança ou configuração externa foi alterada.
+
 ## Aplicativo do entregador com fluxo de corridas
 - [x] Destacar o pedido designado e a próxima parada, com sequência visual de todos os destinos.
 - [x] Manter Iniciar rota, navegação, contato, problema e baixa manual usando as permissões e gravações atuais.

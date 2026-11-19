@@ -297,7 +297,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
       </span>
       {cfg?.account_state === 'blocked' && <span className="flex items-center gap-1 text-xs text-destructive"><AlertTriangle size={14} /> Conta bloqueada pela Meta</span>}
       <div className="ml-auto flex flex-wrap items-center gap-2">
-        {cfg && <WhatsAppRobotToggle enabled={cfg.auto_reply_enabled} stockExhausted={cfg.business.stockExhausted} onChange={({ enabled, stockExhausted }) => setCfg(current => current ? { ...current, auto_reply_enabled: enabled, business: { ...current.business, stockExhausted } } : current)} />}
+        {cfg && <WhatsAppRobotToggle enabled={cfg.auto_reply_enabled} stockExhausted={cfg.business.stockExhausted} circuitPaused={cfg.business.circuitPaused} circuitReason={cfg.business.circuitReason} onChange={({ enabled, stockExhausted, circuitPaused }) => setCfg(current => current ? { ...current, auto_reply_enabled: enabled, business: { ...current.business, stockExhausted, circuitPaused, circuitReason: circuitPaused ? current.business.circuitReason : '' } } : current)} />}
         <Button variant="outline" size="sm" onClick={() => { void checkStatus(); void loadConvs(); void loadCfg(); }}><RefreshCw /> Atualizar</Button>
         {isAdmin && status?.connected && <Button variant="outline" size="sm" disabled={busy} onClick={() => void syncHistory()}><History /> Importar</Button>}
         {isAdmin && <Button variant="outline" size="sm" onClick={() => setShowCfg(v => !v)}><Settings2 /> Configurações</Button>}

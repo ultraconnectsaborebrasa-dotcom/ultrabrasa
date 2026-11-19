@@ -596,6 +596,20 @@
       "when": 1795060592944,
       "tag": "0084_courier_marmita_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1795095113578,
+      "tag": "0085_whatsapp_robot_reactivation_delivery_block",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1795095202172,
+      "tag": "0086_whatsapp_preserve_new_interpretation_on_activation",
+      "breakpoints": true
     }
   ]
 }
