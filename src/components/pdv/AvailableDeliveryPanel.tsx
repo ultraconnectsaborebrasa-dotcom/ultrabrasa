@@ -70,7 +70,8 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
       await client.invalidateQueries({ queryKey: ['delivery-board'] });
       toast.success(`Endereço do pedido #${delivery.number} localizado e salvo.`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Não foi possível localizar este endereço.');
+      onFocusDelivery(delivery);
+      toast.error(error instanceof Error ? error.message : 'Não foi possível localizar este endereço. Você ainda pode designar a entrega sem o mapa.');
     } finally {
       setLocatingId(null);
     }

@@ -1,11 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvailableDeliveryPanel } from '@/components/pdv/AvailableDeliveryPanel';
 import type { Courier, Delivery } from '@/lib/delivery';
 import type { CourierLiveLocation } from '@/lib/courier-operations';
 
-vi.mock('@tanstack/react-start', () => ({ useServerFn: () => vi.fn() }));
+const { locateMock, estimateMock } = vi.hoisted(() => ({ locateMock: vi.fn(), estimateMock: vi.fn() }));
+vi.mock('@tanstack/react-start', () => ({ useServerFn: (fn: unknown) => fn === 'locate-delivery' ? locateMock : estimateMock }));
 vi.mock('@/lib/delivery-route.functions', () => ({ locateDeliveryOnMap: 'locate-delivery', estimateCourierDelivery: 'estimate-delivery' }));
 
 const delivery: Delivery = {
@@ -20,14 +21,14 @@ const couriers: Courier[] = [
 ];
 const location = (courier_id: string, latitude: number, located_at: string): CourierLiveLocation => ({ courier_id, name: courier_id, latitude, longitude: -39.57, accuracy_meters: 10, located_at, consent_at: located_at });
 
-function renderPanel(locations: CourierLiveLocation[], onAssign = vi.fn(), currentDelivery = delivery, customCouriers = couriers) {
+function renderPanel(locations: CourierLiveLocation[], onAssign = vi.fn(), currentDelivery = delivery, customCouriers = couriers, onFocusDelivery = vi.fn()) {
   const client = new QueryClient();
-  render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[currentDelivery]} couriers={customCouriers} locations={locations} baseAddress="Base Teste" selectedDeliveryId={currentDelivery.id} onFocusDelivery={vi.fn()} onLocated={vi.fn()} onAssign={onAssign} /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[currentDelivery]} couriers={customCouriers} locations={locations} baseAddress="Base Teste" selectedDeliveryId={currentDelivery.id} onFocusDelivery={onFocusDelivery} onLocated={vi.fn()} onAssign={onAssign} /></QueryClientProvider>);
   return onAssign;
 }
 
 describe('designação da entrega pelo motoboy mais próximo', () => {
-  beforeEach(() => { vi.useRealTimers(); });
+  beforeEach(() => { vi.useRealTimers(); locateMock.mockReset(); estimateMock.mockReset(); });
 
   it('destaca o GPS mais próximo e designa exatamente a entrega selecionada', () => {
     const now = new Date().toISOString();
@@ -60,5 +61,16 @@ describe('designação da entrega pelo motoboy mais próximo', () => {
     expect(screen.getByText('Entrega já na rua.', { exact: false })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Designar/ })).toBeNull();
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('mantém a designação disponível quando o Google bloqueia a localização', async () => {
+    locateMock.mockRejectedValue(new Error('Geocoding API bloqueada; você ainda pode designar a entrega sem o mapa.'));
+    const focus = vi.fn();
+    const unlocated = { ...delivery, address: { ...delivery.address, latitude: '', longitude: '' } };
+    const assign = renderPanel([], vi.fn(), unlocated, couriers, focus);
+    fireEvent.click(screen.getByRole('button', { name: /#900 · Cliente Teste/ }));
+    await waitFor(() => expect(focus).toHaveBeenCalledWith(unlocated));
+    fireEvent.click(screen.getByRole('button', { name: 'Designar Perto' }));
+    expect(assign).toHaveBeenCalledWith('near', 'Base Teste', ['delivery-1']);
   });
 });

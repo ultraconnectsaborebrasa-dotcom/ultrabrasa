@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { addressText, type Delivery, type DeliveryRoute } from '@/lib/delivery';
 import { isCourierLocationStale, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 import { deliveryCoordinates } from '@/lib/delivery';
+import { geocodingFailureMessage } from '@/lib/google-geocoding';
 import type { Json } from '@/integrations/supabase/types';
 
 export const calculateDeliveryRoute = createServerFn({ method: 'POST' })
@@ -81,7 +82,7 @@ export const calculateDeliveryRoute = createServerFn({ method: 'POST' })
         const result = await response.json() as { status?: string; error_message?: string; results?: { geometry?: { location?: { lat?: number; lng?: number } } }[] };
         const location = result.results?.[0]?.geometry?.location;
         if (result.status !== 'OK' || typeof location?.lat !== 'number' || typeof location.lng !== 'number') {
-          throw new Error(`Não foi possível localizar o endereço do pedido #${delivery.number}. Revise o endereço antes de calcular a rota. ${result.error_message ?? result.status ?? ''}`.trim());
+          throw new Error(geocodingFailureMessage(result, delivery.number));
         }
         latitude = location.lat;
         longitude = location.lng;
@@ -159,7 +160,7 @@ export const locateDeliveryOnMap = createServerFn({ method: 'POST' })
     const result = await response.json() as { status?: string; error_message?: string; results?: { geometry?: { location?: { lat?: number; lng?: number } } }[] };
     const location = result.results?.[0]?.geometry?.location;
     if (result.status !== 'OK' || typeof location?.lat !== 'number' || typeof location.lng !== 'number' || Math.abs(location.lat) > 90 || Math.abs(location.lng) > 180) {
-      throw new Error(`Não foi possível localizar o endereço do pedido #${delivery.number}. Revise o endereço. ${result.error_message ?? result.status ?? ''}`.trim());
+      throw new Error(geocodingFailureMessage(result, delivery.number));
     }
     const position = { latitude: location.lat, longitude: location.lng };
     const address = { ...delivery.address, latitude: String(position.latitude), longitude: String(position.longitude) };
