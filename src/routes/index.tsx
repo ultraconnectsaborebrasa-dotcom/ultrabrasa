@@ -23,7 +23,7 @@ import { useWhatsAppConversations,useWhatsAppPendingOrders } from '@/lib/whatsap
 import { useServerFn } from '@tanstack/react-start';
 import { toast } from 'sonner';
 import { whatsappRequestAction } from '@/lib/whatsapp-attendance.functions';
-import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
+import { autoPrintAcceptedOrder } from '@/lib/kitchen-print';
 import type { WhatsAppManualOrder } from '@/lib/whatsapp-manual-order';
 import { WhatsAppOrderConversation } from '@/components/pdv/WhatsAppOrderConversation';
 
@@ -68,7 +68,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const whatsappConvs=useWhatsAppConversations();const whatsappUnread=whatsappConvs.reduce((n,c)=>n+c.unread,0);
   const whatsappPending=useWhatsAppPendingOrders();
   const requestFn=useServerFn(whatsappRequestAction);
-  const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});const status=(accepted as {status?:unknown}|null)?.status;toast.success(status==='pronto'?'Pedido aceito e pronto para entrega':'Pedido aceito e enviado à cozinha');const orderId=(accepted as {id?:unknown}|null)?.id;if(status==='cozinha'&&typeof orderId==='string')void autoPrintKitchenOrderById(orderId);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
+  const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});const status=(accepted as {status?:unknown}|null)?.status;toast.success(status==='pronto'?'Pedido aceito e pronto para entrega':'Pedido aceito e enviado à cozinha');void autoPrintAcceptedOrder(accepted);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
   const buildWhatsAppOrder=(order:WhatsAppManualOrder)=>{
     const current=getState().draft;
     if(current.editingId||current.items.length){toast.warning('Conclua ou limpe o pedido atual antes de montar outro pelo WhatsApp.');return;}
