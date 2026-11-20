@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Limpeza para nova operação
+- [ ] Apagar todos os pedidos, histórico de vendas, entregas e rotas, mantendo produtos, clientes, equipe e configurações.
+- [ ] Limpar solicitações e comprovantes vinculados, reiniciar a numeração e verificar painéis zerados sem apagar conversas ou cargas da equipe.
+
 ## Ultrabrasa Entregas 2.0 — documento enviado
 - [x] Diagnosticar e reutilizar cargas, reservas, rotas, mapa, aplicativo e permissões existentes sem alterar os demais módulos.
 - [x] Completar estoque móvel com tipo de marmita, cargas/reposições, devoluções, perdas justificadas, retorno e histórico.
