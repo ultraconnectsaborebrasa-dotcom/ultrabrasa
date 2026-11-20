@@ -12,7 +12,7 @@ vi.mock('@/services/thermalPrinter', async importOriginal => ({
 }));
 vi.mock('sonner', () => ({ toast: { error: toastError } }));
 
-import { autoPrintKitchenOrderById, printableKitchenOrder } from '@/lib/kitchen-print';
+import { autoPrintAcceptedOrder, autoPrintKitchenOrderById, printableKitchenOrder } from '@/lib/kitchen-print';
 
 const projection = {
   id: 'wa-order-1', number: 915, type: 'Delivery' as const, customer: 'Maria',
@@ -20,7 +20,7 @@ const projection = {
   note: 'Sem salada', items: [{ name: 'Marmita completa', qty: 2, price: 19.9, note: 'Sem salada' }],
 };
 
-describe('impressão automática ao enviar à cozinha', () => {
+describe('impressão automática de pedidos aceitos', () => {
   beforeEach(() => {
     localStorage.clear();
     printOrder.mockReset().mockResolvedValue(undefined);
@@ -38,6 +38,13 @@ describe('impressão automática ao enviar à cozinha', () => {
     expect(fee).toBe(0);
     expect(options).toEqual({ target: 'kitchen' });
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('imprime também um pedido aceito como pronto, sem passar pela cozinha', async () => {
+    rpc.mockResolvedValue({ data: { orders: [{ ...projection, status: 'pronto' }] }, error: null });
+    await expect(autoPrintAcceptedOrder({ id: 'wa-order-1', status: 'pronto' })).resolves.toBe(true);
+    expect(printOrder).toHaveBeenCalledTimes(1);
+    expect(printOrder.mock.calls[0]![0]).toMatchObject({ id: 'wa-order-1', status: 'pronto' });
   });
 
   it('respeita a impressão automática desligada sem consultar ou imprimir', async () => {

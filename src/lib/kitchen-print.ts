@@ -58,7 +58,13 @@ export async function autoPrintKitchenOrderById(orderId: string): Promise<boolea
     return true;
   } catch (error) {
     const detail = error instanceof Error ? error.message : 'verifique o QZ Tray e a impressora selecionada';
-    toast.error(`Pedido${number} enviado à cozinha, mas a comanda não foi impressa: ${detail}`);
+    toast.error(`Pedido${number} aceito, mas a comanda não foi impressa: ${detail}`);
     return false;
   }
+}
+
+// Marmitas já entram prontas: o aceite imprime independentemente da etapa de preparo.
+export async function autoPrintAcceptedOrder(accepted: unknown): Promise<boolean> {
+  const orderId = accepted && typeof accepted === 'object' ? (accepted as { id?: unknown }).id : null;
+  return typeof orderId === 'string' && orderId ? autoPrintKitchenOrderById(orderId) : false;
 }

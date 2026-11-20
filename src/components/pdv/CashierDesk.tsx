@@ -29,7 +29,7 @@ import { ManualPaymentDialog } from './ManualPaymentDialog';
 import { BulkPayDialog } from './BulkPayDialog';
 import { kitchenBulkDestination, runKitchenBulkAction } from '@/lib/kitchen-bulk';
 import { BulkDeliveryDeparture } from './BulkDeliveryDeparture';
-import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
+import { autoPrintAcceptedOrder } from '@/lib/kitchen-print';
 import { submitCashierSale } from '@/lib/cashier-sale';
 import { canDirectSale } from '@/lib/pdv-sale';
 import { initialOrderStatus } from '@/lib/marmita-order';
@@ -50,7 +50,7 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
  const waConvs=useWhatsAppConversations();
  const waUnread=waConvs.reduce((sum,c)=>sum+(c.unread||0),0);
  const requestFn=useServerFn(whatsappRequestAction);
- const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});const status=(accepted as {status?:unknown}|null)?.status;toast.success(status==='pronto'?'Pedido aceito e pronto para entrega':'Pedido aceito e enviado à cozinha');const orderId=(accepted as {id?:unknown}|null)?.id;if(status==='cozinha'&&typeof orderId==='string')void autoPrintKitchenOrderById(orderId);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
+ const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});const status=(accepted as {status?:unknown}|null)?.status;toast.success(status==='pronto'?'Pedido aceito e pronto para entrega':'Pedido aceito e enviado à cozinha');void autoPrintAcceptedOrder(accepted);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
  const [busy,setBusy]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);
  const [receiptOrders,setReceiptOrders]=useState<string[]>([]);

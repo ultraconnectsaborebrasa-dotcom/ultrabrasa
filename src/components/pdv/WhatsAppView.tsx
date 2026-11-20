@@ -25,7 +25,7 @@ import { ReceiptRegistration } from './ReceiptRegistration';
 import { recoverReceiptAttachment } from '@/lib/receipt-actions.functions';
 import { isStoreToday, storeDayStart } from '@/lib/daily-inbox';
 import { needsStaffReply, sortQueue } from '@/lib/whatsapp-queue';
-import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
+import { autoPrintAcceptedOrder } from '@/lib/kitchen-print';
 import { WhatsAppManualOrderCard, blankManualOrder } from './WhatsAppManualOrderCard';
 import type { WhatsAppManualOrder } from '@/lib/whatsapp-manual-order';
 
@@ -199,8 +199,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
       const accepted = await requestFn({ data: { id, accept: yes, reason: reason ?? undefined } });
       const status = (accepted as { status?: unknown } | null)?.status;
       toast.success(yes ? status === 'pronto' ? 'Pedido aceito e pronto para entrega' : 'Pedido aceito e enviado à cozinha' : 'Pedido recusado');
-      const orderId = (accepted as { id?: unknown } | null)?.id;
-      if (yes && status === 'cozinha' && typeof orderId === 'string') void autoPrintKitchenOrderById(orderId);
+      if (yes) void autoPrintAcceptedOrder(accepted);
       await loadRequests();
       await loadConvs();
       void refreshWhatsAppConversations();
