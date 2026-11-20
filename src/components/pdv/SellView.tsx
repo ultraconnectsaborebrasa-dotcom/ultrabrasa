@@ -13,6 +13,7 @@ import { validTable, tableLabel } from '@/lib/pdv-tables';
 import { printOrder, printerPreferences } from '@/services/thermalPrinter';
 import { canDirectSale } from '@/lib/pdv-sale';
 import { initialOrderStatus } from '@/lib/marmita-order';
+import { autoPrintPaidPixReceipt } from '@/lib/pix-payment-print';
 
 const TYPES: OrderType[] = ["Balcão", "Mesa", "Retirada", "Delivery"];
 
@@ -227,7 +228,7 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
       </aside>
 
       <Checkout open={pay&&canDirectSale(draft.type)} onClose={() => setPay(false)} total={t.total} methods={settings.paymentMethods} title="Cobrar pedido"
-        onConfirm={(p) => { const o = commitDraft("pago", p); setPay(false); if (o) { toast.success(`Pedido #${o.number} pago — ${brl(t.total)}`); if (o.type === "Delivery") onDelivery?.(); } }} />
+        onConfirm={(p) => { const o = commitDraft("pago", p); setPay(false); if (o) { toast.success(`Pedido #${o.number} pago — ${brl(t.total)}`); void autoPrintPaidPixReceipt(o, settings.serviceFeePct); if (o.type === "Delivery") onDelivery?.(); } }} />
       <EditProduct product={editing} onClose={() => setEditing(null)} />
     </div>
   );

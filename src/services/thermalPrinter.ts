@@ -72,7 +72,10 @@ const money = (value: number) => {
 export function formatReceipt(order: Order, serviceFeePct: number, columns: PrintColumns = 28): string {
  const { line, center, pair, wrap } = receiptLayout(columns);
  const date = new Date(order.createdAt);
- const sum = totals(order, serviceFeePct);
+ const calculated = totals(order, serviceFeePct);
+ const isPaid = order.status === 'pago' || order.paymentStatus === 'pago' || Boolean(order.paidAt);
+ const paidAmount = order.payments.filter(payment => payment.verification !== 'unverified').reduce((total, payment) => total + payment.amount, 0);
+ const sum = isPaid && paidAmount > 0 ? { ...calculated, total: paidAmount } : calculated;
  const lines = [center('ULTRACONNECT'), center('SABOR E BRASA'), line, center('PEDIDO #' + order.number), line,
   'DATA: ' + date.toLocaleDateString('pt-BR'), 'HORA: ' + date.toLocaleTimeString('pt-BR'), line, ...wrap('TIPO: ' + String(order.type).toUpperCase())];
  if (order.tableNumber) lines.push('MESA: ' + order.tableNumber);
@@ -98,7 +101,13 @@ export function formatReceipt(order: Order, serviceFeePct: number, columns: Prin
  const paymentMethods = order.payments?.length
   ? order.payments.map(p => p.method).join(', ')
   : isDeliveryOrder(order) ? order.delivery?.paymentMethod : '';
- if (paymentMethods) lines.push(...wrap('PAGAMENTO: ' + paymentMethods), line);
+ if (paymentMethods) {
+  if (isPaid && order.payments.length) {
+   const pixOnly = order.payments.every(payment => normalize(payment.method).toLowerCase() === 'pix');
+   lines.push(center(pixOnly ? 'PAGO NO PIX' : 'PAGO · ' + paymentMethods), line);
+  }
+  lines.push(...wrap('PAGAMENTO: ' + paymentMethods), line);
+ }
  if (order.note) lines.push(...wrap('OBS: ' + order.note), line);
  lines.push(center('FIM DO PEDIDO'), '', '', '', '');
  return lines.join('\n') + '\n';

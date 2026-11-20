@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { brl } from '@/lib/pdv-store';
 import type { Database } from '@/integrations/supabase/types';
 import {ReceiptRegistration} from './ReceiptRegistration';
+import { autoPrintPaidPixOrderById } from '@/lib/pix-payment-print';
 type Receipt=Database['public']['Tables']['payment_receipts']['Row'];
 export function ReceiptReview({orderId,viewOnly}:{orderId?:string;viewOnly?:boolean}={}) {
  const [rows,setRows]=useState<Receipt[]>([]);const [filter,setFilter]=useState('pending');const [busy,setBusy]=useState(false);
@@ -13,7 +14,23 @@ export function ReceiptReview({orderId,viewOnly}:{orderId?:string;viewOnly?:bool
  async function load(){let q=supabase.from('payment_receipts').select('*');if(orderId)q=q.eq('order_id',orderId).in('state',['unverified','review']);const r=await q.order('received_at',{ascending:false}).limit(100);if(r.error){toast.error(r.error.message);return;}setRows(r.data);}
  useEffect(()=>{void load();const timer=setInterval(()=>void load(),4000);return()=>clearInterval(timer);},[]);
  async function review(r:Receipt,confirm:boolean){const reason=confirm?'Recebimento bancário conferido manualmente pela equipe':await promptAction('Motivo obrigatório: por que o pagamento não foi localizado?');if(!reason?.trim())return;setBusy(true);try{const result=await supabase.rpc('review_payment_receipt',{_id:r.id,_confirm:confirm,_reason:reason});if(result.error)throw result.error;toast.success(confirm?'Recebimento confirmado pela equipe':'Baixa corrigida; pagamento pendente');await load();}catch(e){toast.error(e instanceof Error?e.message:'Falha na conferência');}finally{setBusy(false);}}
- async function confirmPay(r:Receipt){if(busy)return;setBusy(true);try{let res=await supabase.rpc('confirm_receipt_payment',{_id:r.id,_method:'Pix'});if(res.error?.message.includes('CAIXA_FECHADO')){if(!await confirmAction('Não há caixa aberto. Abrir o caixa agora (troco inicial R$ 0,00) e concluir o pagamento?'))throw new Error('Caixa fechado: abra o caixa para concluir o pagamento');const op=await supabase.rpc('open_pdv_cash',{_initial:0});if(op.error)throw op.error;res=await supabase.rpc('confirm_receipt_payment',{_id:r.id,_method:'Pix'});}if(res.error)throw res.error;const d=res.data as {already?:boolean;amount?:number;remaining?:number;paid?:boolean};toast.success(d?.already?'Este pagamento já estava confirmado':d?.paid?`Pagamento de ${brl(d.amount??0)} lançado no caixa · Pedido pago`:`${brl(d?.amount??0)} lançado · falta ${brl(d?.remaining??0)}`);await load();}catch(e){toast.error(e instanceof Error?e.message:'Falha ao confirmar; nada foi gravado, tente novamente');}finally{setBusy(false);}}
+ async function confirmPay(r:Receipt){
+  if(busy)return;
+  setBusy(true);
+  try{
+   let res=await supabase.rpc('confirm_receipt_payment',{_id:r.id,_method:'Pix'});
+   if(res.error?.message.includes('CAIXA_FECHADO')){
+    if(!await confirmAction('Não há caixa aberto. Abrir o caixa agora (troco inicial R$ 0,00) e concluir o pagamento?'))throw new Error('Caixa fechado: abra o caixa para concluir o pagamento');
+    const op=await supabase.rpc('open_pdv_cash',{_initial:0});if(op.error)throw op.error;
+    res=await supabase.rpc('confirm_receipt_payment',{_id:r.id,_method:'Pix'});
+   }
+   if(res.error)throw res.error;
+   const d=res.data as {already?:boolean;amount?:number;remaining?:number;paid?:boolean};
+   toast.success(d?.already?'Este pagamento já estava confirmado':d?.paid?`Pagamento de ${brl(d.amount??0)} lançado no caixa · Pedido pago`:`${brl(d?.amount??0)} lançado · falta ${brl(d?.remaining??0)}`);
+   if(d?.paid&&!d?.already&&r.order_id)await autoPrintPaidPixOrderById(r.order_id,'Pix');
+   await load();
+  }catch(e){toast.error(e instanceof Error?e.message:'Falha ao confirmar; nada foi gravado, tente novamente');}finally{setBusy(false);}
+ }
  async function open(r:Receipt){if(!r.storage_path){toast.error('Arquivo indisponível; confira pelo WhatsApp da loja');return;}const result=await supabase.storage.from('payment-receipts').createSignedUrl(r.storage_path,60);if(result.error){toast.error(result.error.message);return;}window.open(result.data.signedUrl,'_blank','noopener,noreferrer');}
  async function history(r:Receipt){const result=await supabase.from('payment_receipt_events').select('*').eq('receipt_id',r.id).order('created_at');if(result.error)toast.error(result.error.message);else setEvents(result.data);}
  async function link(r:Receipt){const result=await supabase.from('whatsapp_order_requests').select('id,public_code,order_number,status').eq('phone',r.phone).in('status',['awaiting_acceptance','accepted']);if(result.error){toast.error(result.error.message);return;}const choice=await promptAction(`Qual o código/número do pedido? ${result.data.map(x=>x.public_code??x.order_number??x.id).join(', ')}`);if(!choice)return;const req=result.data.find(x=>x.public_code===choice||String(x.order_number)===choice||x.id===choice);if(!req){toast.error('Pedido não identificado');return;}const saved=await supabase.rpc('link_payment_receipt',{_id:r.id,_request:req.id});if(saved.error)toast.error(saved.error.message);else await load();}

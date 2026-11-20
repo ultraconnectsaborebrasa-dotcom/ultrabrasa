@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { printOrder, testPrinter } from '@/services/thermalPrinter';
+import { formatReceipt, printOrder, testPrinter } from '@/services/thermalPrinter';
 import type { Order } from '@/lib/pdv-store';
 
 const security = {
@@ -92,6 +92,22 @@ describe('impressão na Epson física', () => {
     await printOrder(order, 0, { manual: true });
     const rawPayload = print.mock.calls[0]![1] as Array<{ data: string }>;
     expect(rawPayload[0]!.data).toMatch(/TOTAL:\s+R\$ 19,90/);
+  });
+
+  it('marca o cupom como pago no Pix usando o valor recebido', () => {
+    const order: Order = {
+      id: 'pedido-pix-pago', number: 1002, type: 'Balcão', customer: 'Cliente Pix', status: 'pronto',
+      paymentStatus: 'pago', paidAt: Date.now(), createdAt: Date.now(), note: '', discount: 0, fee: 5, serviceFee: false,
+      items: [{ uid: 'item-1', productId: 'marmita', name: 'Marmita completa', price: 19.9, qty: 1, note: '' }],
+      payments: [{ method: 'Pix', amount: 24.9 }],
+    };
+
+    const paidReceipt = formatReceipt(order, 0, 42);
+    expect(paidReceipt).toContain('PAGO NO PIX');
+    expect(paidReceipt).toMatch(/TOTAL:\s+R\$ 24,90/);
+
+    const pendingReceipt = formatReceipt({ ...order, paymentStatus: 'pendente', paidAt: undefined }, 0, 42);
+    expect(pendingReceipt).not.toContain('PAGO NO PIX');
   });
 
   it('não envia o cupom a outra impressora quando a Epson selecionada está ausente', async () => {
