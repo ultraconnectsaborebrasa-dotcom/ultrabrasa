@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { whatsappRequestAction } from '@/lib/whatsapp-attendance.functions';
 import { autoPrintKitchenOrderById } from '@/lib/kitchen-print';
 import type { WhatsAppManualOrder } from '@/lib/whatsapp-manual-order';
+import { WhatsAppOrderConversation } from '@/components/pdv/WhatsAppOrderConversation';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -63,6 +64,7 @@ function Index() {
 function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promise<void>}) {
   const [tab, setTab] = useState<Tab>("pdv");
   const [whatsappPhone,setWhatsAppPhone]=useState<string|null>(null);
+  const [manualOrderPhone,setManualOrderPhone]=useState<string|null>(null);
   const whatsappConvs=useWhatsAppConversations();const whatsappUnread=whatsappConvs.reduce((n,c)=>n+c.unread,0);
   const whatsappPending=useWhatsAppPendingOrders();
   const requestFn=useServerFn(whatsappRequestAction);
@@ -72,6 +74,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
     if(current.editingId||current.items.length){toast.warning('Conclua ou limpe o pedido atual antes de montar outro pelo WhatsApp.');return;}
     updateDraft({type:order.type??'Balcão',customer:order.customer,customerPhone:order.phone,delivery:order.delivery,note:'',discount:0,fee:0,serviceFee:false,tableNumber:undefined,editingId:undefined});
     setWhatsAppPhone(order.phone);
+    setManualOrderPhone(order.phone);
     setTab('pdv');
     toast.message('Pedido manual aberto. Preencha os dados e escolha os produtos.');
   };
@@ -133,7 +136,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
         {admin&&<WhatsAppNotifications onOpen={phone=>{setWhatsAppPhone(phone);setTab('whatsapp');}} onAccept={acceptWhatsAppOrder} productName={id=>products.find(p=>p.id===id)?.name??'item'}/>}
       </div>
       <main key={tab} className="pdv-view-enter min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
-        {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <SellView admin={admin} onDelivery={()=>setTab('rotas')}/> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
+        {tab === "rotas" ? <DeliveryBoard admin={admin}/> : tab === "pdv" ? <div className={manualOrderPhone?'grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]':''}><SellView admin={admin} onDelivery={()=>setTab('rotas')}/>{manualOrderPhone&&<WhatsAppOrderConversation phone={manualOrderPhone} onBack={()=>setTab('whatsapp')} onClose={()=>setManualOrderPhone(null)}/>}</div> : tab === "mesas" ? <TablesView goSell={()=>setTab('pdv')}/> : tab === "comandas" ? <OrdersView admin={admin} goSell={() => setTab("pdv")} /> : tab === "cozinha" ? <KitchenView />
           : tab === "whatsapp" && admin ? <WhatsAppView openPhone={whatsappPhone} onBuildOrder={buildWhatsAppOrder}/> : tab === "cardapio" && admin ? <CatalogAdmin/> : tab === "clientes" && admin ? <CustomersView/> : tab === "historico" ? <SalesHistory/> : tab === "admin" && admin ? <AdminTeam/> : tab === "produtos" && admin ? <ProductsView /> : tab === "caixa" ? <CashView /> : admin ? <SettingsView goAdmin={() => setTab('admin')}/> : null}
       </main>
       {saving && <div role="status" className="fixed inset-0 z-50 flex items-center justify-center gap-3 bg-background/70 text-foreground"><LoaderCircle className="animate-spin"/>Salvando…</div>}

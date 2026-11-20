@@ -1,9 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Pedido manual pelo WhatsApp ao lado da conversa
-- [ ] Manter a pausa imediata do robô ao assumir e exibir nome do perfil e estado da automação na montagem.
-- [ ] Mostrar a conversa ao lado do pedido para Administrador e Caixa, com cópia do nome e das mensagens, sem preenchimento automático.
-- [ ] Testar o fluxo sem criar pedidos ou enviar mensagens reais.
+- [x] Manter a pausa imediata do robô ao assumir e exibir nome do perfil e estado da automação na montagem.
+- [x] Mostrar a conversa ao lado do pedido para Administrador e Caixa, com cópia do nome e das mensagens, sem preenchimento automático; acima do pedido em telas menores e recolhível.
+- [x] Oito testes focados e typecheck passaram; fluxo visual verificado em 1280 e 890 pixels com conversa fictícia, sem criar pedidos, assumir atendimentos ou enviar mensagens reais.
 
 ## Limpeza para nova operação
 - [x] Apagar 917 pedidos do histórico completo, 450 entregas e 7 rotas, mantendo produtos, clientes, equipe e configurações.
