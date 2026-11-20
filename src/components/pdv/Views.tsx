@@ -20,7 +20,6 @@ import { ManualPaymentDialog } from './ManualPaymentDialog';
 import { openCloud } from '@/lib/pdv-cloud';
 import { runKitchenBulkAction } from '@/lib/kitchen-bulk';
 import { BulkDeliveryDeparture } from './BulkDeliveryDeparture';
-import { autoPrintPaidPixOrderById } from '@/lib/pix-payment-print';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -75,7 +74,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
 
       <details><summary className="cursor-pointer text-sm font-semibold">Pagamentos recebidos e histórico</summary><SalesHistory /></details>
 
-      {paying&&<ManualPaymentDialog markReady order={{id:paying.id,number:paying.number,total:totals(paying,settings.serviceFeePct).total}} onClose={()=>setPaying(null)} methods={settings.paymentMethods} onPaid={async method=>{await openCloud();if(paying)await autoPrintPaidPixOrderById(paying.id,method);}}/>}
+      {paying&&<ManualPaymentDialog markReady order={{id:paying.id,number:paying.number,total:totals(paying,settings.serviceFeePct).total}} onClose={()=>setPaying(null)} methods={settings.paymentMethods} onPaid={openCloud}/>}
     </div>
   );
 }

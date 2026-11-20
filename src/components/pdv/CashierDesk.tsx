@@ -36,7 +36,6 @@ import { initialOrderStatus } from '@/lib/marmita-order';
 import { ReceiveAndSendDialog } from './ReceiveAndSendDialog';
 import type { WhatsAppManualOrder } from '@/lib/whatsapp-manual-order';
 import { WhatsAppOrderConversation } from './WhatsAppOrderConversation';
-import { autoPrintPaidPixOrderById, isPixPaymentMethod } from '@/lib/pix-payment-print';
 
 type Product = {id:string;name:string;category:string;price:number;stock:number|null;active:boolean};
 type Item = {name:string;productId?:string;qty:number;price:number;note?:string};
@@ -174,9 +173,9 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
   {tab==='payments'&&<details className="rounded-lg border p-3"><summary className="cursor-pointer text-sm font-semibold">Comprovantes sem pedido e histórico</summary><ReceiptReview/></details>}
   {tab==='printer'&&<section className="max-w-2xl space-y-4"><h2 className="text-lg font-bold">Impressora</h2><ThermalPrinterPanel/></section>}
   {tab==='products'&&<section className="space-y-4"><div className="flex items-center justify-between"><h2 className="text-lg font-bold">Estoque e cadastro</h2><Button onClick={()=>start()}>Novo produto</Button></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Ação</th></tr></thead><tbody>{data.products.map(p=><tr className="border-b" key={p.id}><td className="p-2">{p.name}</td><td>{p.category}</td><td>{brl(p.price)}</td><td>{p.stock??'Sem controle'}</td><td><Button size="sm" variant="outline" onClick={()=>start(p)}>Editar</Button></td></tr>)}</tbody></table></div></section>}
-  {bulkPay&&<BulkPayDialog orders={payable.filter(o=>picked.has(o.id))} methods={data.paymentMethods} onClose={()=>setBulkPay(false)} onPaid={async(orderId,method)=>{if(isPixPaymentMethod(method))await autoPrintPaidPixOrderById(orderId,method);}} onDone={async()=>{setPicked(new Set());await refresh();}}/>}
+  {bulkPay&&<BulkPayDialog orders={payable.filter(o=>picked.has(o.id))} methods={data.paymentMethods} onClose={()=>setBulkPay(false)} onPaid={()=>{}} onDone={async()=>{setPicked(new Set());await refresh();}}/>}
   {receiveOpen&&canDirectSale(orderType)&&<ReceiveAndSendDialog total={cartTotal+deliveryFeeFor(orderType,delivery,data.deliveryFee??0)} methods={data.paymentMethods} busy={busy} delivery={orderType==='Delivery'} onClose={()=>{if(!busy)setReceiveOpen(false);}} onConfirm={async method=>{await submitSale(method,'direct');}}/>}
-  {selected&&(()=>{const o=data.orders.find(x=>x.id===selected);return o?<ManualPaymentDialog order={o} methods={data.paymentMethods} markReady onClose={()=>setSelected(null)} onPaid={async method=>{await refresh();if(isPixPaymentMethod(method))await autoPrintPaidPixOrderById(o.id,method);}}/>:null;})()}
+  {selected&&(()=>{const o=data.orders.find(x=>x.id===selected);return o?<ManualPaymentDialog order={o} methods={data.paymentMethods} markReady onClose={()=>setSelected(null)} onPaid={async()=>{await refresh();}}/>:null;})()}
   {edit&&<div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"><div className="w-full max-w-md space-y-3 rounded-xl bg-background p-6"><h2 className="text-xl font-bold">{edit.id?'Editar produto':'Cadastrar produto'}</h2>{(['name','category','price','stock'] as const).map(k=><label key={k} className="block text-sm">{({name:'Nome',category:'Categoria',price:'Preço de venda',stock:'Estoque (vazio = sem controle)'})[k]}<input className="field mt-1 w-full" value={form[k]} onChange={e=>setForm(v=>({...v,[k]:e.target.value}))}/></label>)}<div className="flex justify-end gap-2"><Button variant="outline" onClick={()=>setEdit(null)}>Cancelar</Button><Button disabled={busy} onClick={()=>void save()}>Salvar</Button></div></div></div>}
  </div>;
 }

@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { brl } from '@/lib/pdv-store';
 import type { Database } from '@/integrations/supabase/types';
 import {ReceiptRegistration} from './ReceiptRegistration';
-import { autoPrintPaidPixOrderById } from '@/lib/pix-payment-print';
 type Receipt=Database['public']['Tables']['payment_receipts']['Row'];
 export function ReceiptReview({orderId,viewOnly}:{orderId?:string;viewOnly?:boolean}={}) {
  const [rows,setRows]=useState<Receipt[]>([]);const [filter,setFilter]=useState('pending');const [busy,setBusy]=useState(false);
@@ -27,7 +26,6 @@ export function ReceiptReview({orderId,viewOnly}:{orderId?:string;viewOnly?:bool
    if(res.error)throw res.error;
    const d=res.data as {already?:boolean;amount?:number;remaining?:number;paid?:boolean};
    toast.success(d?.already?'Este pagamento já estava confirmado':d?.paid?`Pagamento de ${brl(d.amount??0)} lançado no caixa · Pedido pago`:`${brl(d?.amount??0)} lançado · falta ${brl(d?.remaining??0)}`);
-   if(d?.paid&&!d?.already&&r.order_id)await autoPrintPaidPixOrderById(r.order_id,'Pix');
    await load();
   }catch(e){toast.error(e instanceof Error?e.message:'Falha ao confirmar; nada foi gravado, tente novamente');}finally{setBusy(false);}
  }
