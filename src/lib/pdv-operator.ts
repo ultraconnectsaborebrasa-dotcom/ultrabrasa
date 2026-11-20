@@ -16,7 +16,7 @@ export async function readOperator(): Promise<OperatorData> {
 export async function submitOperator(request: { delivery?: DeliveryInput | undefined; id: string; type: string; tableNumber?: number | undefined; customer: string; customerPhone?: string | undefined; promotionConsent?: boolean; note: string; items: OperatorItem[]; source: string }) {
   const { data, error } = await supabase.rpc('submit_pdv_operator_with_contact', { request: request as unknown as Json });
   if (error) throw new Error(error.message);
-  return data as unknown as { number: number };
+  return data as unknown as { number: number; status?: string };
 }
 export function operatorSubtotal(items: { price: number | null; qty: number }[]): number | null {
   if (items.some(i => i.price === null || !Number.isFinite(i.price))) return null;

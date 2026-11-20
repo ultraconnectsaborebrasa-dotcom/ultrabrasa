@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Caixa nas rotas e marmitas prontas para entrega
+- [x] Dar ao Caixa o mesmo acesso operacional do Administrador ao mapa, equipe, designação e gestão de Rotas, sem liberar relatórios financeiros.
+- [x] Fazer pedidos exclusivamente de marmitas entrarem prontos para entrega em todos os canais; pedidos mistos continuam na cozinha.
+- [x] Oferecer “Receber” ao montar Delivery: registrar um único pagamento e deixar o pedido pago e pronto para designar entregador, sem concluir a entrega.
+- [x] 442 testes aprovados; regras verificadas no banco em transação revertida e painel do Caixa conferido no navegador sem vendas, pagamentos ou designações reais. Mapa Google ao vivo permanece sujeito à validação no domínio autorizado.
+
 ## Lembrete cinco minutos após o cardápio
 - [x] Agendar um único lembrete cinco minutos depois do envio automático do cardápio, usando o texto confirmado pelo responsável.
 - [x] Cancelar o lembrete se o cliente responder, a conversa for assumida, o robô for desligado ou o pedido já estiver confirmado.

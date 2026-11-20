@@ -66,7 +66,7 @@ function Desk({admin,name,signOut}:{admin:boolean;name:string;signOut:()=>Promis
   const whatsappConvs=useWhatsAppConversations();const whatsappUnread=whatsappConvs.reduce((n,c)=>n+c.unread,0);
   const whatsappPending=useWhatsAppPendingOrders();
   const requestFn=useServerFn(whatsappRequestAction);
-  const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});toast.success('Pedido aceito e enviado à cozinha');const orderId=(accepted as {id?:unknown}|null)?.id;if(typeof orderId==='string')void autoPrintKitchenOrderById(orderId);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
+  const acceptWhatsAppOrder=async(id:string)=>{try{const accepted=await requestFn({data:{id,accept:true}});const status=(accepted as {status?:unknown}|null)?.status;toast.success(status==='pronto'?'Pedido aceito e pronto para entrega':'Pedido aceito e enviado à cozinha');const orderId=(accepted as {id?:unknown}|null)?.id;if(status==='cozinha'&&typeof orderId==='string')void autoPrintKitchenOrderById(orderId);}catch(e){toast.error(e instanceof Error?e.message:'Falha ao aceitar');throw e;}};
   const buildWhatsAppOrder=(order:WhatsAppManualOrder)=>{
     const current=getState().draft;
     if(current.editingId||current.items.length){toast.warning('Conclua ou limpe o pedido atual antes de montar outro pelo WhatsApp.');return;}

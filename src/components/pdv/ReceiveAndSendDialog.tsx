@@ -8,12 +8,14 @@ export function ReceiveAndSendDialog({
   total,
   methods,
   busy,
+  delivery = false,
   onClose,
   onConfirm,
 }: {
   total: number;
   methods: string[];
   busy: boolean;
+  delivery?: boolean;
   onClose: () => void;
   onConfirm: (method: string) => Promise<void>;
 }) {
@@ -54,13 +56,15 @@ export function ReceiveAndSendDialog({
           </select>
         </label>
         <p className="text-sm text-muted-foreground">
-          O pagamento será registrado e o pedido finalizado, sem enviar à cozinha. A comanda do caixa será impressa automaticamente.
+          {delivery
+            ? 'O pagamento será registrado e o Delivery ficará pronto para designar o entregador, sem enviar à cozinha e sem concluir a entrega. A comanda do caixa será impressa automaticamente.'
+            : 'O pagamento será registrado e o pedido finalizado, sem enviar à cozinha. A comanda do caixa será impressa automaticamente.'}
         </p>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" disabled={busy} onClick={onClose}>Voltar</Button>
           <Button disabled={busy || !method} onClick={() => void confirm()}>
             <CreditCard className="mr-2 h-4 w-4" />
-            {busy ? 'Recebendo…' : 'Receber, imprimir e finalizar'}
+            {busy ? 'Recebendo…' : delivery ? 'Receber, imprimir e deixar pronto' : 'Receber, imprimir e finalizar'}
           </Button>
         </div>
       </DialogContent>

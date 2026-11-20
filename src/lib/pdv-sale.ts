@@ -1,2 +1,2 @@
-/** Venda direta finaliza apenas pedidos sem logística de entrega. */
-export const canDirectSale = (type: string) => type !== 'Delivery';
+/** Venda direta finaliza pedidos locais; Delivery fica pago e pronto para designar entregador. */
+export const canDirectSale = (type: string) => ['Balcão', 'Mesa', 'Retirada', 'Delivery'].includes(type);

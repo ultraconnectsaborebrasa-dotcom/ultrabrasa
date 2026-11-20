@@ -37,11 +37,14 @@ describe('envio de venda pelo caixa', () => {
     });
   });
 
-  it('não permite venda direta para Delivery', async () => {
-    expect(canDirectSale('Delivery')).toBe(false);
+  it('permite receber Delivery na mesma gravação, deixando o pedido pago para entrega', async () => {
+    expect(canDirectSale('Delivery')).toBe(true);
     expect(canDirectSale('Balcão')).toBe(true);
-    await expect(submitCashierSale({ ...request, type: 'Delivery' }, 'Pix', 'direct')).rejects.toThrow('Delivery deve ser enviado à cozinha');
-    expect(supabase.rpc).not.toHaveBeenCalled();
+    await submitCashierSale({ ...request, type: 'Delivery' }, 'Pix', 'direct');
+    expect(supabase.rpc).toHaveBeenCalledWith('submit_pdv_cashier_direct_paid', {
+      request: { ...request, type: 'Delivery' },
+      payment_method: 'Pix',
+    });
   });
 
   it('não permite venda direta sem forma de pagamento', async () => {

@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, currentCourierShift, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, type CourierLiveLocation } from '@/lib/courier-operations';
 
 describe('ponto e localização dos entregadores', () => {
-  it('limita a operação ao vivo ao administrador e ao próprio entregador', () => {
+  it('libera a operação ao vivo ao administrador, ao caixa e ao próprio entregador', () => {
     expect(canReadCourierOperations({ admin: true })).toBe(true);
+    expect(canReadCourierOperations({ manager: true })).toBe(true);
     expect(canReadCourierOperations({ courier: true })).toBe(true);
     expect(canReadCourierOperations({})).toBe(false);
   });

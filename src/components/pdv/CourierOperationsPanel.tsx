@@ -14,14 +14,16 @@ import { AvailableDeliveryPanel } from './AvailableDeliveryPanel';
 
 const clockTime = (value: string | null) => value ? new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
 
-export function CourierOperationsPanel({ admin = false, courier = false, deliveries, routes, couriers, onAssign }: {
+export function CourierOperationsPanel({ admin = false, manager = false, courier = false, deliveries, routes, couriers, onAssign }: {
   admin?: boolean;
+  manager?: boolean;
   courier?: boolean;
   deliveries: Delivery[];
   routes: DeliveryRoute[];
   couriers: Courier[];
   onAssign: (courierId: string, baseAddress: string, deliveryIds?: string[]) => void;
 }) {
+  const canManage = admin || manager;
   const client = useQueryClient();
   const [day, setDay] = useState(saoPauloDay);
   const [routeId, setRouteId] = useState('');
@@ -35,7 +37,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
   const calculate = useServerFn(calculateDeliveryRoute);
   const query = useQuery({
     queryKey: ['courier-operations', day],
-    enabled: canReadCourierOperations({ admin, courier }),
+    enabled: canReadCourierOperations({ admin, manager, courier }),
     queryFn: async () => {
       const { data, error } = await supabase.rpc('read_courier_operations', { p_from: day, p_to: day });
       if (error) throw new Error(error.message);
@@ -54,7 +56,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
   const liveLocations = operations.locations.filter(location => !isCourierLocationStale(location.located_at));
 
   useEffect(() => {
-    if (!canReadCourierOperations({ admin, courier })) return;
+    if (!canReadCourierOperations({ admin, manager, courier })) return;
     const channel = supabase.channel(`courier-locations-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'courier_locations' }, () => { void query.refetch(); })
       .subscribe();
@@ -110,7 +112,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
     }
   }
 
-  if (!canReadCourierOperations({ admin, courier })) return <section className="rounded-xl border bg-card p-4"><div className="flex items-start gap-3"><div className="rounded-lg bg-primary/10 p-2 text-primary"><MapPin size={20} /></div><div><h2 className="font-semibold">Rotas do Caixa</h2><p className="mt-1 text-sm text-muted-foreground">As paradas e o status Em rota estão abaixo. O mapa de GPS e o ponto da equipe ficam disponíveis no acesso do Administrador.</p></div></div></section>;
+  if (!canReadCourierOperations({ admin, manager, courier })) return <section className="rounded-xl border bg-card p-4"><div className="flex items-start gap-3"><div className="rounded-lg bg-primary/10 p-2 text-primary"><MapPin size={20} /></div><div><h2 className="font-semibold">Rotas do Caixa</h2><p className="mt-1 text-sm text-muted-foreground">As paradas e o status Em rota estão abaixo. O mapa de GPS e o ponto da equipe ficam disponíveis no acesso do Administrador.</p></div></div></section>;
 
   return <section className="space-y-4 rounded-xl border bg-card p-3 sm:p-4">
     <div className="flex flex-wrap items-center gap-3">
@@ -139,9 +141,9 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
       <LiveDeliveryMap base={operations.base} locations={operations.locations} deliveries={mapDeliveries} couriers={couriers} route={route} focus={focus} selectedDeliveryId={selectedDeliveryId} onSelectCourier={selectCourier} onSelectDelivery={selectDelivery} />
       {!liveLocations.length && <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">Para ver uma moto se movendo, o entregador precisa bater a entrada, ativar a localização no celular e manter a página aberta. Posições antigas aparecem em cinza.</p>}
 
-      {admin && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={couriers} locations={operations.locations} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} onFocusDelivery={focusDelivery} onLocated={deliveryLocated} onAssign={onAssign} />}
+      {canManage && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={couriers} locations={operations.locations} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} onFocusDelivery={focusDelivery} onLocated={deliveryLocated} onAssign={onAssign} />}
 
-      {admin && <div className="space-y-3">
+      {canManage && <div className="space-y-3">
         <div><h3 className="flex items-center gap-2 font-semibold"><Users size={18} /> Motoboys e cargas</h3><p className="text-xs text-muted-foreground">Localize, registre a carga ou escolha quem receberá as próximas entregas.</p></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {couriers.filter(item => item.active).map(driver => {
@@ -187,7 +189,7 @@ export function CourierOperationsPanel({ admin = false, courier = false, deliver
         {route && <div className="mt-3 flex flex-wrap gap-5 text-sm"><span>Distância <b>{(route.distance_meters / 1000).toFixed(1)} km</b></span><span>Duração estimada <b>{Math.ceil(route.duration_seconds / 60)} min</b></span><span className="text-muted-foreground">Sem atualização automática de trânsito</span></div>}
       </details>
 
-      {admin && <details className="rounded-xl border bg-background p-4"><summary className="cursor-pointer font-semibold">Ponto e valores da equipe</summary><section className="mt-5 space-y-4 border-t pt-5">
+      {canManage && <details className="rounded-xl border bg-background p-4"><summary className="cursor-pointer font-semibold">Ponto e valores da equipe</summary><section className="mt-5 space-y-4 border-t pt-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div><h3 className="flex items-center gap-2 text-lg font-semibold"><Clock3 size={18} /> Ponto da equipe</h3><p className="text-sm text-muted-foreground">Entradas, saídas e valores por turno</p></div>
           <label className="text-sm">Dia<input aria-label="Dia do ponto" className="field ml-2 w-auto" type="date" value={day} onChange={event => setDay(event.target.value)} /></label>

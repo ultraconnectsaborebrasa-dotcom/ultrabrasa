@@ -203,8 +203,8 @@ function applyStock(s: State, items: CartItem[], dir: -1 | 1): Product[] {
   });
 }
 
-/** Salva o rascunho como pedido. status: "cozinha" (comanda aberta) ou "pago". Retorna o pedido. */
-export function commitDraft(status: "cozinha" | "pago", payments: Payment[] = []): Order | null {
+/** Salva o rascunho como pedido na etapa informada. Retorna o pedido. */
+export function commitDraft(status: "cozinha" | "pronto" | "pago", payments: Payment[] = []): Order | null {
   let created: Order | null = null;
   setState((s) => {
     if (!s.draft.items.length) return s;

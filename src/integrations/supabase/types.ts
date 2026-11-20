@@ -1284,6 +1284,13 @@ export type Database = {
         Args: { _id: string; _request: string }
         Returns: undefined
       }
+      list_delivery_courier_accounts: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       lookup_delivery_addresses: {
         Args: { phone_query: string }
         Returns: Json

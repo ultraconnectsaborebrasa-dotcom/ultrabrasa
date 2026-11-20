@@ -10,11 +10,12 @@ export const calculateDeliveryRoute = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ routeId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<DeliveryRouteCalculation> => {
-    const [{ data: isAdmin }, { data: isCourier }] = await Promise.all([
+    const [{ data: isAdmin }, { data: isCashier }, { data: isCourier }] = await Promise.all([
       context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'admin' }),
+      context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'cashier' }),
       context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'courier' }),
     ]);
-    if (!isAdmin && !isCourier) throw new Error('Somente o administrador ou o entregador designado pode calcular esta rota.');
+    if (!isAdmin && !isCashier && !isCourier) throw new Error('Somente o administrador, o caixa ou o entregador designado pode calcular esta rota.');
     const [boardResult, operationsResult] = await Promise.all([
       context.supabase.rpc('read_delivery_board'),
       context.supabase.rpc('read_courier_operations'),
@@ -119,8 +120,11 @@ export const locateDeliveryOnMap = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ deliveryId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'admin' });
-    if (!isAdmin) throw new Error('Somente o administrador pode localizar entregas para designação.');
+    const [{ data: isAdmin }, { data: isCashier }] = await Promise.all([
+      context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'admin' }),
+      context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'cashier' }),
+    ]);
+    if (!isAdmin && !isCashier) throw new Error('Somente o administrador ou o caixa pode localizar entregas para designação.');
     const boardResult = await context.supabase.rpc('read_delivery_board');
     if (boardResult.error) throw new Error(boardResult.error.message);
     const board = boardResult.data as unknown as { deliveries: Delivery[] };

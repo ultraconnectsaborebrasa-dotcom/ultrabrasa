@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Minus, Plus, Search, Star, Sparkles, Trash2, ChefHat, MessageSquare } from "lucide-react";
+import { Minus, Plus, Search, Star, Sparkles, Trash2, ChefHat, MessageSquare, PackageCheck } from "lucide-react";
 import {
   addToDraft, brl, commitDraft, setItem, setState, totals, updateDraft, useStore, emptyDraft, type OrderType, type Product,
 } from "@/lib/pdv-store";
@@ -12,6 +12,7 @@ import { TableSelector } from './TableSelector';
 import { validTable, tableLabel } from '@/lib/pdv-tables';
 import { printOrder, printerPreferences } from '@/services/thermalPrinter';
 import { canDirectSale } from '@/lib/pdv-sale';
+import { initialOrderStatus } from '@/lib/marmita-order';
 
 const TYPES: OrderType[] = ["Balcão", "Mesa", "Retirada", "Delivery"];
 
@@ -27,6 +28,7 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const t = totals(draft, settings.serviceFeePct);
+  const draftInitialStatus = initialOrderStatus(draft.items, products);
 
   const list = useMemo(() => products.filter((p) => p.active)
     .filter((p) => cat === "Todos" || (cat === "Favoritos" ? p.favorite : p.category === cat))
@@ -49,11 +51,11 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
 
   const sendKitchen = () => {
     if (!draft.items.length) return;
-    const o = commitDraft("cozinha");
+    const o = commitDraft(draftInitialStatus);
     if (!o) return;
-    toast.success(`Comanda #${o.number} enviada para a cozinha`);
+    toast.success(draftInitialStatus === 'pronto' ? `Pedido #${o.number} pronto${o.type === 'Delivery' ? ' para entrega' : ''}` : `Comanda #${o.number} enviada para a cozinha`);
     if (o.type === "Delivery") onDelivery?.();
-    if (printerPreferences.autoPrintEnabled) {
+    if (draftInitialStatus === 'cozinha' && printerPreferences.autoPrintEnabled) {
       void printOrder(o, settings.serviceFeePct, { force: true, target: 'kitchen' }).catch((error: unknown) => {
         const detail = error instanceof Error ? error.message : "verifique a conexão e a impressora selecionada";
         toast.error(`Comanda #${o.number} enviada, mas não foi possível imprimir: ${detail}`);
@@ -218,7 +220,7 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
           </div>
           {canDirectSale(draft.type)&&<button className="btn btn-primary w-full py-3 text-base" disabled={!draft.items.length} onClick={charge}>Cobrar pedido <span className="kbd">F4</span></button>}
           <div className="grid grid-cols-2 gap-2">
-            <button className="btn btn-ghost" disabled={!draft.items.length} onClick={sendKitchen}><ChefHat size={15} /> Cozinha <span className="kbd">F8</span></button>
+            <button className="btn btn-ghost" disabled={!draft.items.length} onClick={sendKitchen}>{draftInitialStatus === 'pronto' ? <PackageCheck size={15} /> : <ChefHat size={15} />} {draftInitialStatus === 'pronto' ? draft.type === 'Delivery' ? 'Pronto para entrega' : 'Deixar pronto' : 'Cozinha'} <span className="kbd">F8</span></button>
             <button className="btn btn-ghost" disabled={!draft.items.length && !draft.editingId} onClick={() => setState((s) => ({ ...s, draft: emptyDraft() }))}>Limpar</button>
           </div>
         </div>

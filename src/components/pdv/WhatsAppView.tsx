@@ -198,9 +198,10 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
     setBusy(true);
     try {
       const accepted = await requestFn({ data: { id, accept: yes, reason: reason ?? undefined } });
-      toast.success(yes ? 'Pedido aceito e enviado à cozinha' : 'Pedido recusado');
+      const status = (accepted as { status?: unknown } | null)?.status;
+      toast.success(yes ? status === 'pronto' ? 'Pedido aceito e pronto para entrega' : 'Pedido aceito e enviado à cozinha' : 'Pedido recusado');
       const orderId = (accepted as { id?: unknown } | null)?.id;
-      if (yes && typeof orderId === 'string') void autoPrintKitchenOrderById(orderId);
+      if (yes && status === 'cozinha' && typeof orderId === 'string') void autoPrintKitchenOrderById(orderId);
       await loadRequests();
       await loadConvs();
       void refreshWhatsAppConversations();

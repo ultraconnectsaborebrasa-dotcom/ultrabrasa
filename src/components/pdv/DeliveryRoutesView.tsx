@@ -11,8 +11,9 @@ import { CourierOperationsPanel } from './CourierOperationsPanel';
 
 type EditorRoute = { id: string; name: string; courier: string; origin: string; stops: string[] };
 
-export function DeliveryRoutesView({ admin, courier, deliveries, routes, couriers, busy, onAssign, onEdit, onFinish, onStart, onDeliver, onProblem, onPrepare }: {
+export function DeliveryRoutesView({ admin, manager = false, courier, deliveries, routes, couriers, busy, onAssign, onEdit, onFinish, onStart, onDeliver, onProblem, onPrepare }: {
   admin: boolean;
+  manager?: boolean;
   courier: boolean;
   deliveries: Delivery[];
   routes: DeliveryRoute[];
@@ -65,7 +66,7 @@ export function DeliveryRoutesView({ admin, courier, deliveries, routes, courier
       <Button variant="outline" size="sm" onClick={() => setMapOpen(open => !open)}>{mapOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{mapOpen ? 'Recolher mapa' : 'Abrir mapa e equipe'}</Button>
     </div>
 
-    {mapOpen && <CourierOperationsPanel admin={admin} courier={courier} deliveries={currentDeliveries} routes={currentRoutes} couriers={couriers} onAssign={onAssign} />}
+    {mapOpen && <CourierOperationsPanel admin={admin} manager={manager} courier={courier} deliveries={currentDeliveries} routes={currentRoutes} couriers={couriers} onAssign={onAssign} />}
 
     <div className="grid grid-cols-3 gap-2 sm:max-w-xl">
       <div className="rounded-xl border bg-card p-3"><p className="text-xs text-muted-foreground">Saídas de hoje</p><p className="mt-1 text-xl font-bold">{currentDeliveries.length}</p></div>

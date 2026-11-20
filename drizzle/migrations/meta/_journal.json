@@ -638,6 +638,20 @@
       "when": 1795130690285,
       "tag": "0090_depart_delivery_creates_courier_route",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1795145902195,
+      "tag": "0091_cashier_delivery_operations_and_marmita_ready",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1795146132829,
+      "tag": "0092_ensure_direct_delivery_payment_recorded",
+      "breakpoints": true
     }
   ]
 }

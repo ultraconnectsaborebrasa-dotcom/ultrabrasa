@@ -31,7 +31,7 @@ describe('Atendimento com preços e envio protegido',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Enviar à cozinha'}));
   await waitFor(()=>expect(send).toHaveBeenCalledOnce());
   expect(send.mock.calls[0]?.[0]).toMatchObject({type:'Delivery',delivery:{address:{neighborhood:'Stela Reis',street:'Rua A',number:'2',city:'Eunápolis',state:'BA'}}});
-  expect(await screen.findByRole('heading',{name:'Rotas de entrega'})).toBeInTheDocument();
+  expect(await screen.findByRole('heading',{name:'Central de entregas'})).toBeInTheDocument();
  });
  it('mostra preço, subtotal e o total retornado pelo servidor incluindo ajustes',async()=>{
   vi.mocked(readOperator).mockResolvedValueOnce({products:[],ownOrders:1,ownSales:0,orders:[{id:'order-test',number:18,type:'Mesa',tableNumber:2,customer:'',status:'cozinha',createdAt:1,note:'',own:true,total:29.5,items:[{name:'Espeto',qty:3,price:8,note:'Ao ponto'}]}]});

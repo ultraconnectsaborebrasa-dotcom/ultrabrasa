@@ -47,8 +47,8 @@ export type DeliveryRouteCalculation = {
   stops: RouteStopLocation[];
 };
 
-export function canReadCourierOperations(access: { admin?: boolean; courier?: boolean }): boolean {
-  return Boolean(access.admin || access.courier);
+export function canReadCourierOperations(access: { admin?: boolean; manager?: boolean; courier?: boolean }): boolean {
+  return Boolean(access.admin || access.manager || access.courier);
 }
 
 export function saoPauloDay(date = new Date()): string {
