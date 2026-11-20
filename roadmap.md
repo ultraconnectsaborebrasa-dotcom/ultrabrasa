@@ -1,5 +1,15 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Ultrabrasa Entregas 2.0 — documento enviado
+- [x] Diagnosticar e reutilizar cargas, reservas, rotas, mapa, aplicativo e permissões existentes sem alterar os demais módulos.
+- [x] Completar estoque móvel com tipo de marmita, cargas/reposições, devoluções, perdas justificadas, retorno e histórico.
+- [x] Garantir reserva, cancelamento, transferência e entrega atômicos, inclusive bloqueio da segunda disputa pela última marmita.
+- [x] Melhorar recomendação de entregadores e painel com disponibilidade, pendências e retorno à base, mantendo confirmação humana; tempo real por vias somente sob clique.
+- [x] Completar aplicativo com disponibilidade, chegada, recebimento manual e escolha da próxima parada, preservando pagamento e baixa manual.
+- [x] Acrescentar relatórios operacionais por período e horário configurável, sem liberar valores financeiros ao Caixa.
+- [x] Validar no banco em transações revertidas carga de 15, reserva, cancelamento, transferência, última marmita, entrega, devolução, nova carga, Pix e relatórios. Painel e celular verificados sem dados reais; acessos temporários removidos.
+- [ ] Validar GPS, instalação e fluxo em aparelho Android real e executar chamadas Google por vias no domínio autorizado; não houve substituição ou nova publicação do APK nem chamadas pagas de teste.
+
 ## Caixa nas rotas e marmitas prontas para entrega
 - [x] Dar ao Caixa o mesmo acesso operacional do Administrador ao mapa, equipe, designação e gestão de Rotas, sem liberar relatórios financeiros.
 - [x] Fazer pedidos exclusivamente de marmitas entrarem prontos para entrega em todos os canais; pedidos mistos continuam na cozinha.

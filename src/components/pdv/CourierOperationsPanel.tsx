@@ -7,20 +7,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
 import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, shouldSendCourierPosition, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
-import { courierMarmitaStock as stockFor, type Courier, type Delivery, type DeliveryRoute } from '@/lib/delivery';
+import { courierMarmitaStock as stockFor, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
 import { calculateDeliveryRoute } from '@/lib/delivery-route.functions';
 import { LiveDeliveryMap, type DeliveryMapFocus } from './LiveDeliveryMap';
 import { AvailableDeliveryPanel } from './AvailableDeliveryPanel';
+import { DeliveryOperationsReport } from './DeliveryOperationsReport';
+import { DeliveryOperatingHours } from './DeliveryOperatingHours';
 
 const clockTime = (value: string | null) => value ? new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
 
-export function CourierOperationsPanel({ admin = false, manager = false, courier = false, deliveries, routes, couriers, onAssign }: {
+export function CourierOperationsPanel({ admin = false, manager = false, courier = false, deliveries, routes, couriers, marmitaProducts = [], onAssign }: {
   admin?: boolean;
   manager?: boolean;
   courier?: boolean;
   deliveries: Delivery[];
   routes: DeliveryRoute[];
   couriers: Courier[];
+  marmitaProducts?: MarmitaProduct[];
   onAssign: (courierId: string, baseAddress: string, deliveryIds?: string[]) => void;
 }) {
   const canManage = admin || manager;
@@ -32,7 +35,7 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
   const [focus, setFocus] = useState<DeliveryMapFocus>({ type: 'all', token: 0 });
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
   const [locatedPositions, setLocatedPositions] = useState<Record<string, { latitude: string; longitude: string }>>({});
-  const [stockForm, setStockForm] = useState<{ driver: Courier; mode: 'load' | 'correct'; quantity: string } | null>(null);
+  const [stockForm, setStockForm] = useState<{ driver: Courier; mode: 'load' | 'replenish' | 'return' | 'loss' | 'correct'; quantity: string; reason: string; productId: string } | null>(null);
   const [stockBusy, setStockBusy] = useState(false);
   const calculate = useServerFn(calculateDeliveryRoute);
   const query = useQuery({
@@ -54,6 +57,9 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
   const mapDeliveries = focus.type === 'courier' ? activeDeliveries.filter(delivery => delivery.courier_id === focus.courierId) : activeDeliveries;
   const ownCourier = couriers.find(driver => driver.id === operations.current_courier_id);
   const liveLocations = operations.locations.filter(location => !isCourierLocationStale(location.located_at));
+  const returningCount = couriers.filter(driver => driver.active && driver.operational_status === 'returning').length;
+  const availableCourierCount = couriers.filter(driver => driver.active && (driver.operational_status ?? 'available') === 'available').length;
+  const emptyStockCount = couriers.filter(driver => driver.active && stockFor(driver, deliveries).remaining === 0).length;
 
   useEffect(() => {
     if (!canReadCourierOperations({ admin, manager, courier })) return;
@@ -98,18 +104,31 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
     if (!stockForm) return;
     const quantity = Number(stockForm.quantity);
     if (!Number.isInteger(quantity) || quantity < 0 || quantity > 999) { toast.error('Informe uma quantidade inteira entre 0 e 999.'); return; }
+    const product = marmitaProducts.find(item => item.id === stockForm.productId) ?? { id: stockForm.productId || 'product-marmita-completa', name: stockForm.driver.product_name || 'Marmita completa' };
     setStockBusy(true);
     try {
-      const { error } = await supabase.rpc('set_courier_marmita_stock', { p_courier_id: stockForm.driver.id, p_quantity: quantity, p_mode: stockForm.mode });
+      const { error } = await supabase.rpc('set_courier_marmita_stock', { p_courier_id: stockForm.driver.id, p_quantity: quantity, p_mode: stockForm.mode, p_product_id: product.id, p_product_name: product.name, p_reason: stockForm.reason });
       if (error) throw new Error(error.message);
-      toast.success(stockForm.mode === 'load' ? `Carga de ${quantity} marmitas registrada para ${stockForm.driver.name}.` : `Saldo de ${stockForm.driver.name} corrigido para ${quantity}.`);
+      const messages = { load: `Carga de ${quantity} marmitas registrada para ${stockForm.driver.name}.`, replenish: `Reposição de ${quantity} marmitas registrada.`, return: 'Retorno à base registrado e jornada encerrada.', loss: 'Perda justificada registrada.', correct: 'Saldo físico corrigido com justificativa.' };
+      toast.success(messages[stockForm.mode]);
       setStockForm(null);
-      await client.invalidateQueries({ queryKey: ['delivery-board'] });
+      await Promise.all([client.invalidateQueries({ queryKey: ['delivery-board'] }), client.invalidateQueries({ queryKey: ['delivery-operational-report'] })]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Não foi possível registrar o estoque.');
     } finally {
       setStockBusy(false);
     }
+  }
+
+  async function saveAvailability(courierId: string, status: 'available' | 'unavailable' | 'returning') {
+    try {
+      const { error } = courier
+        ? await supabase.rpc('set_courier_availability', { p_status: status })
+        : await supabase.rpc('set_delivery_courier_availability', { p_courier_id: courierId, p_status: status });
+      if (error) throw new Error(error.message);
+      toast.success(status === 'available' ? 'Entregador disponível para novas atribuições.' : status === 'returning' ? 'Retorno à base sinalizado.' : 'Entregador marcado como indisponível.');
+      await Promise.all([client.invalidateQueries({ queryKey: ['delivery-board'] }), query.refetch()]);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível alterar a disponibilidade.'); }
   }
 
   if (!canReadCourierOperations({ admin, manager, courier })) return <section className="rounded-xl border bg-card p-4"><div className="flex items-start gap-3"><div className="rounded-lg bg-primary/10 p-2 text-primary"><MapPin size={20} /></div><div><h2 className="font-semibold">Rotas do Caixa</h2><p className="mt-1 text-sm text-muted-foreground">As paradas e o status Em rota estão abaixo. O mapa de GPS e o ponto da equipe ficam disponíveis no acesso do Administrador.</p></div></div></section>;
@@ -122,8 +141,15 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
       {operations.base && <span className="w-full text-xs text-muted-foreground">Base: {operations.base.base_address}</span>}
     </div>
 
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Disponíveis</span><b className="block text-xl">{availableCourierCount}</b></div>
+      <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Aguardando</span><b className="block text-xl">{availableDeliveries.filter(delivery => delivery.status === 'Pronto para entrega').length}</b></div>
+      <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Em andamento</span><b className="block text-xl">{activeDeliveries.filter(delivery => delivery.status === 'Em rota').length}</b></div>
+      <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Voltando à base</span><b className="block text-xl">{returningCount}</b></div>
+      <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Estoque zerado</span><b className={`block text-xl ${emptyStockCount ? 'text-warning' : ''}`}>{emptyStockCount}</b></div>
+    </div>
     {courier && <CourierLocationControl operations={operations} refetch={query.refetch} />}
-    {courier && ownCourier && <CourierStockSummary driver={ownCourier} deliveries={deliveries} />}
+    {courier && ownCourier && <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background p-3"><span className="text-sm"><b>Minha disponibilidade</b><span className="block text-xs text-muted-foreground">Somente disponível recebe novas sugestões.</span></span><select aria-label="Minha disponibilidade" className="field w-auto" value={ownCourier.operational_status ?? 'available'} onChange={event => void saveAvailability(ownCourier.id, event.target.value as 'available' | 'unavailable' | 'returning')}><option value="available">Disponível</option><option value="unavailable">Indisponível</option><option value="returning">Voltando à base</option></select></div><CourierStockSummary driver={ownCourier} deliveries={deliveries} /></div>}
     {query.error && <p role="alert" className="text-sm text-destructive">{query.error.message}</p>}
     {query.isPending ? <p role="status" className="text-sm text-muted-foreground">Carregando operação…</p> : <>
       <div className="flex flex-wrap gap-2">
@@ -154,7 +180,7 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
             return <article key={driver.id} className={`space-y-3 rounded-xl border bg-background p-4 ${selected ? 'border-primary ring-1 ring-primary' : ''}`}>
               <div className="flex items-start gap-2">
                 <div className={`rounded-lg p-2 ${location && !stale ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}><Motorbike size={20} /></div>
-                <div className="min-w-0 flex-1"><b>{driver.name}</b><p className={`mt-1 flex items-center gap-1 text-xs ${location && !stale ? 'text-success' : 'text-muted-foreground'}`}><span className={`size-2 rounded-full ${location && !stale ? 'bg-success' : 'bg-muted-foreground'}`} />{location ? `${stale ? 'Sem atualização recente' : 'Ao vivo'} · ${clockTime(location.located_at)} · ${Math.round(location.accuracy_meters)} m` : 'Localização não compartilhada'}</p></div>
+                <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b>{driver.name}</b><span className={`rounded-full px-2 py-0.5 text-[10px] ${driver.operational_status === 'returning' ? 'bg-warning/10 text-warning' : (driver.operational_status ?? 'available') === 'available' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{driver.operational_status === 'returning' ? 'Voltando à base' : (driver.operational_status ?? 'available') === 'available' ? 'Disponível' : 'Indisponível'}</span></div><p className={`mt-1 flex items-center gap-1 text-xs ${location && !stale ? 'text-success' : 'text-muted-foreground'}`}><span className={`size-2 rounded-full ${location && !stale ? 'bg-success' : 'bg-muted-foreground'}`} />{location ? `${stale ? 'Sem atualização recente' : 'Ao vivo'} · ${clockTime(location.located_at)} · ${Math.round(location.accuracy_meters)} m` : 'Localização não compartilhada'}</p></div>
               </div>
               {stock.remaining === null ? <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Nenhuma carga registrada. Informe quantas marmitas ele levou.</div> : <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-muted p-2"><span className="block text-xs text-muted-foreground">Com ele</span><b className="text-lg">{stock.remaining}</b></div>
@@ -165,9 +191,14 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
                 <Button size="sm" variant="outline" disabled={!location} onClick={() => focusMap('courier', driver.id)}><LocateFixed size={14} />Localizar</Button>
                 <Button size="sm" disabled={!operations.base || !hasReadyToAssign} title={hasReadyToAssign ? 'Escolher entregas prontas para este motoboy' : 'Nenhuma entrega pronta para designar agora'} onClick={() => operations.base && onAssign(driver.id, operations.base.base_address)}><RouteIcon size={14} />Designar</Button>
               </div>
+              <label className="block text-xs">Disponibilidade<select aria-label={`Disponibilidade de ${driver.name}`} className="field mt-1" value={driver.operational_status ?? 'available'} onChange={event => void saveAvailability(driver.id, event.target.value as 'available' | 'unavailable' | 'returning')}><option value="available">Disponível</option><option value="unavailable">Indisponível</option><option value="returning">Voltando à base</option></select></label>
+              {driver.product_name && <p className="text-xs text-muted-foreground">Carga: {driver.product_name} · {driver.journey_status === 'returned' ? 'jornada devolvida' : driver.journey_status === 'empty' ? 'estoque zerado' : 'em operação'}</p>}
               <div className="flex flex-wrap gap-2 border-t pt-3">
-                <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'load', quantity: '' })}><PackagePlus size={14} />Nova carga</Button>
-                {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'correct', quantity: String(stock.remaining) })}><Boxes size={14} />Corrigir saldo</Button>}
+                <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'load', quantity: '', reason: '', productId: driver.product_id ?? marmitaProducts[0]?.id ?? 'product-marmita-completa' })}><PackagePlus size={14} />Nova carga</Button>
+                {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'replenish', quantity: '', reason: '', productId: driver.product_id ?? marmitaProducts[0]?.id ?? 'product-marmita-completa' })}><PackagePlus size={14} />Reposição</Button>}
+                {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'return', quantity: String(stock.remaining), reason: '', productId: driver.product_id ?? '' })}>Registrar retorno</Button>}
+                {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'loss', quantity: '', reason: '', productId: driver.product_id ?? '' })}>Perda/avaria</Button>}
+                {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'correct', quantity: String(stock.remaining), reason: '', productId: driver.product_id ?? '' })}><Boxes size={14} />Ajustar estoque</Button>}
               </div>
             </article>;
           })}
@@ -189,6 +220,9 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
         {route && <div className="mt-3 flex flex-wrap gap-5 text-sm"><span>Distância <b>{(route.distance_meters / 1000).toFixed(1)} km</b></span><span>Duração estimada <b>{Math.ceil(route.duration_seconds / 60)} min</b></span><span className="text-muted-foreground">Sem atualização automática de trânsito</span></div>}
       </details>
 
+      {canManage && operations.base && <DeliveryOperatingHours base={operations.base} admin={admin} />}
+      {courier && <DeliveryOperationsReport courier />}
+
       {canManage && <details className="rounded-xl border bg-background p-4"><summary className="cursor-pointer font-semibold">Ponto e valores da equipe</summary><section className="mt-5 space-y-4 border-t pt-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div><h3 className="flex items-center gap-2 text-lg font-semibold"><Clock3 size={18} /> Ponto da equipe</h3><p className="text-sm text-muted-foreground">Entradas, saídas e valores por turno</p></div>
@@ -201,12 +235,14 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
       </section></details>}
     </>}
 
-    {stockForm && <div role="dialog" aria-modal="true" aria-label={`${stockForm.mode === 'load' ? 'Nova carga' : 'Corrigir saldo'} de ${stockForm.driver.name}`} className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4">
+    {stockForm && <div role="dialog" aria-modal="true" aria-label={`Operação de estoque de ${stockForm.driver.name}`} className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-background/95 p-4">
       <div className="w-full max-w-md space-y-4 rounded-xl border bg-card p-5 shadow-lg">
-        <div className="flex items-center gap-3"><div className="rounded-lg bg-primary/10 p-2 text-primary"><PackagePlus size={20} /></div><div><h2 className="text-xl font-bold">{stockForm.mode === 'load' ? 'Nova carga de saída' : 'Corrigir saldo físico'}</h2><p className="text-sm text-muted-foreground">{stockForm.driver.name}</p></div></div>
-        <p className="text-sm text-muted-foreground">{stockForm.mode === 'load' ? 'Use no início de uma saída, quando não houver marmitas reservadas em entregas abertas.' : 'Informe a quantidade real que está com o motoboy agora. As reservas das entregas abertas continuam separadas.'}</p>
-        <label className="block text-sm font-medium">Quantidade de marmitas<input autoFocus aria-label="Quantidade de marmitas" className="field mt-1 text-lg" type="number" min="0" max="999" step="1" inputMode="numeric" value={stockForm.quantity} onChange={event => setStockForm({ ...stockForm, quantity: event.target.value })} /></label>
-        <div className="flex justify-end gap-2"><Button variant="outline" disabled={stockBusy} onClick={() => setStockForm(null)}>Cancelar</Button><Button disabled={stockBusy || stockForm.quantity === ''} onClick={() => void saveStock()}>{stockBusy ? 'Salvando…' : stockForm.mode === 'load' ? 'Registrar carga' : 'Salvar correção'}</Button></div>
+        <div className="flex items-center gap-3"><div className="rounded-lg bg-primary/10 p-2 text-primary"><PackagePlus size={20} /></div><div><h2 className="text-xl font-bold">{{ load: 'Nova carga e jornada', replenish: 'Adicionar reposição', return: 'Registrar retorno e encerrar jornada', loss: 'Registrar perda ou avaria', correct: 'Ajustar estoque físico' }[stockForm.mode]}</h2><p className="text-sm text-muted-foreground">{stockForm.driver.name}</p></div></div>
+        <p className="text-sm text-muted-foreground">{{ load: 'Inicia uma jornada sem apagar o histórico. Exige que a carga anterior tenha sido devolvida ou esteja zerada.', replenish: 'Acrescenta marmitas do mesmo tipo à carga atual.', return: 'Confirme a quantidade física devolvida. Não pode haver marmitas reservadas.', loss: 'A perda baixa o estoque físico e exige justificativa.', correct: 'Informe a quantidade real e o motivo; as reservas continuam protegidas.' }[stockForm.mode]}</p>
+        {(stockForm.mode === 'load' || stockForm.mode === 'replenish') && <label className="block text-sm font-medium">Tipo de marmita<select aria-label="Tipo de marmita" className="field mt-1" disabled={stockForm.mode === 'replenish'} value={stockForm.productId} onChange={event => setStockForm({ ...stockForm, productId: event.target.value })}>{(marmitaProducts.length ? marmitaProducts : [{ id: stockForm.driver.product_id || 'product-marmita-completa', name: stockForm.driver.product_name || 'Marmita completa' }]).map(product => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>}
+        <label className="block text-sm font-medium">{stockForm.mode === 'return' ? 'Quantidade física devolvida' : stockForm.mode === 'loss' ? 'Quantidade perdida' : 'Quantidade de marmitas'}<input autoFocus aria-label="Quantidade de marmitas" className="field mt-1 text-lg" type="number" min="0" max="999" step="1" inputMode="numeric" value={stockForm.quantity} onChange={event => setStockForm({ ...stockForm, quantity: event.target.value })} /></label>
+        {stockForm.mode !== 'load' && <label className="block text-sm font-medium">Justificativa {(stockForm.mode === 'loss' || stockForm.mode === 'correct') ? '*' : '(opcional)'}<textarea aria-label="Justificativa do estoque" className="field mt-1 min-h-20" value={stockForm.reason} onChange={event => setStockForm({ ...stockForm, reason: event.target.value })} placeholder={stockForm.mode === 'return' ? 'Ex.: retorno à base para encerrar a jornada' : 'Descreva o motivo'} /></label>}
+        <div className="flex justify-end gap-2"><Button variant="outline" disabled={stockBusy} onClick={() => setStockForm(null)}>Cancelar</Button><Button disabled={stockBusy || stockForm.quantity === '' || ((stockForm.mode === 'loss' || stockForm.mode === 'correct') && stockForm.reason.trim().length < 3)} onClick={() => void saveStock()}>{stockBusy ? 'Salvando…' : 'Confirmar operação'}</Button></div>
       </div>
     </div>}
   </section>;

@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { addressText, deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
 import { formatCourierDistance, isCourierLocationStale, rankCourierLocations, type CourierLiveLocation } from '@/lib/courier-operations';
-import { locateDeliveryOnMap } from '@/lib/delivery-route.functions';
+import { rankDispatchCouriers, type CourierLocationQuality } from '@/lib/delivery-dispatch';
+import { estimateCourierDelivery, locateDeliveryOnMap } from '@/lib/delivery-route.functions';
 
 export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAddress, selectedDeliveryId, onFocusDelivery, onLocated, onAssign }: {
   deliveries: Delivery[];
@@ -20,6 +21,9 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
 }) {
   const client = useQueryClient();
   const locate = useServerFn(locateDeliveryOnMap);
+  const estimate = useServerFn(estimateCourierDelivery);
+  const [estimateResults, setEstimateResults] = useState<{ deliveryId: string; values: Record<string, { distanceMeters?: number; durationSeconds?: number; error?: string }> } | null>(null);
+  const [estimating, setEstimating] = useState(false);
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(6);
   const [locatingId, setLocatingId] = useState<string | null>(null);
@@ -30,14 +34,31 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
   const point = selected ? deliveryCoordinates(selected) : null;
   const ranked = useMemo(() => point ? rankCourierLocations(point, locations) : [], [point?.latitude, point?.longitude, locations]);
   const distanceByCourier = new Map(ranked.map(location => [location.courier_id, location.distanceMeters]));
-  const sortedCouriers = [...couriers.filter(driver => driver.active)].sort((a, b) => {
-    const locationA = locations.find(location => location.courier_id === a.id);
-    const locationB = locations.find(location => location.courier_id === b.id);
-    const scoreA = !locationA ? 2 : isCourierLocationStale(locationA.located_at) ? 1 : 0;
-    const scoreB = !locationB ? 2 : isCourierLocationStale(locationB.located_at) ? 1 : 0;
-    return scoreA - scoreB || (distanceByCourier.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (distanceByCourier.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name);
-  });
-  const nearestId = ranked.find(location => !isCourierLocationStale(location.located_at))?.courier_id ?? null;
+  const estimates = estimateResults && estimateResults.deliveryId === selected?.id ? estimateResults.values : {};
+  Object.entries(estimates).forEach(([courierId, value]) => { if (value.distanceMeters) distanceByCourier.set(courierId, value.distanceMeters); });
+  const locationQuality = new Map<string, CourierLocationQuality>(couriers.map(courier => {
+    const location = locations.find(item => item.courier_id === courier.id);
+    return [courier.id, !location ? 'missing' : isCourierLocationStale(location.located_at) ? 'stale' : 'live'];
+  }));
+  const candidates = selected ? rankDispatchCouriers(couriers, deliveries, selected, distanceByCourier, locationQuality) : [];
+  const candidateByCourier = new Map(candidates.map(candidate => [candidate.courier.id, candidate]));
+  const sortedCouriers = candidates.map(candidate => candidate.courier);
+  const nearestId = candidates.find(candidate => locationQuality.get(candidate.courier.id) === 'live')?.courier.id ?? null;
+  const excludedCount = selected ? couriers.filter(courier => courier.active).length - candidates.length : 0;
+
+  async function calculateEstimates() {
+    if (!selected) return;
+    const courierIds = candidates.filter(candidate => locationQuality.get(candidate.courier.id) === 'live').slice(0, 5).map(candidate => candidate.courier.id);
+    if (!courierIds.length) { toast.info('Nenhum motoboy recomendado está com GPS ao vivo.'); return; }
+    setEstimating(true);
+    try {
+      const values = await estimate({ data: { deliveryId: selected.id, courierIds } });
+      setEstimateResults({ deliveryId: selected.id, values: Object.fromEntries(values.map(value => [value.courierId, value])) });
+      if (values.every(value => value.error)) toast.error('O Google não conseguiu calcular os trajetos.');
+      else toast.success('Distâncias e tempos reais atualizados para a recomendação.');
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível calcular os tempos reais.'); }
+    finally { setEstimating(false); }
+  }
 
   async function chooseDelivery(delivery: Delivery) {
     if (deliveryCoordinates(delivery)) { onFocusDelivery(delivery); return; }
@@ -83,19 +104,23 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
 
     {selected && selectedAvailable && <div className="space-y-4 rounded-xl border border-primary/40 bg-card p-4 pdv-item-enter">
       <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">#{selected.number}</span><div className="min-w-0 flex-1"><h3 className="font-bold">{selected.customer}</h3><p className="text-sm text-muted-foreground">{addressText(selected.address)}</p></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Selecionada</span></div>
-      <div><h4 className="flex items-center gap-2 font-semibold"><Navigation size={17} className="text-primary" />Motoboys próximos</h4><p className="mt-1 text-xs text-muted-foreground">Distância em linha reta até o endereço, usando o GPS mais recente. Não considera trânsito.</p></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h4 className="flex items-center gap-2 font-semibold"><Navigation size={17} className="text-primary" />Motoboys recomendados</h4><p className="mt-1 text-xs text-muted-foreground">Combina GPS, estoque compatível, entregas pendentes e encaixe na rota. A decisão final é sempre sua.</p></div><Button size="sm" variant="outline" disabled={estimating || !candidates.some(candidate => locationQuality.get(candidate.courier.id) === 'live')} onClick={() => void calculateEstimates()}>{estimating ? <LoaderCircle size={14} className="animate-spin" /> : <Navigation size={14} />}{estimating ? 'Calculando…' : 'Calcular tempo real'}</Button></div>
       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{sortedCouriers.map(driver => {
         const location = locations.find(item => item.courier_id === driver.id);
         const stale = location ? isCourierLocationStale(location.located_at) : false;
         const distance = distanceByCourier.get(driver.id);
         const nearest = driver.id === nearestId;
+        const candidate = candidateByCourier.get(driver.id);
+        const realEstimate = estimates[driver.id];
         return <article key={driver.id} className={`rounded-xl border p-3 transition-all duration-300 ${nearest ? 'border-success bg-success/5 shadow-glow' : 'bg-background'}`}>
-          <div className="flex items-center gap-2"><UserRound size={17} className={nearest ? 'text-success' : 'text-primary'} /><b>{driver.name}</b>{nearest && <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">Mais próximo</span>}</div>
-          <p className="my-2 text-sm">{location ? <><b>{distance === undefined ? '—' : formatCourierDistance(distance)}</b><span className={`ml-2 text-xs ${stale ? 'text-warning' : 'text-success'}`}>{stale ? 'GPS desatualizado' : 'GPS ao vivo'}</span></> : <span className="text-xs text-muted-foreground">Ative o GPS no celular do motoboy para calcular</span>}</p>
+          <div className="flex items-center gap-2"><UserRound size={17} className={nearest ? 'text-success' : 'text-primary'} /><b>{driver.name}</b>{nearest && <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">Recomendado</span>}</div>
+          <p className="my-2 text-sm">{location ? <><b>{distance === undefined ? '—' : formatCourierDistance(distance)}{realEstimate?.durationSeconds ? ` · ${Math.ceil(realEstimate.durationSeconds / 60)} min` : ''}</b><span className={`ml-2 text-xs ${stale ? 'text-warning' : 'text-success'}`}>{realEstimate?.durationSeconds ? 'por vias' : stale ? 'GPS desatualizado' : 'linha reta · GPS ao vivo'}</span>{realEstimate?.error && <span className="block text-xs text-warning">{realEstimate.error}</span>}</> : <span className="text-xs text-muted-foreground">Sem GPS: distância não calculada</span>}</p>
+          <p className="mb-2 text-xs text-muted-foreground">{driver.available_quantity ?? 0} marmita(s) livres · {candidate?.pending ?? 0} pendente(s){candidate?.fitsExistingRoute ? ' · encaixa na rota atual' : ''}</p>
           <Button size="sm" className="w-full" disabled={!baseAddress} onClick={() => onAssign(driver.id, baseAddress, [selected.id])}>Designar {driver.name}<ArrowRight size={14} /></Button>
         </article>;
       })}</div>
-      {!sortedCouriers.length && <p className="text-sm text-muted-foreground">Cadastre um motoboy para designar esta entrega.</p>}
+      {!sortedCouriers.length && <p role="status" className="rounded-lg bg-warning/10 p-3 text-sm text-warning">Nenhum motoboy disponível com estoque compatível para esta entrega.</p>}
+      {excludedCount > 0 && sortedCouriers.length > 0 && <p className="text-xs text-muted-foreground">{excludedCount} entregador(es) não recomendado(s) por disponibilidade, estoque ou tipo de marmita.</p>}
     </div>}
     <p className="text-xs text-muted-foreground">Para economizar, o endereço é consultado no Google somente quando você toca na saída; a posição fica salva. O botão Designar aparece somente para pedidos prontos.</p>
   </section>;

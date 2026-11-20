@@ -652,6 +652,48 @@
       "when": 1795146132829,
       "tag": "0092_ensure_direct_delivery_payment_recorded",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795146612265,
+      "tag": "0093_courier_mobile_stock_journeys",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1795146699091,
+      "tag": "0094_atomic_delivery_dispatch_and_transfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1795146789869,
+      "tag": "0095_fix_route_edit_column_reference",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1795146860145,
+      "tag": "0096_delivery_operational_reports_and_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795147070294,
+      "tag": "0097_release_courier_stop_after_problem",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1795147414556,
+      "tag": "0098_harden_delivery_2_permissions",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { addressText, type Delivery, type DeliveryRoute } from '@/lib/delivery';
-import type { CourierOperations, DeliveryRouteCalculation } from '@/lib/courier-operations';
+import { isCourierLocationStale, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 import { deliveryCoordinates } from '@/lib/delivery';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -166,4 +166,47 @@ export const locateDeliveryOnMap = createServerFn({ method: 'POST' })
     const { error } = await context.supabase.rpc('update_delivery_address', { delivery_id: delivery.id, input: address as unknown as Json });
     if (error) throw new Error(`O endereço foi localizado, mas não foi possível salvar: ${error.message}`);
     return { deliveryId: delivery.id, ...position };
+  });
+
+export type CourierDeliveryEstimate = { courierId: string; distanceMeters?: number; durationSeconds?: number; error?: string };
+
+/** Calcula estimativas reais somente sob comando explícito do gestor, no máximo cinco motoboys. */
+export const estimateCourierDelivery = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ deliveryId: z.string().uuid(), courierIds: z.array(z.string().uuid()).min(1).max(5) }).parse(input))
+  .handler(async ({ data, context }): Promise<CourierDeliveryEstimate[]> => {
+    const [{ data: isAdmin }, { data: isCashier }] = await Promise.all([
+      context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'admin' }),
+      context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'cashier' }),
+    ]);
+    if (!isAdmin && !isCashier) throw new Error('Somente o administrador ou o caixa pode calcular estimativas de designação.');
+    const [boardResult, operationsResult] = await Promise.all([context.supabase.rpc('read_delivery_board'), context.supabase.rpc('read_courier_operations')]);
+    if (boardResult.error) throw new Error(boardResult.error.message);
+    if (operationsResult.error) throw new Error(operationsResult.error.message);
+    const board = boardResult.data as unknown as { deliveries: Delivery[] };
+    const operations = operationsResult.data as unknown as CourierOperations;
+    const delivery = board.deliveries.find(item => item.id === data.deliveryId && item.status === 'Pronto para entrega' && !item.route_id);
+    if (!delivery) throw new Error('Esta entrega não está mais disponível para designação.');
+    const destination = deliveryCoordinates(delivery);
+    if (!destination) throw new Error('Toque na saída para localizar o endereço antes de calcular o trajeto.');
+    const locations = operations.locations.filter(location => data.courierIds.includes(location.courier_id) && !isCourierLocationStale(location.located_at)).slice(0, 5);
+    if (!locations.length) throw new Error('Nenhum dos motoboys escolhidos tem GPS ao vivo.');
+    const gatewayKey = process.env['LOVABLE_API_KEY'];
+    const connectionKey = process.env['GOOGLE_MAPS_API_KEY_1'];
+    if (!gatewayKey || !connectionKey) throw new Error('A conexão com o Google Maps ainda não está configurada.');
+    return Promise.all(locations.map(async location => {
+      try {
+        const response = await fetch('https://connector-gateway.lovable.dev/google_maps/routes/directions/v2:computeRoutes', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${gatewayKey}`, 'X-Connection-Api-Key': connectionKey, Accept: 'application/json', 'Content-Type': 'application/json', 'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration' },
+          body: JSON.stringify({ origin: { location: { latLng: { latitude: location.latitude, longitude: location.longitude } } }, destination: { location: { latLng: destination } }, travelMode: 'DRIVE', computeAlternativeRoutes: false, languageCode: 'pt-BR', units: 'METRIC' }),
+          signal: AbortSignal.timeout(12_000),
+        });
+        if (!response.ok) { console.error(`Google Routes estimate failed [${response.status}]`); return { courierId: location.courier_id, error: 'O Google não calculou este trajeto.' }; }
+        const result = await response.json() as { routes?: { distanceMeters?: number; duration?: string }[] };
+        const route = result.routes?.[0];
+        if (!route?.distanceMeters || !route.duration) return { courierId: location.courier_id, error: 'Trajeto não encontrado.' };
+        return { courierId: location.courier_id, distanceMeters: route.distanceMeters, durationSeconds: Number(route.duration.replace(/s$/, '')) || 0 };
+      } catch { return { courierId: location.courier_id, error: 'Falha de conexão ao calcular o trajeto.' }; }
+    }));
   });

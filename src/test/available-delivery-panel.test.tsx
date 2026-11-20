@@ -6,7 +6,7 @@ import type { Courier, Delivery } from '@/lib/delivery';
 import type { CourierLiveLocation } from '@/lib/courier-operations';
 
 vi.mock('@tanstack/react-start', () => ({ useServerFn: () => vi.fn() }));
-vi.mock('@/lib/delivery-route.functions', () => ({ locateDeliveryOnMap: 'locate-delivery' }));
+vi.mock('@/lib/delivery-route.functions', () => ({ locateDeliveryOnMap: 'locate-delivery', estimateCourierDelivery: 'estimate-delivery' }));
 
 const delivery: Delivery = {
   id: 'delivery-1', order_id: 'order-1', number: 900, customer: 'Cliente Teste', phone: '', created_at: '', delivered_at: null,
@@ -15,14 +15,14 @@ const delivery: Delivery = {
   items: [{ name: 'Marmita completa', qty: 1 }],
 };
 const couriers: Courier[] = [
-  { id: 'near', name: 'Perto', phone: '', user_id: null, active: true },
-  { id: 'far', name: 'Longe', phone: '', user_id: null, active: true },
+  { id: 'near', name: 'Perto', phone: '', user_id: null, active: true, operational_status: 'available', initial_quantity: 20, remaining_quantity: 20, available_quantity: 20, product_name: 'Marmita completa' },
+  { id: 'far', name: 'Longe', phone: '', user_id: null, active: true, operational_status: 'available', initial_quantity: 20, remaining_quantity: 20, available_quantity: 20, product_name: 'Marmita completa' },
 ];
 const location = (courier_id: string, latitude: number, located_at: string): CourierLiveLocation => ({ courier_id, name: courier_id, latitude, longitude: -39.57, accuracy_meters: 10, located_at, consent_at: located_at });
 
-function renderPanel(locations: CourierLiveLocation[], onAssign = vi.fn(), currentDelivery = delivery) {
+function renderPanel(locations: CourierLiveLocation[], onAssign = vi.fn(), currentDelivery = delivery, customCouriers = couriers) {
   const client = new QueryClient();
-  render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[currentDelivery]} couriers={couriers} locations={locations} baseAddress="Base Teste" selectedDeliveryId={currentDelivery.id} onFocusDelivery={vi.fn()} onLocated={vi.fn()} onAssign={onAssign} /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[currentDelivery]} couriers={customCouriers} locations={locations} baseAddress="Base Teste" selectedDeliveryId={currentDelivery.id} onFocusDelivery={vi.fn()} onLocated={vi.fn()} onAssign={onAssign} /></QueryClientProvider>);
   return onAssign;
 }
 
@@ -32,7 +32,7 @@ describe('designação da entrega pelo motoboy mais próximo', () => {
   it('destaca o GPS mais próximo e designa exatamente a entrega selecionada', () => {
     const now = new Date().toISOString();
     const assign = renderPanel([location('far', -16.36, now), location('near', -16.35, now)]);
-    expect(screen.getByText('Mais próximo')).toBeTruthy();
+    expect(screen.getByText('Recomendado')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Designar Perto' }));
     expect(assign).toHaveBeenCalledWith('near', 'Base Teste', ['delivery-1']);
   });
@@ -43,9 +43,16 @@ describe('designação da entrega pelo motoboy mais próximo', () => {
     renderPanel([location('near', -16.35, stale), location('far', -16.36, fresh)]);
     const farCard = screen.getByRole('button', { name: 'Designar Longe' }).closest('article');
     const nearCard = screen.getByRole('button', { name: 'Designar Perto' }).closest('article');
-    expect(farCard?.textContent).toContain('Mais próximo');
+    expect(farCard?.textContent).toContain('Recomendado');
     expect(nearCard?.textContent).toContain('GPS desatualizado');
-    expect(nearCard?.textContent).not.toContain('Mais próximo');
+    expect(nearCard?.textContent).not.toContain('Recomendado');
+  });
+
+  it('não recomenda motoboy sem estoque compatível', () => {
+    const emptyCouriers = couriers.map(courier => ({ ...courier, remaining_quantity: 0, available_quantity: 0 }));
+    renderPanel([location('near', -16.35, new Date().toISOString())], vi.fn(), delivery, emptyCouriers);
+    expect(screen.getByText('Nenhum motoboy disponível com estoque compatível para esta entrega.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Designar/ })).toBeNull();
   });
 
   it('permite localizar uma saída que já está na rua sem oferecer nova designação', () => {

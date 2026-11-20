@@ -6,8 +6,10 @@ export const deliveryFeeFor = (type:string,input:DeliveryInput|undefined,configu
 export const canFinishDelivery = (status:DeliveryStatus) => !['Entregue','Cancelado'].includes(status);
 export const DELIVERY_STATUSES = ['Aguardando preparo','Pronto para entrega','Em rota','Entregue','Cancelado'] as const;
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number];
-export type Delivery = { id:string; order_id:string; number:number; customer:string; phone:string; address:DeliveryAddress; created_at:string; delivered_at:string|null; departed_at?:string|null; order_status?:string; payment_status?:string; status:DeliveryStatus; route_id:string|null; position:number; courier_id:string|null; total:number|null; due:number|null; payment_method:string|undefined; change:number|null; problem:string|null; items:{name:string;qty:number;note?:string}[] };
-export type Courier = {id:string;name:string;phone:string;user_id:string|null;active:boolean;initial_quantity?:number|null;remaining_quantity?:number|null;reserved_quantity?:number|null;available_quantity?:number|null;stock_updated_at?:string|null};
+export type Delivery = { id:string; order_id:string; number:number; customer:string; phone:string; address:DeliveryAddress; created_at:string; delivered_at:string|null; departed_at?:string|null; arrived_at?:string|null; order_status?:string; payment_status?:string; status:DeliveryStatus; route_id:string|null; position:number; courier_id:string|null; total:number|null; due:number|null; payment_method:string|undefined; change:number|null; problem:string|null; items:{productId?:string;name:string;qty:number;note?:string}[] };
+export type CourierOperationalStatus = 'available'|'unavailable'|'returning';
+export type Courier = {id:string;name:string;phone:string;user_id:string|null;active:boolean;initial_quantity?:number|null;remaining_quantity?:number|null;reserved_quantity?:number|null;available_quantity?:number|null;stock_updated_at?:string|null;operational_status?:CourierOperationalStatus;status_updated_at?:string|null;product_id?:string|null;product_name?:string|null;journey_id?:string|null;journey_status?:'on_route'|'empty'|'returned'|null};
+export type MarmitaProduct = {id:string;name:string};
 export type DeliveryRoute = {id:string;name:string;courier_id:string|null;created_at:string;origin:string;distance_meters:number|null;duration_seconds:number|null};
 export const deliveryMarmitaQuantity = (delivery:Pick<Delivery,'items'>) => delivery.items.reduce((total,item)=>total+(/marmita/i.test(item.name)?Math.max(0,Number(item.qty)||0):0),0);
 export function courierMarmitaStock(courier:Courier|null|undefined,deliveries:Delivery[],excludeRouteId?:string|null) {
@@ -18,10 +20,15 @@ export function courierMarmitaStock(courier:Courier|null|undefined,deliveries:De
 export function marmitaSelectionError(courier:Courier|null|undefined,deliveries:Delivery[],selected:Delivery[],excludeRouteId?:string|null):string|null {
   if(!courier)return null;
   const required=selected.reduce((total,delivery)=>total+deliveryMarmitaQuantity(delivery),0);
+  if(courier.operational_status&&courier.operational_status!=='available')return 'Este entregador não está disponível para novas atribuições.';
   if(!required)return null;
   const stock=courierMarmitaStock(courier,deliveries,excludeRouteId);
   if(stock.available===null)return 'Registre a carga de marmitas deste entregador antes de salvar a rota.';
   if(required>stock.available)return `Marmitas insuficientes: ${Math.max(0,stock.available)} disponível(is) e ${required} selecionada(s).`;
+  if(courier.product_id||courier.product_name){
+    const incompatible=selected.some(delivery=>delivery.items.some(item=>/marmita/i.test(item.name)&&(item.productId&&courier.product_id?item.productId!==courier.product_id:item.name.trim().toLocaleLowerCase('pt-BR')!==courier.product_name?.trim().toLocaleLowerCase('pt-BR'))));
+    if(incompatible)return `A carga atual de ${courier.product_name??'marmitas'} não é compatível com este pedido.`;
+  }
   return null;
 }
 export function validateDelivery(input:DeliveryInput|undefined):string|null {

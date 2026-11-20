@@ -2,22 +2,24 @@ import { useMemo, useState } from 'react';
 import { Check, CheckCircle2, ChevronDown, ChevronUp, CircleDollarSign, Clock3, Map, MapPin, MessageCircle, Navigation, Phone, Printer, Route as RouteIcon, Search, Truck, UserRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { addressText, canFinishDelivery, googleMapsLink, routeMapsLink, routeTotals, type Courier, type Delivery, type DeliveryRoute } from '@/lib/delivery';
+import { addressText, canFinishDelivery, googleMapsLink, routeMapsLink, routeTotals, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
 import { currentKitchenDeliveries, currentKitchenRoutes } from '@/lib/delivery-operation';
 import { brl } from '@/lib/pdv-store';
 import { whatsappLink } from '@/lib/pdv-customers';
 import { printDeliveryTicket, printRouteSheet } from '@/services/thermalPrinter';
 import { CourierOperationsPanel } from './CourierOperationsPanel';
+import { TransferDeliveryControl } from './TransferDeliveryControl';
 
 type EditorRoute = { id: string; name: string; courier: string; origin: string; stops: string[] };
 
-export function DeliveryRoutesView({ admin, manager = false, courier, deliveries, routes, couriers, busy, onAssign, onEdit, onFinish, onStart, onDeliver, onProblem, onPrepare }: {
+export function DeliveryRoutesView({ admin, manager = false, courier, deliveries, routes, couriers, marmitaProducts = [], busy, onAssign, onEdit, onFinish, onStart, onDeliver, onProblem, onPrepare, onTransfer }: {
   admin: boolean;
   manager?: boolean;
   courier: boolean;
   deliveries: Delivery[];
   routes: DeliveryRoute[];
   couriers: Courier[];
+  marmitaProducts?: MarmitaProduct[];
   busy: boolean;
   onAssign: (courierId: string, baseAddress: string, deliveryIds?: string[]) => void;
   onEdit: (route: EditorRoute) => void;
@@ -26,6 +28,7 @@ export function DeliveryRoutesView({ admin, manager = false, courier, deliveries
   onDeliver: (id: string) => void;
   onProblem: (id: string, problem: string) => void;
   onPrepare: () => void;
+  onTransfer?: (deliveryId: string, courierId: string) => Promise<boolean>;
 }) {
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<string | null | undefined>(undefined);
@@ -66,7 +69,7 @@ export function DeliveryRoutesView({ admin, manager = false, courier, deliveries
       <Button variant="outline" size="sm" onClick={() => setMapOpen(open => !open)}>{mapOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}{mapOpen ? 'Recolher mapa' : 'Abrir mapa e equipe'}</Button>
     </div>
 
-    {mapOpen && <CourierOperationsPanel admin={admin} manager={manager} courier={courier} deliveries={currentDeliveries} routes={currentRoutes} couriers={couriers} onAssign={onAssign} />}
+    {mapOpen && <CourierOperationsPanel admin={admin} manager={manager} courier={courier} deliveries={currentDeliveries} routes={currentRoutes} couriers={couriers} marmitaProducts={marmitaProducts} onAssign={onAssign} />}
 
     <div className="grid grid-cols-3 gap-2 sm:max-w-xl">
       <div className="rounded-xl border bg-card p-3"><p className="text-xs text-muted-foreground">Saídas de hoje</p><p className="mt-1 text-xl font-bold">{currentDeliveries.length}</p></div>
@@ -127,11 +130,13 @@ export function DeliveryRoutesView({ admin, manager = false, courier, deliveries
             {stop.total !== null && <div className="sm:text-right"><p>{stop.payment_method} · {stop.payment_status === 'Pendente' ? 'a receber' : stop.payment_status ?? 'informado'}</p><p className="font-semibold">{brl(stop.due ?? 0)} <span className="font-normal text-muted-foreground">de {brl(stop.total)}</span></p>{(stop.change ?? 0) > 0 && <p className="text-xs text-muted-foreground">Troco: {brl(stop.change ?? 0)}</p>}</div>}
           </div>
           {stop.problem && <p className="mt-3 text-sm text-destructive">Problema: {stop.problem}</p>}
+          {stop.arrived_at && canFinishDelivery(stop.status) && <p className="mt-2 text-xs text-primary">Chegada confirmada em {new Date(stop.arrived_at).toLocaleString('pt-BR')}</p>}
           {stop.delivered_at && <p className="mt-2 text-xs text-success">Entregue em {new Date(stop.delivered_at).toLocaleString('pt-BR')}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => openMaps(googleMapsLink(stop.address))}><Navigation size={14} />Navegar</Button>
             {stop.phone && <><Button size="icon" variant="outline" aria-label={`Ligar para ${stop.customer}`} onClick={() => { window.location.href = `tel:+${stop.phone.replace(/\D/g, '')}`; }}><Phone size={15} /></Button><Button size="icon" variant="outline" aria-label={`WhatsApp de ${stop.customer}`} onClick={() => window.open(whatsappLink(stop.phone, ''), '_blank', 'noopener,noreferrer')}><MessageCircle size={15} /></Button></>}
             <Button size="icon" variant="outline" aria-label={`Imprimir entrega ${stop.number}`} onClick={() => void printDeliveryTicket(stop).then(() => toast.success(`Entrega #${stop.number} impressa.`)).catch(error => toast.error(error instanceof Error ? error.message : 'Falha ao imprimir.'))}><Printer size={15} /></Button>
+            {!courier && onTransfer && canFinishDelivery(stop.status) && <TransferDeliveryControl delivery={stop} deliveries={currentDeliveries} couriers={couriers} busy={busy} onTransfer={onTransfer} />}
             {canFinishDelivery(stop.status) && <><Button size="sm" variant="ghost" onClick={() => onProblem(stop.id, stop.problem ?? '')}>Problema</Button><Button size="sm" className="ml-auto" disabled={busy} onClick={() => onDeliver(stop.id)}><Check size={15} />Marcar entregue</Button></>}
           </div>
         </li>)}</ol>}

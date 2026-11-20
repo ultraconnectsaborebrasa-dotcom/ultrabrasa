@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/lib/confirm-action';
-import { addressText, canFinishDelivery, googleMapsLink, partitionDeliveryRoutes, type Courier, type Delivery, type DeliveryRoute } from '@/lib/delivery';
+import { addressText, canFinishDelivery, courierMarmitaStock, googleMapsLink, partitionDeliveryRoutes, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
 import { brl } from '@/lib/pdv-store';
 import { whatsappLink } from '@/lib/pdv-customers';
 import { courierRouteProgress, courierRouteStatus } from '@/lib/courier-route';
@@ -42,24 +42,30 @@ export function CourierDeliveryExperience({
   deliveries,
   routes,
   couriers,
+  marmitaProducts = [],
   busy,
   loading,
   refreshing,
   error,
   onRefresh,
   onStart,
+  onArrived,
+  onReceivePayment,
   onDeliver,
   onProblem,
 }: {
   deliveries: Delivery[];
   routes: DeliveryRoute[];
   couriers: Courier[];
+  marmitaProducts?: MarmitaProduct[];
   busy: boolean;
   loading: boolean;
   refreshing: boolean;
   error: string;
   onRefresh: () => void;
   onStart: (routeId: string) => void;
+  onArrived?: (deliveryId: string) => void;
+  onReceivePayment?: (orderId: string, method: string) => void;
   onDeliver: (deliveryId: string) => void;
   onProblem: (deliveryId: string, problem: string) => Promise<boolean>;
 }) {
@@ -73,11 +79,18 @@ export function CourierDeliveryExperience({
   const route = partitioned.active.find(item => item.id === routeId) ?? partitioned.active[0] ?? null;
   const stops = useMemo(() => deliveries.filter(delivery => delivery.route_id === route?.id), [deliveries, route?.id]);
   const progress = courierRouteProgress(stops);
-  const selectedStop = progress.ordered.find(stop => stop.id === stopId) ?? progress.nextStop ?? progress.ordered[0] ?? null;
+  const activeArrival = progress.ordered.find(stop => stop.arrived_at && canFinishDelivery(stop.status)) ?? null;
+  const selectedStop = activeArrival ?? progress.ordered.find(stop => stop.id === stopId) ?? progress.nextStop ?? progress.ordered[0] ?? null;
+  const ownStock = courierMarmitaStock(couriers[0], deliveries);
 
   async function confirmDelivery(delivery: Delivery) {
     if (!await confirmAction(`Confirmar que o pedido #${delivery.number} foi entregue a ${delivery.customer || 'o cliente'}?`)) return;
     onDeliver(delivery.id);
+  }
+
+  async function receivePayment(delivery: Delivery) {
+    if (!onReceivePayment || !delivery.payment_method || !await confirmAction(`Confirmar recebimento de ${brl(delivery.due ?? 0)} em ${delivery.payment_method} do pedido #${delivery.number}? Isso não marca a entrega como concluída.`)) return;
+    onReceivePayment(delivery.order_id, delivery.payment_method);
   }
 
   async function saveProblem() {
@@ -98,6 +111,7 @@ export function CourierDeliveryExperience({
       <Button variant="outline" size="icon" aria-label="Atualizar minhas entregas" disabled={refreshing} onClick={onRefresh}><RefreshCw className={refreshing ? 'animate-spin' : ''} size={18} /></Button>
     </header>
 
+    {couriers[0] && <div className="rounded-2xl border bg-card p-4"><div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold">Minhas marmitas</h3><p className="text-xs text-muted-foreground">{couriers[0].product_name ?? 'Carga ainda não registrada'}</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${couriers[0].operational_status === 'returning' ? 'bg-warning/10 text-warning' : (couriers[0].operational_status ?? 'available') === 'available' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{couriers[0].operational_status === 'returning' ? 'Voltando à base' : (couriers[0].operational_status ?? 'available') === 'available' ? 'Disponível' : 'Indisponível'}</span></div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-muted/50 p-2"><b className="block text-xl">{ownStock.remaining ?? '—'}</b><span className="text-[10px] text-muted-foreground">Comigo</span></div><div className="rounded-xl bg-muted/50 p-2"><b className="block text-xl">{ownStock.reserved}</b><span className="text-[10px] text-muted-foreground">Reservadas</span></div><div className="rounded-xl bg-primary/10 p-2"><b className="block text-xl text-primary">{ownStock.available ?? '—'}</b><span className="text-[10px] text-muted-foreground">Livres</span></div></div></div>}
     {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
     {loading ? <div role="status" className="grid min-h-56 place-items-center rounded-3xl border bg-card p-6 text-center"><div><RefreshCw className="mx-auto mb-3 animate-spin text-primary" /><p className="text-sm text-muted-foreground">Buscando seus pedidos designados…</p></div></div> : <>
       <nav aria-label="Visualização das entregas" className="grid grid-cols-2 rounded-2xl bg-muted p-1.5">
@@ -154,8 +168,11 @@ export function CourierDeliveryExperience({
               {progress.ready && route.courier_id && <Button size="lg" className="h-14 w-full rounded-2xl text-base font-bold" disabled={busy} onClick={() => onStart(route.id)}><Navigation size={20} /> Iniciar rota</Button>}
               {!progress.ready && canFinishDelivery(selectedStop.status) && <>
                 <Button size="lg" variant="outline" className="h-12 w-full rounded-2xl" onClick={() => openMaps(googleMapsLink(selectedStop.address))}><Navigation size={18} /> Navegar até o cliente</Button>
+                {onArrived && !selectedStop.arrived_at && <Button size="lg" variant="outline" className="h-12 w-full rounded-2xl" disabled={busy} onClick={() => onArrived(selectedStop.id)}><MapPin size={18} /> Confirmar chegada</Button>}
+                {selectedStop.arrived_at && <p role="status" className="rounded-xl bg-primary/10 p-3 text-center text-xs font-medium text-primary">Chegada registrada às {new Date(selectedStop.arrived_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
                 <Button size="lg" className="h-14 w-full rounded-2xl text-base font-bold" disabled={busy || progress.waiting} onClick={() => void confirmDelivery(selectedStop)}><Check size={20} /> Confirmar entrega</Button>
               </>}
+              {onReceivePayment && (selectedStop.due ?? 0) > 0 && canFinishDelivery(selectedStop.status) && <Button size="lg" variant="outline" className="h-12 w-full rounded-2xl" disabled={busy} onClick={() => void receivePayment(selectedStop)}><CircleDollarSign size={18} /> Registrar recebimento · {brl(selectedStop.due ?? 0)}</Button>}
               {progress.waiting && <p className="flex items-start gap-2 rounded-xl bg-warning/10 p-3 text-xs text-warning"><Clock3 className="mt-0.5 shrink-0" size={15} /> A loja ainda está preparando um ou mais pedidos desta rota.</p>}
               {canFinishDelivery(selectedStop.status) && <Button variant="ghost" className="w-full text-muted-foreground" disabled={busy} onClick={() => setProblem({ delivery: selectedStop, text: selectedStop.problem ?? '' })}><AlertTriangle size={15} /> Não consegui entregar</Button>}
             </div>
@@ -170,7 +187,7 @@ export function CourierDeliveryExperience({
             return <li key={stop.id} className="relative flex gap-3 pb-4 last:pb-0">
               {index < progress.ordered.length - 1 && <span aria-hidden="true" className={`absolute bottom-0 left-[15px] top-8 w-0.5 ${done ? 'bg-success/40' : 'bg-border'}`} />}
               <span className={`z-10 grid size-8 shrink-0 place-items-center rounded-full border-2 text-xs font-black ${done ? 'border-success bg-success text-background' : selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground'}`}>{done ? <Check size={15} /> : index + 1}</span>
-              <button type="button" aria-pressed={selected} onClick={() => setStopId(stop.id)} className={`min-w-0 flex-1 rounded-2xl border p-3 text-left transition-all ${selected ? 'border-primary bg-primary/5 shadow-sm' : 'bg-background hover:border-primary/50'}`}>
+              <button type="button" aria-pressed={selected} disabled={Boolean(activeArrival && activeArrival.id !== stop.id)} title={activeArrival && activeArrival.id !== stop.id ? 'Conclua ou registre uma ocorrência na entrega já iniciada' : 'Escolher esta parada'} onClick={() => setStopId(stop.id)} className={`min-w-0 flex-1 rounded-2xl border p-3 text-left transition-all disabled:opacity-50 ${selected ? 'border-primary bg-primary/5 shadow-sm' : 'bg-background hover:border-primary/50'}`}>
                 <span className="flex items-center gap-2"><b className="min-w-0 flex-1 truncate text-sm">#{stop.number} · {stop.customer || 'Cliente'}</b><span className={`text-[10px] font-semibold ${done ? 'text-success' : 'text-muted-foreground'}`}>{stop.status === 'Em rota' ? 'Em rota' : stop.status}</span></span>
                 <span className="mt-1 block truncate text-xs text-muted-foreground">{stop.address.street}, {stop.address.number} · {stop.address.neighborhood}</span>
               </button>
@@ -180,7 +197,7 @@ export function CourierDeliveryExperience({
 
         <details open={operationsOpen} onToggle={event => setOperationsOpen(event.currentTarget.open)} className="group rounded-2xl border bg-card p-4">
           <summary className="flex cursor-pointer list-none items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary"><Map size={18} /></span><span className="min-w-0 flex-1"><b className="block text-sm">Mapa, GPS e minhas marmitas</b><span className="text-xs text-muted-foreground">Abra somente quando precisar usar.</span></span><ChevronDown size={17} className="transition-transform group-open:rotate-180" /></summary>
-          {operationsOpen && <div className="mt-4 border-t pt-4"><CourierOperationsPanel courier deliveries={deliveries} routes={routes} couriers={couriers} onAssign={() => {}} /></div>}
+          {operationsOpen && <div className="mt-4 border-t pt-4"><CourierOperationsPanel courier deliveries={deliveries} routes={routes} couriers={couriers} marmitaProducts={marmitaProducts} onAssign={() => {}} /></div>}
         </details>
       </>}
     </>}

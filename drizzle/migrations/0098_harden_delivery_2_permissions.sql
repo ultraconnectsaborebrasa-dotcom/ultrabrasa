@@ -1,0 +1,15 @@
+REVOKE ALL ON FUNCTION public.assert_courier_marmita_stock(uuid,uuid[],uuid) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.mark_courier_arrival(uuid) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.read_delivery_operational_report(date,date) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.save_delivery_operating_hours(time,time,integer[]) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.set_courier_availability(text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.set_delivery_courier_availability(uuid,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.transfer_delivery(uuid,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.mark_courier_arrival(uuid) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.read_delivery_operational_report(date,date) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.save_delivery_operating_hours(time,time,integer[]) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.set_courier_availability(text) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.set_delivery_courier_availability(uuid,text) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.transfer_delivery(uuid,uuid) TO authenticated,service_role;
+CREATE INDEX IF NOT EXISTS delivery_operational_events_from_courier_idx ON public.delivery_operational_events(from_courier_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS delivery_operational_events_to_courier_idx ON public.delivery_operational_events(to_courier_id,created_at DESC);

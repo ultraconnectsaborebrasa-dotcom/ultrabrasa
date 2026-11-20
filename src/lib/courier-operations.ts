@@ -11,6 +11,9 @@ export type DeliveryBase = {
   base_latitude: number;
   base_longitude: number;
   base_place_id: string | null;
+  operating_start?: string;
+  operating_end?: string;
+  operating_days?: number[];
 };
 export type CourierTimeEntry = {
   id: string;

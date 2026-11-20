@@ -34,4 +34,15 @@ describe('estoque de marmitas dos entregadores', () => {
     const withoutStock = { ...courier, remaining_quantity: null, initial_quantity: null };
     expect(marmitaSelectionError(withoutStock, [], [delivery('new-1', 1)])).toBe('Registre a carga de marmitas deste entregador antes de salvar a rota.');
   });
+
+  it('não recomenda entregador indisponível mesmo com estoque', () => {
+    const returning = { ...courier, operational_status: 'returning' as const };
+    expect(marmitaSelectionError(returning, [], [delivery('new-1', 1)])).toBe('Este entregador não está disponível para novas atribuições.');
+  });
+
+  it('bloqueia carga de outro tipo de marmita', () => {
+    const typed = { ...courier, product_id: 'product-marmita-completa', product_name: 'Marmita completa' };
+    const selected = { ...delivery('new-1', 1), items: [{ productId: 'product-marmita-especial', name: 'Marmita especial', qty: 1 }] };
+    expect(marmitaSelectionError(typed, [], [selected])).toBe('A carga atual de Marmita completa não é compatível com este pedido.');
+  });
 });

@@ -41,4 +41,28 @@ describe('aplicativo de entregas do motoboy', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar entrega' }));
     await waitFor(() => expect(onDeliver).toHaveBeenCalledWith('b'));
   });
+
+  it('confirma chegada sem concluir a entrega', () => {
+    const onArrived = vi.fn();
+    render(<CourierDeliveryExperience deliveries={[delivery('a', 1, 'Em rota')]} routes={[route]} couriers={[]} busy={false} loading={false} refreshing={false} error="" onRefresh={vi.fn()} onStart={vi.fn()} onArrived={onArrived} onDeliver={vi.fn()} onProblem={vi.fn(async () => true)} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar chegada' }));
+    expect(onArrived).toHaveBeenCalledWith('a');
+    expect(screen.getByRole('button', { name: 'Confirmar entrega' })).toBeInTheDocument();
+  });
+
+  it('registra recebimento sem alterar a etapa logística', async () => {
+    const onReceivePayment = vi.fn();
+    const unpaid = { ...delivery('a', 1, 'Em rota'), due: 19.9, payment_status: 'Pendente' };
+    render(<CourierDeliveryExperience deliveries={[unpaid]} routes={[route]} couriers={[]} busy={false} loading={false} refreshing={false} error="" onRefresh={vi.fn()} onStart={vi.fn()} onReceivePayment={onReceivePayment} onDeliver={vi.fn()} onProblem={vi.fn(async () => true)} />);
+    fireEvent.click(screen.getByRole('button', { name: /Registrar recebimento/ }));
+    await waitFor(() => expect(onReceivePayment).toHaveBeenCalledWith('order-a', 'Pix'));
+    expect(screen.getByRole('button', { name: 'Confirmar entrega' })).toBeInTheDocument();
+  });
+
+  it('mantém a parada com chegada confirmada até concluir ou registrar ocorrência', () => {
+    const arrived = { ...delivery('a', 1, 'Em rota'), arrived_at: '2026-11-19T13:00:00Z' };
+    render(<CourierDeliveryExperience deliveries={[arrived, delivery('b', 2, 'Em rota')]} routes={[route]} couriers={[]} busy={false} loading={false} refreshing={false} error="" onRefresh={vi.fn()} onStart={vi.fn()} onDeliver={vi.fn()} onProblem={vi.fn(async () => true)} />);
+    expect(screen.getByRole('button', { name: /#102 · Cliente b/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /#101 · Cliente a/ })).toBeEnabled();
+  });
 });

@@ -106,6 +106,62 @@ export type Database = {
           },
         ]
       }
+      courier_marmita_loads: {
+        Row: {
+          courier_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          journey_id: string
+          kind: string
+          loss_quantity: number
+          product_id: string
+          product_name: string
+          quantity: number
+          reason: string | null
+          returned_quantity: number
+          status: string
+        }
+        Insert: {
+          courier_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          journey_id: string
+          kind: string
+          loss_quantity?: number
+          product_id: string
+          product_name: string
+          quantity: number
+          reason?: string | null
+          returned_quantity?: number
+          status?: string
+        }
+        Update: {
+          courier_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          journey_id?: string
+          kind?: string
+          loss_quantity?: number
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          reason?: string | null
+          returned_quantity?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_marmita_loads_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_marmita_movements: {
         Row: {
           actor_id: string | null
@@ -113,8 +169,12 @@ export type Database = {
           created_at: string
           delivery_id: string | null
           id: string
+          journey_id: string | null
           kind: string
+          load_id: string | null
+          product_id: string | null
           quantity_change: number
+          reason: string | null
           resulting_quantity: number
         }
         Insert: {
@@ -123,8 +183,12 @@ export type Database = {
           created_at?: string
           delivery_id?: string | null
           id?: string
+          journey_id?: string | null
           kind: string
+          load_id?: string | null
+          product_id?: string | null
           quantity_change: number
+          reason?: string | null
           resulting_quantity: number
         }
         Update: {
@@ -133,8 +197,12 @@ export type Database = {
           created_at?: string
           delivery_id?: string | null
           id?: string
+          journey_id?: string | null
           kind?: string
+          load_id?: string | null
+          product_id?: string | null
           quantity_change?: number
+          reason?: string | null
           resulting_quantity?: number
         }
         Relationships: [
@@ -157,21 +225,36 @@ export type Database = {
       courier_marmita_stock: {
         Row: {
           courier_id: string
+          current_load_id: string | null
           initial_quantity: number
+          journey_id: string | null
+          journey_status: string
+          product_id: string
+          product_name: string
           remaining_quantity: number
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           courier_id: string
+          current_load_id?: string | null
           initial_quantity: number
+          journey_id?: string | null
+          journey_status?: string
+          product_id?: string
+          product_name?: string
           remaining_quantity: number
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           courier_id?: string
+          current_load_id?: string | null
           initial_quantity?: number
+          journey_id?: string | null
+          journey_status?: string
+          product_id?: string
+          product_name?: string
           remaining_quantity?: number
           updated_at?: string
           updated_by?: string | null
@@ -317,21 +400,27 @@ export type Database = {
           active: boolean
           id: string
           name: string
+          operational_status: string
           phone: string
+          status_updated_at: string
           user_id: string | null
         }
         Insert: {
           active?: boolean
           id?: string
           name: string
+          operational_status?: string
           phone?: string
+          status_updated_at?: string
           user_id?: string | null
         }
         Update: {
           active?: boolean
           id?: string
           name?: string
+          operational_status?: string
           phone?: string
+          status_updated_at?: string
           user_id?: string | null
         }
         Relationships: []
@@ -343,6 +432,9 @@ export type Database = {
           base_longitude: number
           base_place_id: string | null
           id: number
+          operating_days: number[]
+          operating_end: string
+          operating_start: string
           updated_at: string
           updated_by: string | null
         }
@@ -352,6 +444,9 @@ export type Database = {
           base_longitude: number
           base_place_id?: string | null
           id?: number
+          operating_days?: number[]
+          operating_end?: string
+          operating_start?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -361,14 +456,83 @@ export type Database = {
           base_longitude?: number
           base_place_id?: string | null
           id?: number
+          operating_days?: number[]
+          operating_end?: string
+          operating_start?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: []
       }
+      delivery_operational_events: {
+        Row: {
+          actor_id: string | null
+          courier_id: string | null
+          created_at: string
+          delivery_id: string
+          details: Json
+          event: string
+          from_courier_id: string | null
+          id: string
+          to_courier_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          courier_id?: string | null
+          created_at?: string
+          delivery_id: string
+          details?: Json
+          event: string
+          from_courier_id?: string | null
+          id?: string
+          to_courier_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          courier_id?: string | null
+          created_at?: string
+          delivery_id?: string
+          details?: Json
+          event?: string
+          from_courier_id?: string | null
+          id?: string
+          to_courier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_operational_events_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_operational_events_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_operational_events_from_courier_id_fkey"
+            columns: ["from_courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_operational_events_to_courier_id_fkey"
+            columns: ["to_courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_orders: {
         Row: {
           address: Json
+          arrived_at: string | null
           assigned_courier_id: string | null
           cash_for: number
           created_at: string
@@ -387,6 +551,7 @@ export type Database = {
         }
         Insert: {
           address?: Json
+          arrived_at?: string | null
           assigned_courier_id?: string | null
           cash_for?: number
           created_at?: string
@@ -405,6 +570,7 @@ export type Database = {
         }
         Update: {
           address?: Json
+          arrived_at?: string | null
           assigned_courier_id?: string | null
           cash_for?: number
           created_at?: string
@@ -1213,6 +1379,14 @@ export type Database = {
         }
         Returns: string
       }
+      assert_courier_marmita_stock: {
+        Args: {
+          p_courier_id: string
+          p_delivery_ids: string[]
+          p_exclude_route_id?: string
+        }
+        Returns: undefined
+      }
       bulk_advance_pdv_cashier_orders: {
         Args: { action: string }
         Returns: number
@@ -1295,6 +1469,10 @@ export type Database = {
         Args: { phone_query: string }
         Returns: Json
       }
+      mark_courier_arrival: {
+        Args: { delivery_id: string }
+        Returns: undefined
+      }
       mark_receipt_for_request: {
         Args: { _id: string; _request: string }
         Returns: undefined
@@ -1318,6 +1496,10 @@ export type Database = {
         Returns: Json
       }
       read_delivery_board: { Args: never; Returns: Json }
+      read_delivery_operational_report: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }
       read_public_catalog: { Args: never; Returns: Json }
@@ -1369,6 +1551,10 @@ export type Database = {
         }
         Returns: string
       }
+      save_delivery_operating_hours: {
+        Args: { p_days: number[]; p_end: string; p_start: string }
+        Returns: undefined
+      }
       save_delivery_route: {
         Args: {
           courier?: string
@@ -1404,8 +1590,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      set_courier_marmita_stock: {
-        Args: { p_courier_id: string; p_mode?: string; p_quantity: number }
+      set_courier_availability: {
+        Args: { p_status: string }
+        Returns: undefined
+      }
+      set_courier_marmita_stock:
+        | {
+            Args: { p_courier_id: string; p_mode?: string; p_quantity: number }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_courier_id: string
+              p_mode?: string
+              p_product_id?: string
+              p_product_name?: string
+              p_quantity: number
+              p_reason?: string
+            }
+            Returns: undefined
+          }
+      set_delivery_courier_availability: {
+        Args: { p_courier_id: string; p_status: string }
         Returns: undefined
       }
       set_pdv_role: {
@@ -1433,6 +1639,10 @@ export type Database = {
       submit_pdv_operator_with_contact: {
         Args: { request: Json }
         Returns: Json
+      }
+      transfer_delivery: {
+        Args: { delivery_id: string; new_courier_id: string }
+        Returns: string
       }
       update_courier_location: {
         Args: { p_accuracy?: number; p_latitude: number; p_longitude: number }
