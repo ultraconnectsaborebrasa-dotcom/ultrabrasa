@@ -4,6 +4,7 @@ import { OperatorDesk } from '@/components/pdv/OperatorDesk';
 import { readOperator } from '@/lib/pdv-operator';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const send=vi.fn().mockResolvedValue({number:7});
+vi.mock('@/services/thermalPrinter',async importOriginal=>({...await importOriginal<typeof import('@/services/thermalPrinter')>(),printOrder:vi.fn().mockResolvedValue(undefined)}));
 vi.mock('@/lib/pdv-operator',async importOriginal=>({...await importOriginal<typeof import('@/lib/pdv-operator')>(),readOperator:vi.fn().mockResolvedValue({products:[{id:'espeto',name:'Espeto',category:'Espetinhos',stock:20,price:8}],orders:[],ownOrders:3,ownSales:2}),submitOperator:(r:unknown)=>send(r)}));
 afterEach(()=>{cleanup();send.mockClear();});
 describe('Atendimento com preços e envio protegido',()=>{

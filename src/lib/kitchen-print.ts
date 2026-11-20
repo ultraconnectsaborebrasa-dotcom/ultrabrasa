@@ -63,6 +63,10 @@ export async function autoPrintKitchenOrderById(orderId: string): Promise<boolea
   }
 }
 
+export function shouldAutoPrintSubmittedOrder(status: string): boolean {
+  return status === 'cozinha' || status === 'pronto';
+}
+
 // Marmitas já entram prontas: o aceite imprime independentemente da etapa de preparo.
 export async function autoPrintAcceptedOrder(accepted: unknown): Promise<boolean> {
   const orderId = accepted && typeof accepted === 'object' ? (accepted as { id?: unknown }).id : null;

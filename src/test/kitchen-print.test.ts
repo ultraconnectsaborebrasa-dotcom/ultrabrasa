@@ -12,7 +12,7 @@ vi.mock('@/services/thermalPrinter', async importOriginal => ({
 }));
 vi.mock('sonner', () => ({ toast: { error: toastError } }));
 
-import { autoPrintAcceptedOrder, autoPrintKitchenOrderById, printableKitchenOrder } from '@/lib/kitchen-print';
+import { autoPrintAcceptedOrder, autoPrintKitchenOrderById, printableKitchenOrder, shouldAutoPrintSubmittedOrder } from '@/lib/kitchen-print';
 
 const projection = {
   id: 'wa-order-1', number: 915, type: 'Delivery' as const, customer: 'Maria',
@@ -38,6 +38,12 @@ describe('impressão automática de pedidos aceitos', () => {
     expect(fee).toBe(0);
     expect(options).toEqual({ target: 'kitchen' });
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('autoriza a impressão de lançamentos prontos e enviados à cozinha', () => {
+    expect(shouldAutoPrintSubmittedOrder('pronto')).toBe(true);
+    expect(shouldAutoPrintSubmittedOrder('cozinha')).toBe(true);
+    expect(shouldAutoPrintSubmittedOrder('pago')).toBe(false);
   });
 
   it('imprime também um pedido aceito como pronto, sem passar pela cozinha', async () => {

@@ -11,7 +11,8 @@ import { DeliveryFields } from './DeliveryFields';
 import { DeliveryBoard } from './DeliveryBoard';
 import { emptyDelivery,validateDelivery,deliveryFeeFor } from '@/lib/delivery';
 import { ThermalPrinterPanel } from './ThermalPrinterPanel';
-import { printOrder } from '@/services/thermalPrinter';
+import { printOrder, printerPreferences } from '@/services/thermalPrinter';
+import { shouldAutoPrintSubmittedOrder } from '@/lib/kitchen-print';
 import type { Order as StoreOrder } from '@/lib/pdv-store';
 import { readOperator, submitOperator, emptyOperator, operatorSubtotal, type OperatorData, type OperatorItem } from '@/lib/pdv-operator';
 import { tableLabel, validTable } from '@/lib/pdv-tables';
@@ -22,11 +23,11 @@ import { ChefHat, Check, ShoppingBag, Armchair, Minus, Plus, LogOut, Search, Loa
 export function OperatorDesk({ name, signOut }: { name: string; signOut: () => Promise<void> }) {
   const [data,setData]=useState<OperatorData>(emptyOperator);
   const [error,setError]=useState(''); const [busy,setBusy]=useState(false); const [loading,setLoading]=useState(true);
-  async function printTicket(o:OperatorData['orders'][number]){
+  async function printTicket(o:OperatorData['orders'][number],automatic=false){
     try{
       const order={id:o.id,number:o.number,type:o.type,tableNumber:o.tableNumber,customer:o.customer,note:o.note,createdAt:o.createdAt,items:o.items.map(i=>({productId:'',name:i.name,qty:i.qty,price:i.price??0,note:i.note})),discount:0,fee:0,serviceFee:false,payments:[]} as unknown as StoreOrder;
       toast.info(`Imprimindo pedido #${o.number}...`);
-      await printOrder(order,0,{manual:true,target:'kitchen'});
+      await printOrder(order,0,{manual:!automatic,target:'kitchen'});
       toast.success(`Pedido #${o.number} impresso`);
     }catch(e){toast.error(e instanceof Error?e.message:'Falha ao imprimir');}
   }
@@ -35,7 +36,7 @@ export function OperatorDesk({ name, signOut }: { name: string; signOut: () => P
   const [customerPhone,setCustomerPhone]=useState(''); const [promotionConsent,setPromotionConsent]=useState(false);
   const [delivery,setDelivery]=useState(emptyDelivery);
   const [items,setItems]=useState<OperatorItem[]>([]); const [id,setId]=useState(uid);
-  async function refresh() { try { setData(await readOperator()); setError(''); } catch(e) { setError(e instanceof Error?e.message:'Sem conexão'); setData(emptyOperator); } finally { setLoading(false); } }
+  async function refresh() { try { const fresh=await readOperator();setData(fresh);setError('');return fresh; } catch(e) { setError(e instanceof Error?e.message:'Sem conexão'); setData(emptyOperator);return null; } finally { setLoading(false); } }
   useEffect(() => { void refresh(); const timer=setInterval(() => void refresh(),3000); return () => clearInterval(timer); },[]);
   function change(productId:string,delta:number) {
     const p=data.products.find(p => p.id===productId); if(!p)return;
@@ -46,7 +47,19 @@ export function OperatorDesk({ name, signOut }: { name: string; signOut: () => P
     const contactError=validateContact(customer,customerPhone,promotionConsent);if(contactError){toast.error(contactError);return;}
     if(type==='Delivery'){const error=validateDelivery(delivery);if(error){toast.error(error);return;}}
     setBusy(true);
-    try { const result=await submitOperator({delivery:type==='Delivery'?delivery:undefined,id,type,tableNumber:type==='Mesa'?table:undefined,customer:customer.trim(),customerPhone:normalizePhone(customerPhone),promotionConsent,note,items,source:window.matchMedia('(max-width: 767px)').matches?'mobile':'desktop'}); const ready=(result.status??initialOrderStatus(items,data.products))==='pronto'; toast.success(ready?`Pedido #${result.number} pronto${type==='Delivery'?' para entrega':''}`:`Pedido #${result.number} enviado à cozinha`,{description:type==='Mesa'?`Mesa ${table}`:type}); setItems([]);setNote('');setCustomer('');setCustomerPhone('');setPromotionConsent(false);setDelivery(emptyDelivery());setId(uid());await refresh();setTab(type==='Delivery'?'routes':'orders'); }
+    try {
+      const result=await submitOperator({delivery:type==='Delivery'?delivery:undefined,id,type,tableNumber:type==='Mesa'?table:undefined,customer:customer.trim(),customerPhone:normalizePhone(customerPhone),promotionConsent,note,items,source:window.matchMedia('(max-width: 767px)').matches?'mobile':'desktop'});
+      const submittedStatus=result.status??initialOrderStatus(items,data.products);
+      const ready=submittedStatus==='pronto';
+      toast.success(ready?`Pedido #${result.number} pronto${type==='Delivery'?' para entrega':''}`:`Pedido #${result.number} enviado à cozinha`,{description:type==='Mesa'?`Mesa ${table}`:type});
+      setItems([]);setNote('');setCustomer('');setCustomerPhone('');setPromotionConsent(false);setDelivery(emptyDelivery());setId(uid());
+      const fresh=await refresh();
+      if(shouldAutoPrintSubmittedOrder(submittedStatus)&&printerPreferences.autoPrintEnabled){
+        const created=fresh?.orders.find(order=>order.number===result.number);
+        if(created)void printTicket(created,true);
+      }
+      setTab(type==='Delivery'?'routes':'orders');
+    }
     catch(e){toast.error(e instanceof Error?e.message:'Não foi possível enviar.');} finally{setBusy(false);}
   }
   const cartTotal=operatorSubtotal(items.map(i=>({qty:i.qty,price:data.products.find(p=>p.id===i.productId)?.price??null})));

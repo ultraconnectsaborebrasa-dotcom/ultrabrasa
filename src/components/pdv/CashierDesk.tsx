@@ -29,7 +29,7 @@ import { ManualPaymentDialog } from './ManualPaymentDialog';
 import { BulkPayDialog } from './BulkPayDialog';
 import { kitchenBulkDestination, runKitchenBulkAction } from '@/lib/kitchen-bulk';
 import { BulkDeliveryDeparture } from './BulkDeliveryDeparture';
-import { autoPrintAcceptedOrder } from '@/lib/kitchen-print';
+import { autoPrintAcceptedOrder, shouldAutoPrintSubmittedOrder } from '@/lib/kitchen-print';
 import { submitCashierSale } from '@/lib/cashier-sale';
 import { canDirectSale } from '@/lib/pdv-sale';
 import { initialOrderStatus } from '@/lib/marmita-order';
@@ -128,7 +128,7 @@ export function CashierDesk({name,signOut}:{name:string;signOut:()=>Promise<void
     setTab(orderType==='Delivery'?'routes':'sell');
    }else{
     setTab(orderType==='Delivery'?'routes':'kitchen');
-    if(!ready)void autoPrintKitchen(fresh,o=>(created.id?o.id===created.id:o.number===created.number));
+    if(shouldAutoPrintSubmittedOrder(created.status ?? cartInitialStatus))void autoPrintKitchen(fresh,o=>(created.id?o.id===created.id:o.number===created.number));
    }
   }catch(e){
    toast.error(e instanceof Error?e.message:direct?'Falha ao receber e finalizar pedido. Nenhuma baixa foi concluída.':paymentMethod?'Falha ao receber e enviar pedido. Nenhuma baixa foi concluída.':'Falha ao enviar pedido');

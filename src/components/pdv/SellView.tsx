@@ -14,6 +14,7 @@ import { printOrder, printerPreferences } from '@/services/thermalPrinter';
 import { canDirectSale } from '@/lib/pdv-sale';
 import { initialOrderStatus } from '@/lib/marmita-order';
 import { autoPrintPaidPixReceipt } from '@/lib/pix-payment-print';
+import { shouldAutoPrintSubmittedOrder } from '@/lib/kitchen-print';
 
 const TYPES: OrderType[] = ["Balcão", "Mesa", "Retirada", "Delivery"];
 
@@ -56,7 +57,7 @@ export function SellView({ admin = false, onDelivery }: { admin?: boolean; onDel
     if (!o) return;
     toast.success(draftInitialStatus === 'pronto' ? `Pedido #${o.number} pronto${o.type === 'Delivery' ? ' para entrega' : ''}` : `Comanda #${o.number} enviada para a cozinha`);
     if (o.type === "Delivery") onDelivery?.();
-    if (draftInitialStatus === 'cozinha' && printerPreferences.autoPrintEnabled) {
+    if (shouldAutoPrintSubmittedOrder(o.status) && printerPreferences.autoPrintEnabled) {
       void printOrder(o, settings.serviceFeePct, { force: true, target: 'kitchen' }).catch((error: unknown) => {
         const detail = error instanceof Error ? error.message : "verifique a conexão e a impressora selecionada";
         toast.error(`Comanda #${o.number} enviada, mas não foi possível imprimir: ${detail}`);
