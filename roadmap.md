@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Organização das novidades e do histórico no WhatsApp
+- [x] Lista de conversas sempre com as mais recentes primeiro; “Hoje” destacada no topo e “Conversas anteriores” em seção separada abaixo.
+- [x] Sete testes focados e typecheck passaram; ordem e separador verificados visualmente com duas conversas fictícias, sem alterar atendimentos reais.
+
 ## Pedido manual pelo WhatsApp ao lado da conversa
 - [x] Manter a pausa imediata do robô ao assumir e exibir nome do perfil e estado da automação na montagem.
 - [x] Mostrar a conversa ao lado do pedido para Administrador e Caixa, com cópia do nome e das mensagens, sem preenchimento automático; acima do pedido em telas menores e recolhível.
