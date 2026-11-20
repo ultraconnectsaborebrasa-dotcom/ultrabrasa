@@ -1,8 +1,8 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Limpeza para nova operação
-- [ ] Apagar todos os pedidos, histórico de vendas, entregas e rotas, mantendo produtos, clientes, equipe e configurações.
-- [ ] Limpar solicitações e comprovantes vinculados, reiniciar a numeração e verificar painéis zerados sem apagar conversas ou cargas da equipe.
+- [x] Apagar 917 pedidos do histórico completo, 450 entregas e 7 rotas, mantendo produtos, clientes, equipe e configurações.
+- [x] Remover 300 comprovantes e solicitações/vínculos antigos, reiniciar a numeração em 1 e conferir painéis zerados; 59 produtos, 1.137 clientes, 2 entregadores e 718 conversas preservados. Proteção do histórico reativada.
 
 ## Ultrabrasa Entregas 2.0 — documento enviado
 - [x] Diagnosticar e reutilizar cargas, reservas, rotas, mapa, aplicativo e permissões existentes sem alterar os demais módulos.

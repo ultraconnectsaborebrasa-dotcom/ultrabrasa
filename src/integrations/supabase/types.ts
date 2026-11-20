@@ -1520,6 +1520,7 @@ export type Database = {
         Args: { _message: string; _order: string; _path: string }
         Returns: string
       }
+      reset_pdv_operation_maintenance: { Args: never; Returns: Json }
       review_payment_receipt: {
         Args: { _confirm: boolean; _id: string; _reason: string }
         Returns: undefined

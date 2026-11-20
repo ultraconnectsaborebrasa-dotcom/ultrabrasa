@@ -694,6 +694,13 @@
       "when": 1795147414556,
       "tag": "0098_harden_delivery_2_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1795148001321,
+      "tag": "0099_protected_operation_reset_maintenance",
+      "breakpoints": true
     }
   ]
 }
