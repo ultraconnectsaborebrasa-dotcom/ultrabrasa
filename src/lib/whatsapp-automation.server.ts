@@ -201,7 +201,10 @@ export async function processJobs(db:Admin,limit=2){
       if(j.kind==='receipt'){const {processReceipt}=await import('./payment-receipts.server');await processReceipt(db,p.inboundId??'');}
       else if(j.kind==='interpret')await interpret(db,j);
       else{
-        if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>=86400000)throw new Error('Janela de 24h encerrada; modelo aprovado necessário');
+        if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>=86400000){
+          checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',processing_error:'Janela de 24h encerrada; modelo aprovado necessário',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));
+          continue;
+        }
         const pre=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id,status').eq('reply_to',j.id).maybeSingle());
         if(pre?.wa_message_id){checkEmpty(await db.from('whatsapp_jobs').update({state:'completed',provider_id:pre.wa_message_id,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
         if(pre)throw new Error('Envio anterior requer revisão');
