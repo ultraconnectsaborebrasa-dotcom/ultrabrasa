@@ -25,6 +25,23 @@ export const FIRST_CONTACT_REMINDER_MESSAGE = 'E aí, conseguiu? Se teve alguma 
 export const FIRST_CONTACT_REMINDER_DELAY_MS = 3 * 60 * 1000;
 export const isFirstContactJob = (key: string) => key.startsWith('first-contact:');
 export const isFirstContactReminderJob = (key: string) => key.startsWith('first-contact-reminder:');
+export const STORE_LOCATION_MESSAGE = 'Claro! Estamos na Rua Lateral do IFBA de Eunápolis, próximo ao Mercado Avenida, na Rua Alcides Lacerda, nº 359.\n\n📍 Vou te enviar nossa localização para facilitar sua chegada!';
+export const STORE_LOCATION = { latitude: -16.350000, longitude: -39.574600, name: 'Ultrabrasa', address: 'Rua Alcides Lacerda, 359, Eunápolis - BA' } as const;
+export const STORE_LOCATION_MAPS_URL = 'https://www.google.com/maps?q=-16.350000,-39.574600';
+export const STORE_LOCATION_MAPS_MESSAGE = `📍 Nossa localização no Google Maps:\n${STORE_LOCATION_MAPS_URL}`;
+export const isStoreLocationJob = (key: string) => key.startsWith('store-location:') || key.startsWith('store-location-pin:');
+/** Perguntas sobre a loja não devem ser interpretadas como endereço de entrega ou início de pedido. */
+export function isStoreLocationQuestion(text: string): boolean {
+  const n = norm(text);
+  if (/\bposso\s+retirar(?:\s+(?:o\s+|meu\s+)?pedido)?\b/.test(n)) return true;
+  if (/\b(?:meu|minha)\s+(?:endereco|localizacao)\b|\bendereco\s+(?:da|de)\s+entrega\b/.test(n)) return false;
+  return /\bqual\s+(?:e\s+)?(?:o\s+)?endereco\b/.test(n)
+    || /\bonde\s+(?:voces|vcs)\s+(?:ficam|estao|sao)\b/.test(n)
+    || /\bonde\s+fica(?:m)?(?:\s+(?:a\s+loja|o\s+ultrabrasa|voces|vcs))?\b/.test(n)
+    || /\b(?:manda|envia|passa|compartilha)(?:r)?\b.*\b(?:localizacao|endereco|mapa)\b/.test(n)
+    || /\bcomo\s+(?:faco|chego|faz|fazer)\b.*\b(?:chegar|chego|ai|voces|vcs|loja|ultrabrasa)\b/.test(n)
+    || /\bendereco\s+d(?:e|os|as)\s+(?:voces|vcs|loja|ultrabrasa)\b/.test(n);
+}
 /** O link é uma opção: a escolha de pedir na conversa entra na coleta manual existente. */
 export function prefersManualOrder(text: string): boolean {
   const n = norm(text);

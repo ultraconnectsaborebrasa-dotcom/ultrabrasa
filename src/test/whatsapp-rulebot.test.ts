@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { botWindow, ruleParse, isEarlyLunch, windowStart, lunchMenuOpen, earlyLunchMessages, regularLunchMessages, faqReply, LUNCH_CLOSED_MESSAGE, NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, NIGHT_SERVING_MENU_MESSAGE, nightOpeningMessage, AFTERNOON_MESSAGES, HANDOFF_MESSAGE } from '@/lib/whatsapp-rulebot';
+import { botWindow, ruleParse, isEarlyLunch, windowStart, lunchMenuOpen, earlyLunchMessages, regularLunchMessages, faqReply, LUNCH_CLOSED_MESSAGE, NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, NIGHT_SERVING_MENU_MESSAGE, nightOpeningMessage, AFTERNOON_MESSAGES, HANDOFF_MESSAGE, isStoreLocationQuestion, STORE_LOCATION_MESSAGE, STORE_LOCATION } from '@/lib/whatsapp-rulebot';
 import { conversationDraftSchema, missingOrderFields, defaultBusiness } from '@/lib/whatsapp-business';
 const empty = conversationDraftSchema.parse({});
 const at = (hm: string) => new Date(`2026-11-16T${hm}:00-03:00`);
@@ -125,5 +125,22 @@ describe('bot tradicional', () => {
   it('encaminha reclamações e problemas para atendente', () => {
     expect(ruleParse('Meu pedido errado, quero falar com alguém', empty, 'm', []).wantsHuman).toBe(true);
     expect(ruleParse('Tive problema com pagamento', empty, 'm', []).wantsHuman).toBe(true);
+  });
+  it.each([
+    'Qual o endereço?',
+    'Onde vocês ficam?',
+    'Me manda a localização.',
+    'Como faço para chegar?',
+    'Onde fica a loja?',
+    'Posso retirar meu pedido?',
+    'Me passa o endereço de vocês.',
+  ])('reconhece a pergunta sobre a loja: %s', text => {
+    expect(isStoreLocationQuestion(text)).toBe(true);
+  });
+  it('não confunde o endereço de entrega do cliente com o endereço da loja', () => {
+    expect(isStoreLocationQuestion('Meu endereço é Rua A, 12')).toBe(false);
+    expect(isStoreLocationQuestion('Qual o endereço de entrega?')).toBe(false);
+    expect(STORE_LOCATION_MESSAGE).toContain('Rua Alcides Lacerda, nº 359');
+    expect(STORE_LOCATION).toMatchObject({ latitude: -16.35, longitude: -39.5746 });
   });
 });

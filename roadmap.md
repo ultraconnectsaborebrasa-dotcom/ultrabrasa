@@ -349,3 +349,8 @@
 ## Botão único de recebimento no lançamento
 - [x] Remover “Receber e enviar à cozinha”; restam “Enviar pedido à cozinha” (sem receber) e “Receber” (dá baixa, finaliza e imprime no caixa).
 - [x] 9 testes do recebimento aprovados, tipagem verificada e tela do caixa conferida em 1280×1800 sem registrar pagamento real; impressora física não acionada.
+
+## Endereço e localização da loja no WhatsApp
+- [x] Reconhecer perguntas sobre endereço, localização, como chegar e retirada sem alterar o pedido em andamento.
+- [x] Enviar a mensagem combinada e o pino nativo nas coordenadas informadas, com link do Maps somente se o formato nativo for recusado.
+- [x] Testar o roteiro e os envios simulados sem criar pedidos nem enviar mensagens reais: 248 testes de WhatsApp, tipagem e build aprovados.

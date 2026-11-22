@@ -1,20 +1,22 @@
-import {describe,it,expect,vi,beforeEach} from 'vitest';
+import {describe,it,expect,vi,beforeEach,afterEach} from 'vitest';
 import {defaultBusiness} from '@/lib/whatsapp-business';
-vi.mock('@/lib/whatsapp.server',()=>({gateway:vi.fn(),sendText:vi.fn(),sendTyping:vi.fn(),digits:(s:string)=>s.replace(/\D/g,'')}));
+vi.mock('@/lib/whatsapp.server',()=>({gateway:vi.fn(),sendText:vi.fn(),sendLocation:vi.fn(),sendTyping:vi.fn(),digits:(s:string)=>s.replace(/\D/g,'')}));
 vi.mock('@lovable.dev/ai-gateway',()=>({generateResponse:vi.fn(),GatewayError:class GatewayError extends Error{}}));
 vi.mock('@/lib/payment-receipts.server',()=>({processReceipt:vi.fn()}));
 import {processJobs} from '@/lib/whatsapp-automation.server';
-import {sendText,sendTyping} from '@/lib/whatsapp.server';
+import {sendText,sendLocation,sendTyping} from '@/lib/whatsapp.server';
 import {processReceipt} from '@/lib/payment-receipts.server';
 import { ORDER_CONFIRMED_MESSAGE } from '@/lib/whatsapp-confirmation';
 import { pixPaymentMessage } from '@/lib/whatsapp-payment';
+import { STORE_LOCATION, STORE_LOCATION_MAPS_MESSAGE } from '@/lib/whatsapp-rulebot';
 type Db=Parameters<typeof processJobs>[0];
-function mockDb({paused=false,enabled=true,windowOpen=true,state='ok',kind='text',recent=[] as {body:string;created_at:string;status:string}[],text='Teste',previous=null as null|{wa_message_id:string;status:string},confirmation=false,pix=false,requestStatus='accepted',receipts=[] as {id:string;order_id:string|null}[]}={}){
+function mockDb({paused=false,enabled=true,windowOpen=true,state='ok',kind='text',recent=[] as {body:string;created_at:string;status:string}[],text='Teste',previous=null as null|{wa_message_id:string;status:string},confirmation=false,pix=false,requestStatus='accepted',receipts=[] as {id:string;order_id:string|null}[],location=false}={}){
  const updates:Record<string,unknown>[]=[];let claims=0;
- const db={from:(table:string)=>{let mode='read';const filters:Record<string,unknown>={};const q={select:()=>q,eq:(field:string,value:unknown)=>{filters[field]=value;return q;},gte:()=>q,in:()=>q,limit:()=>q,single:async()=>({data:table==='whatsapp_settings'?{business:{...defaultBusiness,pixKey:'73982423404'},account_state:state,auto_reply_enabled:enabled}:table==='pdv_state'?{data:{orders:[]}}:{automation_paused:paused,last_inbound_at:windowOpen?new Date().toISOString():new Date(Date.now()-25*3600000).toISOString()},error:null}),maybeSingle:async()=>({data:table==='whatsapp_order_requests'?{status:requestStatus,id:'request-1'}:previous,error:null}),update:(data:Record<string,unknown>)=>{updates.push(data);mode='update';return q;},then:(resolve:(r:unknown)=>unknown)=>Promise.resolve({data:mode==='update'?null:table==='whatsapp_messages'?recent:table==='payment_receipts'?receipts.filter(r=>filters['order_id']===undefined||r.order_id===filters['order_id']):[],error:null}).then(resolve)};return q;},rpc:async()=>({data:claims++===0?[{id:'job-1',phone:'5573999999999',kind,dedup_key:confirmation?'accepted:wa-request-1':pix?'accepted:wa-request-1:pix-key':'reply:wamid.in',payload:{text,inboundId:'wamid.in',automatic:!confirmation&&!pix&&kind!=='receipt',...(confirmation||pix?{orderId:'wa-request-1',pixPrompt:true}:{})}}]:[],error:null})};return {db:db as unknown as Db,updates,pause:()=>{paused=true;}};
+ const db={from:(table:string)=>{let mode='read';const filters:Record<string,unknown>={};const q={select:()=>q,eq:(field:string,value:unknown)=>{filters[field]=value;return q;},gte:()=>q,in:()=>q,limit:()=>q,single:async()=>({data:table==='whatsapp_settings'?{business:{...defaultBusiness,pixKey:'73982423404'},account_state:state,auto_reply_enabled:enabled}:table==='pdv_state'?{data:{orders:[]}}:{automation_paused:paused,last_inbound_at:windowOpen?new Date().toISOString():new Date(Date.now()-25*3600000).toISOString()},error:null}),maybeSingle:async()=>({data:table==='whatsapp_order_requests'?{status:requestStatus,id:'request-1'}:previous,error:null}),update:(data:Record<string,unknown>)=>{updates.push(data);mode='update';return q;},then:(resolve:(r:unknown)=>unknown)=>Promise.resolve({data:mode==='update'?null:table==='whatsapp_messages'?recent:table==='payment_receipts'?receipts.filter(r=>filters['order_id']===undefined||r.order_id===filters['order_id']):[],error:null}).then(resolve)};return q;},rpc:async()=>({data:claims++===0?[{id:'job-1',phone:'5573999999999',kind,dedup_key:confirmation?'accepted:wa-request-1':pix?'accepted:wa-request-1:pix-key':'reply:wamid.in',payload:{text,inboundId:'wamid.in',automatic:!confirmation&&!pix&&kind!=='receipt',...(location?{location:STORE_LOCATION,text:STORE_LOCATION_MAPS_MESSAGE}:{}),...(confirmation||pix?{orderId:'wa-request-1',pixPrompt:true}:{})}}]:[],error:null})};return {db:db as unknown as Db,updates,pause:()=>{paused=true;}};
 }
 describe('WhatsApp guarded job processing',()=>{
  beforeEach(()=>vi.clearAllMocks());
+ afterEach(()=>vi.useRealTimers());
  it('processes attachments even when replies are disabled and the account is blocked',async()=>{const {db}=mockDb({enabled:false,state:'blocked',paused:true,kind:'receipt'});await processJobs(db,1);expect(processReceipt).toHaveBeenCalledWith(db,'wamid.in');expect(sendText).not.toHaveBeenCalled();});
  it('does not pause the robot after receipt storage fails',async()=>{const {db,updates}=mockDb({kind:'receipt'});vi.mocked(processReceipt).mockRejectedValueOnce(new Error('Storage unavailable'));await processJobs(db,1);expect(updates.some(u=>u['automation_paused']===true)).toBe(false);expect(updates.some(u=>u['state']==='failed')).toBe(true);});
  it('does not pause the conversation when WhatsApp refuses the account currency',async()=>{const{db,updates}=mockDb();vi.mocked(sendText).mockRejectedValueOnce(new Error('WhatsApp [400]: {"code":131042}'));await processJobs(db,1);expect(updates.some(u=>u['state']==='unknown')).toBe(true);expect(updates.some(u=>u['automation_paused']===true)).toBe(false);});
@@ -32,4 +34,11 @@ describe('WhatsApp guarded job processing',()=>{
  it('sends the Pix key even when the receipt arrived before acceptance',async()=>{const{db}=mockDb({pix:true,paused:true,receipts:[{id:'current-receipt',order_id:'wa-request-1'}]});vi.mocked(sendText).mockResolvedValue('wamid.pix-after-receipt');await processJobs(db,1);expect(sendText).toHaveBeenCalledTimes(1);expect(sendText).toHaveBeenCalledWith(db,'5573999999999',pixPaymentMessage('73982423404'),{source:'pdv',replyTo:'job-1',orderId:'wa-request-1'});});
  it.each(['awaiting_acceptance','rejected','cancelled'])('does not announce confirmation for %s orders',async requestStatus=>{const{db,updates}=mockDb({confirmation:true,requestStatus});await processJobs(db,1);expect(sendText).not.toHaveBeenCalled();expect(updates.some(u=>u['state']==='cancelled')).toBe(true);});
  it('does not repeat the confirmation if its accepted send was already persisted',async()=>{const{db}=mockDb({confirmation:true,previous:{wa_message_id:'wamid.confirmed',status:'accepted'}});await processJobs(db,1);expect(sendText).not.toHaveBeenCalled();});
+ it('sends the store pin through the native location message instead of a text-only response',async()=>{
+  vi.useFakeTimers();
+  const{db}=mockDb({location:true});vi.mocked(sendLocation).mockResolvedValue('wamid.location');
+  const processing=processJobs(db,1);await vi.advanceTimersByTimeAsync(4000);await processing;
+  expect(sendLocation).toHaveBeenCalledWith(db,'5573999999999',STORE_LOCATION,{fallbackText:STORE_LOCATION_MAPS_MESSAGE,source:'auto',replyTo:'job-1'});
+  expect(sendText).not.toHaveBeenCalled();
+ });
 });

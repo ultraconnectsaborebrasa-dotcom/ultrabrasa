@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { conversationDraftSchema, defaultBusiness } from '@/lib/whatsapp-business';
-import { NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, AFTERNOON_MESSAGES, CLOSING_MESSAGE, HANDOFF_MESSAGE, FIRST_CONTACT_MESSAGE, prefersManualOrder } from '@/lib/whatsapp-rulebot';
+import { NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, AFTERNOON_MESSAGES, CLOSING_MESSAGE, HANDOFF_MESSAGE, FIRST_CONTACT_MESSAGE, prefersManualOrder, STORE_LOCATION_MESSAGE, STORE_LOCATION, STORE_LOCATION_MAPS_MESSAGE } from '@/lib/whatsapp-rulebot';
 import { STOCK_EXHAUSTED_MESSAGE } from '@/lib/whatsapp-stock-exhausted';
 vi.mock('@/lib/whatsapp.server', () => ({ gateway: vi.fn(), sendText: vi.fn(), sendTyping: vi.fn(), digits: (s: string) => s }));
 vi.mock('@lovable.dev/ai-gateway', () => ({ generateResponse: vi.fn(), GatewayError: class GatewayError extends Error {} }));
@@ -17,7 +17,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
   let confirmedAt: string | null = null;
   let attendanceStartedAt: string | null = null;
   let finished = false;
-  const queued: { dedup_key: string; payload: { text?: string; summaryVersion?: number; summaryTotal?: number } }[] = [];
+  const queued: { dedup_key: string; payload: { text?: string; summaryVersion?: number; summaryTotal?: number; location?: typeof STORE_LOCATION } }[] = [];
   const outbound: { body: string; created_at: string }[] = [];
   const requests: string[] = [];
   const db = {
@@ -293,6 +293,34 @@ describe('marmitas: atendimento por regras', () => {
     await humanAtNight.receive('Quero falar com um atendente', '17:00', 'human-night-1');
     expect(humanAtNight.queued.some(j => j.payload.text === HANDOFF_MESSAGE)).toBe(false);
     expect(humanAtNight.queued[0]?.payload.text).not.toBe(NIGHT_MESSAGE);
+  });
+  it.each(['08:30', '15:30', '18:00', '22:10'])('responde endereço com texto e pino nativo às %s, sem iniciar pedido', async time => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Onde vocês ficam?', time, `store-location-${time}`);
+    expect(flow.queued).toHaveLength(2);
+    expect(flow.queued[0]?.payload.text).toBe(STORE_LOCATION_MESSAGE);
+    expect(flow.queued[1]?.payload.text).toBe(STORE_LOCATION_MAPS_MESSAGE);
+    expect(flow.queued[1]?.payload.location).toEqual(STORE_LOCATION);
+    expect(flow.requests).toEqual([]);
+    expect(flow.draft().items).toEqual([]);
+  });
+  it('responde como chegar mesmo com estoque esgotado e não repete no mesmo atendimento', async () => {
+    vi.useFakeTimers();
+    const flow = attendance(null, true);
+    await flow.receive('Me manda a localização', '11:00', 'store-location-stock-1');
+    await flow.receive('Qual o endereço?', '11:01', 'store-location-stock-2');
+    expect(flow.queued).toHaveLength(2);
+    expect(flow.queued[0]?.payload.text).toBe(STORE_LOCATION_MESSAGE);
+    expect(flow.requests).toEqual([]);
+  });
+  it('responde a possibilidade de retirada sem transformar a pergunta em pedido', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Posso retirar meu pedido?', '11:00', 'store-pickup-question');
+    expect(flow.queued).toHaveLength(2);
+    expect(flow.draft().type).toBeNull();
+    expect(flow.requests).toEqual([]);
   });
   it('depois da confirmação, não responde dúvidas nem agradecimentos do pedido anterior', async () => {
     vi.useFakeTimers();

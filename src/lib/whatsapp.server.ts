@@ -82,6 +82,60 @@ export async function sendText(db: Admin, phone: string, text: string, extra: { 
   }
 }
 
+export type WhatsAppLocation = { latitude: number; longitude: number; name: string; address: string };
+
+/** Somente uma recusa definitiva do formato permite a alternativa por link; falhas ambíguas nunca são reenviadas. */
+export function shouldUseLocationFallback(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /^WhatsApp \[(?:400|404|422)\]:/.test(message) && !/\b131042\b/.test(message)
+    && /location|localiza|unsupported|not supported|invalid.{0,30}type|type.{0,30}invalid|parameter|param/i.test(message);
+}
+
+/** Envia o pino nativo e, se o provedor recusar esse formato, reutiliza o mesmo registro para o link do Maps. */
+export async function sendLocation(db: Admin, phone: string, location: WhatsAppLocation, extra: { fallbackText: string; source?: string; replyTo?: string | null } ) {
+  const to = digits(phone);
+  if (!/^[1-9]\d{9,14}$/.test(to)) throw new Error('Número inválido');
+  if (!Number.isFinite(location.latitude) || Math.abs(location.latitude) > 90 || !Number.isFinite(location.longitude) || Math.abs(location.longitude) > 180) throw new Error('Coordenadas inválidas');
+  const name = location.name.trim().slice(0, 200);
+  const address = location.address.trim().slice(0, 500);
+  const fallbackText = extra.fallbackText.trim().slice(0, 4000);
+  if (!name || !address || !fallbackText) throw new Error('Dados da localização incompletos');
+  const settings = await db.from('whatsapp_settings').select('account_state').eq('id',1).single();
+  if(settings.error || settings.data.account_state !== 'ok') throw new Error('WhatsApp indisponível');
+  const conversation = await db.from('whatsapp_conversations').select('last_inbound_at').eq('phone',to).single();
+  if(conversation.error || !conversation.data.last_inbound_at || Date.now()-Date.parse(conversation.data.last_inbound_at)>=86400000) throw new Error('Fora da janela de 24h: é necessário um modelo aprovado');
+  let body = `📍 ${name}\n${address}`;
+  const reserved = await db.from('whatsapp_messages').insert({phone:to,direction:'out',source:extra.source??'pdv',kind:'location',body,status:'sending',reply_to:extra.replyTo??null}).select('id').single();
+  if(reserved.error) throw new Error(reserved.error.message);
+  let accepted = false;
+  try {
+    let r: any;
+    try {
+      r = await gateway('/messages', { method: 'POST', body: { messaging_product: 'whatsapp', to, type: 'location', location: { latitude: location.latitude, longitude: location.longitude, name, address } } });
+    } catch (error) {
+      if (!shouldUseLocationFallback(error)) throw error;
+      body = fallbackText;
+      const fallback = await db.from('whatsapp_messages').update({kind:'text',body}).eq('id',reserved.data.id);
+      if(fallback.error) throw new Error(fallback.error.message);
+      r = await gateway('/messages', { method: 'POST', body: { messaging_product: 'whatsapp', to, type: 'text', text: { body } } });
+    }
+    const waId: string | undefined = r?.messages?.[0]?.id;
+    accepted = true;
+    if(!waId) throw new Error('WhatsApp não retornou o identificador; conferir envio antes de tentar novamente');
+    const ins = await db.from('whatsapp_messages').update({wa_message_id:waId,status:'accepted'}).eq('id',reserved.data.id);
+    if (ins.error) throw new Error(ins.error.message);
+    const reconciled = await db.rpc('wa_reconcile', { _id: waId });
+    if(reconciled.error) throw new Error(reconciled.error.message);
+    await touchConversation(db, to, body, false);
+    return waId;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const failed = await db.from('whatsapp_messages').update({status:accepted||!msg.startsWith('WhatsApp [')?'unknown':'failed',error:msg,failed_at:new Date().toISOString()}).eq('id',reserved.data.id);
+    if(failed.error) console.error('WhatsApp outcome persistence failed');
+    throw e;
+  }
+}
+
 async function touchConversation(db: Admin, phone: string, last: string, inbound: boolean, name?: string | null, at = new Date().toISOString()) {
   if(inbound){const r=await db.rpc('wa_touch_inbound',{_phone:phone,_body:last,_name:name??'',_at:at});if(r.error)throw new Error(r.error.message);return;}
   const cur = await db.from('whatsapp_conversations').select('unread,name').eq('phone', phone).maybeSingle();
