@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Clock, Plus, Truck } from 'lucide-react';
 import { CatalogCheckout } from '@/components/catalog/CatalogCheckout';
 import { getPublicCatalog } from '@/lib/catalog.functions';
-import { catalogScheduleAvailable, currentPeriod, groupCatalog, HIGHLIGHT, type CartLine, type CatalogProduct, type Period } from '@/lib/catalog';
+import { catalogGroupsForDisplay, catalogScheduleAvailable, currentPeriod, HIGHLIGHT, type CartLine, type CatalogProduct, type Period } from '@/lib/catalog';
 import { Button } from '@/components/ui/button';
 import { Brand } from '@/components/pdv/Brand';
 import { brl } from '@/lib/pdv-store';
@@ -35,13 +35,14 @@ function CardapioPage() {
   const [period, setPeriod] = useState<Period | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => { const f = () => { const time = new Date(); setNow(time); setPeriod(currentPeriod(data.settings, time)); }; f(); const i = setInterval(f, 1000); return () => clearInterval(i); }, [data.settings]);
+  const s = data.settings;
+  const marmitasVisible = now !== null && catalogScheduleAvailable('Marmitas', s, now);
   const groups = useMemo(() => {
-    const g = groupCatalog(data.products);
+    const g = catalogGroupsForDisplay(data.products, s, now);
     if (!period || period === 'closed') return g;
     const hl = HIGHLIGHT[period];
     return [...g].sort((a, b) => Number(hl.includes(b[0])) - Number(hl.includes(a[0])));
-  }, [data.products, period]);
-  const s = data.settings;
+  }, [data.products, s, now, period]);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [open, setOpen] = useState(false);
   const stockExhausted = data.stockExhausted;
@@ -68,7 +69,7 @@ function CardapioPage() {
 
       <main className="mx-auto max-w-3xl px-4 pb-28">
         {stockExhausted && <p role="status" className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-center font-bold text-destructive">Cardápio indisponível no momento. Não estamos recebendo novos pedidos.</p>}
-        {data.dailyOffer?.active && <Link to="/marmita-do-dia" className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/10 p-4">
+        {data.dailyOffer?.active && marmitasVisible && <Link to="/marmita-do-dia" className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/10 p-4">
           <span><span className="block text-xs font-bold uppercase tracking-wide text-primary">Marmita do Dia</span><span className="font-display text-lg font-bold">{data.dailyOffer.title}</span><span className="block text-sm text-muted-foreground">{data.dailyOffer.description}</span></span>
           <span className="shrink-0 text-right font-bold text-primary">{brl(data.dailyOffer.price)}<span className="block text-xs text-foreground">{stockExhausted ? 'Indisponível' : 'Pedir agora →'}</span></span>
         </Link>}

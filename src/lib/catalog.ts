@@ -78,6 +78,12 @@ export function catalogScheduleAvailable(category: string, s: CatalogSettings | 
   return true;
 }
 
+/** Marmitas não aparecem no cardápio fora do almoço; os demais produtos continuam visíveis. */
+export function catalogGroupsForDisplay(products: CatalogProduct[], s: CatalogSettings | null, now: Date | null) {
+  return groupCatalog(products).filter(([category]) => normalizeCategory(category) !== 'Marmitas'
+    || (now !== null && catalogScheduleAvailable('Marmitas', s, now)));
+}
+
 export const catalogPreparationMinutes = () => 18 * 60;
 
 export const HIGHLIGHT: Record<Exclude<Period, 'closed'>, string[]> = {

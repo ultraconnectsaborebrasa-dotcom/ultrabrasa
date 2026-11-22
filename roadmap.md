@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Marmitas somente no horário do almoço
+- [x] Ocultar categoria, atalho e destaque Marmita do Dia em `/cardapio` fora das 09h às 14h, sem alterar os demais produtos.
+- [x] 20 testes focados e typecheck aprovados; página real da noite conferida sem os três elementos de marmita e com as demais categorias preservadas.
+
 ## Entregas por motoboy e distritos oficiais
 - [x] Mostrar as entregas atuais separadas por motoboy, com cliente, pedido, bairro e distrito.
 - [x] Agrupar as saídas prontas pelos distritos oficiais já cadastrados e permitir selecionar o distrito inteiro ou bairros próximos.
