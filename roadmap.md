@@ -356,11 +356,6 @@
 - [x] Testar o roteiro e os envios simulados sem criar pedidos nem enviar mensagens reais: 248 testes de WhatsApp, tipagem e build aprovados.
 
 ## Pedidos do cardápio público no WhatsApp
-- [x] Não enviar uma nova confirmação depois do aceite de pedidos já registrados pelo cardápio público.
-- [x] Para esses pedidos com Pix, enviar somente a mensagem da chave; manter o fluxo atual dos pedidos montados direto no WhatsApp.
-- [x] Testar catálogo com Pix, cartão/dinheiro e WhatsApp manual sem reenviar mensagens antigas: 250 testes, tipagem e verificação temporária do banco aprovados; registros fictícios desfeitos.
-
-## Confirmação também para o cardápio digital
-- [x] Restaurar a confirmação após o aceite para pedidos do cardápio digital, inclusive para trabalhos marcados pela regra anterior.
-- [x] Manter a chave Pix em seguida quando o pagamento for Pix, sem reenviar pedidos antigos.
-- [x] Testar catálogo e WhatsApp manual com a mesma confirmação: 250 testes, tipagem e verificação temporária do banco aprovados.
+- [x] Pedido do cardápio já registrado não inicia outro resumo nem pergunta “Posso confirmar?” ou pede “SIM”.
+- [x] Enviar a confirmação somente depois do aceite da loja; para Pix, enviar a chave combinada em seguida, sem reenviar pedidos antigos.
+- [x] Setenta testes aprovados e build OK; nenhum pedido criado nem mensagem real enviada durante a validação.

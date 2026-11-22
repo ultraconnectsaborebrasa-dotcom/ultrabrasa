@@ -58,6 +58,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
     queued, requests, draft: () => draft, paused: () => paused,
     seedDraft(value: unknown) { draft = conversationDraftSchema.parse(value); version += 1; },
     pauseForConfirmedOrder(at: string) { paused = true; pauseReason = 'order_confirmed'; confirmedAt = at; },
+    pauseForCatalogOrder() { paused = true; pauseReason = null; confirmedAt = null; },
     finish() { finished = true; paused = true; },
     async receive(text: string, time: string, id: string, kind = 'text') {
       vi.setSystemTime(new Date(`2026-11-16T${time}:00-03:00`));
@@ -321,6 +322,15 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.queued).toHaveLength(2);
     expect(flow.draft().type).toBeNull();
     expect(flow.requests).toEqual([]);
+  });
+  it('não pede confirmação novamente para um pedido já registrado pelo cardápio público', async () => {
+    vi.useFakeTimers();
+    const flow = attendance('Maria');
+    flow.pauseForCatalogOrder();
+    await flow.receive('*Pedido C1042* — Marmita do Dia · Cardápio público\nCliente: Maria\n1x Marmita completa\nPagamento: Pix', '11:00', 'catalog-awaiting-acceptance');
+    expect(flow.queued).toHaveLength(0);
+    expect(flow.requests).toEqual([]);
+    expect(flow.paused()).toBe(true);
   });
   it('depois da confirmação, não responde dúvidas nem agradecimentos do pedido anterior', async () => {
     vi.useFakeTimers();

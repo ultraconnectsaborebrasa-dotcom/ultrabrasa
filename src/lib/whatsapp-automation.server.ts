@@ -36,6 +36,7 @@ async function interpret(db:Admin,j:Job){
   if(latestInbound?.wa_message_id!==payload.inboundId)return;
   const text=(current?.body??'').trim();
   if(c.automation_paused){
+    // Pedido do cardápio já registrado fica pausado até o aceite: nunca gerar outro resumo ou pedir "SIM".
     const newOrder=c.automation_pause_reason==='order_confirmed'&&c.order_confirmed_at&&shouldResumeAfterConfirmedOrder(text,c.order_confirmed_at,new Date());
     if(!newOrder)return;
     const resumed=check(await db.from('whatsapp_conversations').update({automation_paused:false,automation_pause_reason:null,order_confirmed_at:null,assigned_to:null,assigned_name:null,attendance_status:'new',awaiting_since:null,draft:{},draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',true).eq('automation_pause_reason','order_confirmed').select('phone'));
