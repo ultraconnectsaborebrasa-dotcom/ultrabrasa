@@ -722,6 +722,13 @@
       "when": 1795310039796,
       "tag": "0102_stock_exhausted_blocks_public_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1795317879143,
+      "tag": "0103_batch_receipt_payment_confirmation",
+      "breakpoints": true
     }
   ]
 }
