@@ -61,21 +61,25 @@ describe('Baixa em lote na conferência de comprovantes', () => {
 
   afterEach(cleanup);
 
-  it('confirma todos os arquivos vinculados como Pix e exclui os que ainda não têm pedido', async () => {
+  it('confirma todos os arquivos como Pix, incluindo os que não têm pedido vinculado', async () => {
     render(<ReceiptReview />);
-    const button = await screen.findByRole('button', { name: 'Dar baixa em todos (2)' });
+    const button = await screen.findByRole('button', { name: 'Dar baixa em todos (3)' });
     fireEvent.click(button);
 
-    await waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith('confirm_receipt_payments_batch', { _ids: ['r1', 'r2'], _method: 'Pix' }));
-    expect(confirmAction).toHaveBeenCalledWith(expect.stringContaining('1 arquivo(s) sem pedido vinculado'), 'Dar baixa em todos');
-    expect(screen.getByText(/1 arquivo\(s\) precisam de pedido vinculado/)).toBeInTheDocument();
+    await waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith('confirm_receipt_payments_batch', { _ids: ['r1', 'r2', 'r3'], _method: 'Pix' }));
+    expect(confirmAction).toHaveBeenCalledWith(expect.stringContaining('1 arquivo(s) sem pedido'), 'Dar baixa em todos');
+    expect(screen.getByText(/1 arquivo\(s\) sem pedido serão apenas confirmados/)).toBeInTheDocument();
   });
 
-  it('mantém a ação bloqueada quando todos os arquivos ainda precisam de vínculo', async () => {
+  it('permite confirmar individualmente um arquivo sem pedido sem alterar vendas', async () => {
     rows = [receipt('r3', false)];
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: { withoutOrder: true, confirmed: true, amount: 0 }, error: null } as never);
     render(<ReceiptReview />);
-    const button = await screen.findByRole('button', { name: 'Dar baixa em todos (0)' });
-    expect(button).toBeDisabled();
-    expect(supabase.rpc).not.toHaveBeenCalledWith('confirm_receipt_payments_batch', expect.anything());
+    const button = await screen.findByRole('button', { name: 'Conferir e dar baixa' });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+
+    await waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith('confirm_receipt_without_order', { _id: 'r3', _method: 'Pix' }));
+    expect(supabase.rpc).not.toHaveBeenCalledWith('confirm_receipt_payment', expect.anything());
   });
 });

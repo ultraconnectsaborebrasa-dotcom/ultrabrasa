@@ -15,24 +15,26 @@ export function ReceiptReview({orderId,viewOnly}:{orderId?:string;viewOnly?:bool
  async function review(r:Receipt,confirm:boolean){const reason=confirm?'Recebimento bancário conferido manualmente pela equipe':await promptAction('Motivo obrigatório: por que o pagamento não foi localizado?');if(!reason?.trim())return;setBusy(true);try{const result=await supabase.rpc('review_payment_receipt',{_id:r.id,_confirm:confirm,_reason:reason});if(result.error)throw result.error;toast.success(confirm?'Recebimento confirmado pela equipe':'Baixa corrigida; pagamento pendente');await load();}catch(e){toast.error(e instanceof Error?e.message:'Falha na conferência');}finally{setBusy(false);}}
  async function confirmPay(r:Receipt){
   if(busy)return;
+  const linked=Boolean(r.request_id||r.order_id);
+  const confirm=()=>linked?supabase.rpc('confirm_receipt_payment',{_id:r.id,_method:'Pix'}):supabase.rpc('confirm_receipt_without_order',{_id:r.id,_method:'Pix'});
   setBusy(true);
   try{
-   let res=await supabase.rpc('confirm_receipt_payment',{_id:r.id,_method:'Pix'});
+   let res=await confirm();
    if(res.error?.message.includes('CAIXA_FECHADO')){
     if(!await confirmAction('Não há caixa aberto. Abrir o caixa agora (troco inicial R$ 0,00) e concluir o pagamento?'))throw new Error('Caixa fechado: abra o caixa para concluir o pagamento');
     const op=await supabase.rpc('open_pdv_cash',{_initial:0});if(op.error)throw op.error;
-    res=await supabase.rpc('confirm_receipt_payment',{_id:r.id,_method:'Pix'});
+    res=await confirm();
    }
    if(res.error)throw res.error;
-   const d=res.data as {already?:boolean;amount?:number;remaining?:number;paid?:boolean};
-   toast.success(d?.already?'Este pagamento já estava confirmado':d?.paid?`Pagamento de ${brl(d.amount??0)} lançado no caixa · Pedido pago`:`${brl(d?.amount??0)} lançado · falta ${brl(d?.remaining??0)}`);
+   const d=res.data as {already?:boolean;amount?:number;remaining?:number;paid?:boolean;withoutOrder?:boolean};
+   toast.success(d?.already?'Este pagamento já estava confirmado':d?.withoutOrder?'Comprovante confirmado como Pix · sem alterar vendas ou comandas':d?.paid?`Pagamento de ${brl(d.amount??0)} lançado no caixa · Pedido pago`:`${brl(d?.amount??0)} lançado · falta ${brl(d?.remaining??0)}`);
    await load();
   }catch(e){toast.error(e instanceof Error?e.message:'Falha ao confirmar; nada foi gravado, tente novamente');}finally{setBusy(false);}
  }
  async function confirmAll(){
   if(busy||!batchRows.length)return;
-  const pendingWithoutOrder=pendingRows.length-batchRows.length;
-  if(!await confirmAction(`Dar baixa em ${batchRows.length} comprovante(s) como Pix? Todos serão conferidos e lançados no caixa.${pendingWithoutOrder?` ${pendingWithoutOrder} arquivo(s) sem pedido vinculado continuarão pendentes.`:''}`,'Dar baixa em todos'))return;
+  const withoutOrder=pendingRows.filter(r=>!r.request_id&&!r.order_id).length;
+  if(!await confirmAction(`Dar baixa em ${batchRows.length} comprovante(s) como Pix?${withoutOrder?` ${withoutOrder} arquivo(s) sem pedido serão apenas confirmados, sem alterar vendas ou comandas.`:''}`,'Dar baixa em todos'))return;
   setBusy(true);
   try{
    const ids=batchRows.map(r=>r.id);
@@ -43,10 +45,11 @@ export function ReceiptReview({orderId,viewOnly}:{orderId?:string;viewOnly?:bool
     res=await supabase.rpc('confirm_receipt_payments_batch',{_ids:ids,_method:'Pix'});
    }
    if(res.error)throw res.error;
-   const d=res.data as {confirmed?:number;amount?:number;skipped?:{id:string;reason:string}[]};
-   if(d?.confirmed)toast.success(`${d.confirmed} comprovante(s) baixados como Pix · ${brl(d.amount??0)}`);
+   const d=res.data as {confirmed?:number;amount?:number;withoutOrder?:number;skipped?:{id:string;reason:string}[]};
+   if(d?.confirmed)toast.success(d.amount?`${d.confirmed} comprovante(s) baixados · ${brl(d.amount)} lançados no caixa`:`${d.confirmed} comprovante(s) confirmados como Pix`);
+   if(d?.withoutOrder)toast.info(`${d.withoutOrder} comprovante(s) sem pedido confirmados sem alterar vendas ou comandas.`);
    if(d?.skipped?.length)toast.warning(`${d.skipped.length} comprovante(s) não foram baixados; confira individualmente.`);
-   if(!d?.confirmed&&!d?.skipped?.length)toast.info('Nenhum comprovante vinculado estava disponível para baixa.');
+   if(!d?.confirmed&&!d?.skipped?.length)toast.info('Nenhum comprovante estava disponível para baixa.');
    await load();
   }catch(e){toast.error(e instanceof Error?e.message:'Falha na baixa em lote; confira os comprovantes');}finally{setBusy(false);}
  }
@@ -54,13 +57,13 @@ export function ReceiptReview({orderId,viewOnly}:{orderId?:string;viewOnly?:bool
  async function history(r:Receipt){const result=await supabase.from('payment_receipt_events').select('*').eq('receipt_id',r.id).order('created_at');if(result.error)toast.error(result.error.message);else setEvents(result.data);}
  async function link(r:Receipt){const result=await supabase.from('whatsapp_order_requests').select('id,public_code,order_number,status').eq('phone',r.phone).in('status',['awaiting_acceptance','accepted']);if(result.error){toast.error(result.error.message);return;}const choice=await promptAction(`Qual o código/número do pedido? ${result.data.map(x=>x.public_code??x.order_number??x.id).join(', ')}`);if(!choice)return;const req=result.data.find(x=>x.public_code===choice||String(x.order_number)===choice||x.id===choice);if(!req){toast.error('Pedido não identificado');return;}const saved=await supabase.rpc('link_payment_receipt',{_id:r.id,_request:req.id});if(saved.error)toast.error(saved.error.message);else await load();}
  const pendingRows=rows.filter(r=>['unverified','review'].includes(r.state));
- const batchRows=pendingRows.filter(r=>r.request_id||r.order_id);
+ const batchRows=pendingRows;
  if(orderId)return rows.length?<div className="space-y-2 rounded-lg border border-warning p-2 text-sm">{rows.map(r=><div key={r.id} className="space-y-1"><p className="font-semibold text-warning">Comprovante recebido — aguardando conferência · {brl(r.amount)}</p><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>void open(r)}>Ver comprovante</Button>{!viewOnly&&<Button size="sm" disabled={busy} onClick={()=>void confirmPay(r)}>{busy?'Confirmando…':'Conferir e dar baixa'}</Button>}<Button size="sm" variant="outline" disabled={busy} onClick={()=>void review(r,false)}>Divergência</Button></div></div>)}</div>:null;
  return <section className="space-y-3 border-t py-4"><h2 className="text-lg font-semibold">Conferência de comprovantes {rows.some(r=>r.state==='review')&&<span className="text-warning">· {rows.filter(r=>r.state==='review').length} precisam de conferência</span>}</h2>
  <ReceiptRegistration onSaved={()=>void load()}/>
  <div className="flex flex-wrap items-center gap-2"><select aria-label="Filtro de comprovantes" className="field" value={filter} onChange={e=>setFilter(e.target.value)}><option value="pending">Todos a conferir</option><option value="unverified">Comprovante recebido — aguardando conferência</option><option value="review">Arquivo recebido — verificar</option><option value="all">Todos e histórico</option></select><Button disabled={busy||!batchRows.length} onClick={()=>void confirmAll()}>{busy?'Processando…':`Dar baixa em todos (${batchRows.length})`}</Button></div>
- {pendingRows.length>batchRows.length&&<p className="text-xs text-muted-foreground">{pendingRows.length-batchRows.length} arquivo(s) precisam de pedido vinculado antes da baixa; eles não serão pagos pelo botão em lote.</p>}
- {rows.filter(r=>filter==='all'||r.state===filter||filter==='pending'&&['review','unverified'].includes(r.state)).map(r=><article key={r.id} className="space-y-2 border-b py-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><b>+{r.phone} · {brl(r.amount)}</b><span className={r.state==='confirmed'?'text-success':'text-warning'}>{r.state==='unverified'?'Comprovante recebido — aguardando conferência':r.state==='confirmed'?'Pago':r.state==='corrected'?'Pagamento pendente — divergência informada':(r.evidence as {isPixReceipt?:boolean})?.isPixReceipt?'Comprovante recebido — conferir':'Arquivo recebido — verificar'}</span></div><p>{r.reason}</p><p className="text-xs text-muted-foreground">{new Date(r.received_at).toLocaleString('pt-BR')} · {r.order_id??'Aguardando vínculo/aceite'}</p><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>void open(r)}>Abrir comprovante</Button>{r.state==='review'&&<><Button size="sm" variant="outline" onClick={()=>void link(r)}>Vincular pedido</Button><ReceiptRegistration phone={r.phone} orderId={r.order_id??undefined} onSaved={()=>void load()}/></>}{['unverified','review'].includes(r.state)&&<Button size="sm" disabled={busy||(!r.request_id&&!r.order_id)} onClick={()=>void confirmPay(r)}>{busy?'Confirmando…':'Conferir e dar baixa'}</Button>}{['unverified','confirmed','review'].includes(r.state)&&<Button size="sm" variant="outline" disabled={busy} onClick={()=>void review(r,false)}>Divergência — manter pendente</Button>}<Button size="sm" variant="ghost" onClick={()=>void history(r)}>Histórico</Button></div></article>)}
+ {pendingRows.some(r=>!r.request_id&&!r.order_id)&&<p className="text-xs text-muted-foreground">{pendingRows.filter(r=>!r.request_id&&!r.order_id).length} arquivo(s) sem pedido serão apenas confirmados como Pix, sem alterar vendas ou comandas.</p>}
+ {rows.filter(r=>filter==='all'||r.state===filter||filter==='pending'&&['review','unverified'].includes(r.state)).map(r=><article key={r.id} className="space-y-2 border-b py-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><b>+{r.phone} · {brl(r.amount)}</b><span className={r.state==='confirmed'?'text-success':'text-warning'}>{r.state==='unverified'?'Comprovante recebido — aguardando conferência':r.state==='confirmed'?'Pago':r.state==='corrected'?'Pagamento pendente — divergência informada':(r.evidence as {isPixReceipt?:boolean})?.isPixReceipt?'Comprovante recebido — conferir':'Arquivo recebido — verificar'}</span></div><p>{r.reason}</p><p className="text-xs text-muted-foreground">{new Date(r.received_at).toLocaleString('pt-BR')} · {r.order_id??'Aguardando vínculo/aceite'}</p><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>void open(r)}>Abrir comprovante</Button>{r.state==='review'&&<><Button size="sm" variant="outline" onClick={()=>void link(r)}>Vincular pedido</Button><ReceiptRegistration phone={r.phone} orderId={r.order_id??undefined} onSaved={()=>void load()}/></>}{['unverified','review'].includes(r.state)&&<Button size="sm" disabled={busy} onClick={()=>void confirmPay(r)}>{busy?'Confirmando…':'Conferir e dar baixa'}</Button>}{['unverified','confirmed','review'].includes(r.state)&&<Button size="sm" variant="outline" disabled={busy} onClick={()=>void review(r,false)}>Divergência — manter pendente</Button>}<Button size="sm" variant="ghost" onClick={()=>void history(r)}>Histórico</Button></div></article>)}
  {!rows.some(r=>filter==='all'||r.state===filter||filter==='pending'&&['review','unverified'].includes(r.state))&&<p className="text-sm text-muted-foreground">Nenhum comprovante neste filtro.</p>}
  {events.length>0&&<div className="border-l-2 border-primary pl-3 text-sm">{events.map(e=><p key={e.id}>{new Date(e.created_at).toLocaleString('pt-BR')} · {e.actor_name} · {e.action} · {e.reason}</p>)}<Button size="sm" variant="ghost" onClick={()=>setEvents([])}>Fechar histórico</Button></div>}
  </section>;

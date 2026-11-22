@@ -729,6 +729,13 @@
       "when": 1795317879143,
       "tag": "0103_batch_receipt_payment_confirmation",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1795318334224,
+      "tag": "0104_confirm_receipts_without_order",
+      "breakpoints": true
     }
   ]
 }

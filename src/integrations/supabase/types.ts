@@ -1430,6 +1430,10 @@ export type Database = {
         Args: { _ids: string[]; _method?: string }
         Returns: Json
       }
+      confirm_receipt_without_order: {
+        Args: { _id: string; _method?: string }
+        Returns: Json
+      }
       delivery_marmita_quantity: {
         Args: { p_order_id: string }
         Returns: number

@@ -1,5 +1,13 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Distrito na impressão Delivery
+- [ ] Mostrar o distrito oficial do bairro no cupom Delivery para facilitar a organização das entregas, sem alterar endereço, pagamentos ou demais tipos de pedido.
+
+## Baixa de comprovantes sem vínculo
+- [x] Permitir baixa individual e em lote de todos os comprovantes como Pix, inclusive arquivos não reconhecidos e sem pedido vinculado.
+- [x] Comprovantes sem pedido ficam apenas confirmados, sem alterar vendas ou comandas; vinculados preservam o lançamento normal, auditoria e proteção contra duplicidade, sem impressão.
+- [x] Trinta testes focados e typecheck aprovados; caso misto validado no banco em transação revertida e tela verificada com três arquivos fictícios, sem pagamentos reais.
+
 ## Marmitas somente no horário do almoço
 - [x] Ocultar categoria, atalho e destaque Marmita do Dia em `/cardapio` fora das 09h às 14h, sem alterar os demais produtos.
 - [x] 20 testes focados e typecheck aprovados; página real da noite conferida sem os três elementos de marmita e com as demais categorias preservadas.
