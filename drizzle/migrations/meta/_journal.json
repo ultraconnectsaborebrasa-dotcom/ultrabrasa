@@ -736,6 +736,13 @@
       "when": 1795318334224,
       "tag": "0104_confirm_receipts_without_order",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1795351228468,
+      "tag": "0105_first_contact_attendance_sequence",
+      "breakpoints": true
     }
   ]
 }

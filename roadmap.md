@@ -1,5 +1,12 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Primeiro atendimento e lembrete de três minutos
+- [x] Substituir a abertura do almoço pela mensagem única com o link Marmita do Dia, sem reiniciar quando o cliente apenas voltar a chamar.
+- [x] Reiniciar somente em novo atendimento após finalização; cancelar lembrete após resposta, pedido pelo link ou atendimento humano.
+- [x] Impedir envios antigos pendentes e validar textos, atraso de três minutos e duplicidade sem enviar mensagens reais.
+- [x] Após o resumo, enviar “É só responder SIM...” após dois minutos sem confirmação; cancelar após resposta, correção, pedido criado ou atendimento humano.
+- [x] Campo de início por atendimento validado no banco em transação revertida; 498 testes, typecheck e build aprovados, sem envio real.
+
 ## Distrito na impressão Delivery
 - [x] Mostrar o distrito oficial do bairro no cupom Delivery para facilitar a organização das entregas, sem alterar endereço, pagamentos ou demais tipos de pedido.
 - [x] Aplicar também ao ticket individual e à folha de rota; bairros desconhecidos mostram “Distrito: A confirmar”, sem consultar mapas.

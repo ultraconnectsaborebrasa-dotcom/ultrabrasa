@@ -1,7 +1,7 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
 // Delivery or lunch questions start the scripted lunch flow instead of a human handoff.
 const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
-import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,isEarlyLunch,lunchMenuOpen,faqReply,MENU_REMINDER_MESSAGE,MENU_REMINDER_DELAY_MS,isMenuCardMessage } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete,customerNameWithProfile } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
@@ -12,7 +12,7 @@ import { shouldResumeAfterConfirmedOrder } from './whatsapp-order-followup';
 import { STOCK_EXHAUSTED_MESSAGE, isStockExhaustedJob } from './whatsapp-stock-exhausted';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
-const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional()});
+const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional(),attendanceStartedAt:z.string().optional(),confirmationPrompt:z.boolean().optional(),confirmationReminder:z.boolean().optional()});
 const check = <T>(r:{data:T;error:{message:string}|null}):NonNullable<T> => {if(r.error) throw new Error(r.error.message);if(r.data===null||r.data===undefined)throw new Error('Dados não encontrados');return r.data;};
 const checkEmpty = <T>(r:{data:T;error:{message:string}|null}):T => {if(r.error)throw new Error(r.error.message);return r.data;};
 export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'|'text'|'document'|'receipt',payload:Record<string,unknown>,options:{delayMs?:number}={}) {
@@ -28,7 +28,7 @@ async function interpret(db:Admin,j:Job){
   const payload=jobPayload.parse(j.payload);
   const cfg=check(await db.from('whatsapp_settings').select('business,auto_reply_enabled,account_state').eq('id',1).single());
   const b=businessSchema.parse(cfg.business??{});
-  const c=check(await db.from('whatsapp_conversations').select('name,draft,draft_version,automation_paused,automation_pause_reason,order_confirmed_at,last_inbound_at').eq('phone',j.phone).single());
+  const c=check(await db.from('whatsapp_conversations').select('name,draft,draft_version,automation_paused,automation_pause_reason,order_confirmed_at,last_inbound_at,attendance_started_at').eq('phone',j.phone).single());
   if(!cfg.auto_reply_enabled||cfg.account_state!=='ok')return;
   const messages=check(await db.from('whatsapp_messages').select('direction,body,kind,wa_message_id,created_at').eq('phone',j.phone).order('provider_at',{ascending:false}).limit(30)).reverse();
   const current=messages.find(m=>m.wa_message_id===payload.inboundId);
@@ -45,6 +45,10 @@ async function interpret(db:Admin,j:Job){
   if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>86400000)return;
   const now=new Date();const win=botWindow(now);const since=windowStart(now);
   const sentSince=checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').gte('created_at',since)) ?? [];
+  const firstContactRows=c.attendance_started_at
+    ? checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').eq('body',FIRST_CONTACT_MESSAGE).gte('created_at',c.attendance_started_at).limit(1)) ?? []
+    : [];
+  const firstContactSeen=c.attendance_started_at?firstContactRows.length>0:sentSince.some(m=>m.body===FIRST_CONTACT_MESSAGE);
   const already=(t:string)=>sentSince.some(m=>(m.body??'').startsWith(t.slice(0,40)));
   if(b.stockExhausted){
     if(!already(STOCK_EXHAUSTED_MESSAGE))await queueJob(db,`stock-exhausted:${since}:${j.phone}`,j.phone,'text',{text:STOCK_EXHAUSTED_MESSAGE,automatic:true,inboundId:payload.inboundId});
@@ -95,6 +99,11 @@ async function interpret(db:Admin,j:Job){
   }
   if(!lunchP){await handoff(db,j.phone,'Marmita não configurada no PDV');return;}
   if(lunchP.stock!==null&&lunchP.stock<=0){await handoff(db,j.phone,'Disponibilidade da marmita precisa de conferência',payload.inboundId,true);return;}
+  // A abertura pertence ao atendimento, não ao período: voltar a chamar não repete o link.
+  if(c.attendance_started_at&&!firstContactSeen){
+    await queueJob(db,`first-contact:${c.attendance_started_at}:${j.phone}`,j.phone,'text',{text:FIRST_CONTACT_MESSAGE,automatic:true,inboundId:payload.inboundId,attendanceStartedAt:c.attendance_started_at});
+    return;
+  }
   // Depois do resumo válido, qualquer interação confirma exatamente o que foi apresentado.
   if(current&&current.kind!=='text'&&!interactionConfirms){await handoff(db,j.phone,'Mensagem com áudio ou mídia requer atendimento humano',payload.inboundId,true);return;}
   const faq=faqReply(text,b,lunchP.price,now);
@@ -102,21 +111,9 @@ async function interpret(db:Admin,j:Job){
   const earlyMessage=earlyLunchMessage(b,lunchP.price);
   const earlyCampaign=earlyLunchMessages(b,lunchP.price);
   const regularCampaign=regularLunchMessages(b,lunchP.price);
-  const campaignSeen=already(GREETING_MESSAGE)||already(earlyMessage)||earlyCampaign.some(already)||regularCampaign.some(already);
+  const campaignSeen=firstContactSeen||already(GREETING_MESSAGE)||already(earlyMessage)||earlyCampaign.some(already)||regularCampaign.some(already);
   const lunchInterest=parsed.greeting||LUNCH_INTEREST.test(text);
   if(!inProgress&&!campaignSeen&&!parsed.extracted&&!lunchInterest){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
-  // Split the opening; do not restart legacy or split campaigns at the boundary.
-  if(lunchMenuOpen(now)&&!inProgress&&!campaignSeen&&!parsed.extracted){
-    const campaign=isEarlyLunch(now)?earlyCampaign:regularCampaign;
-    for(let i=0;i<campaign.length;i++){
-      const msg=campaign[i];
-      if(!msg)continue;
-      const dup=checkEmpty(await db.from('whatsapp_messages').select('id').eq('phone',j.phone).eq('direction','out').gte('created_at',since).like('body',`${msg.slice(0,30)}%`).limit(1));
-      if(dup?.length)continue;
-      await queueJob(db,`campaign:${since}:${isEarlyLunch(now)?'early:':''}${i}:${j.phone}`,j.phone,'text',{text:msg,automatic:true,inboundId:payload.inboundId});
-    }
-    if(!parsed.extracted)return;
-  }
   const d=interactionConfirms?previous:parsed.draft;
   const total=interactionConfirms?previousTotal:Math.round(d.items.reduce((s,i)=>s+lunchP.price*i.qty,0)*100)/100;
   if(d.payment==='Pix'&&!b.pixKey){await handoff(db,j.phone,'Chave Pix não configurada');return;}
@@ -155,8 +152,9 @@ async function interpret(db:Admin,j:Job){
   }
   const updated=check(await db.from('whatsapp_conversations').update({draft:d,draft_version:nextVersion}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',false).select('phone'));
   if(!updated.length)return;
-  if(pendingSummary)await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,summaryVersion:nextVersion,summaryTotal:total});
-  else await say('reply',reply);
+  const confirmationPrompt=summaryReady(d,total,missing);
+  if(pendingSummary)await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,inboundId:payload.inboundId,summaryVersion:nextVersion,summaryTotal:total,confirmationPrompt});
+  else await queueJob(db,`reply:${payload.inboundId}`,j.phone,'text',{text:reply,automatic:true,inboundId:payload.inboundId,...(confirmationPrompt?{summaryVersion:nextVersion,summaryTotal:total,confirmationPrompt:true}:{})});
 }
 export async function processJobs(db:Admin,limit=2){
   for(let n=0;n<limit;n++){
@@ -167,6 +165,10 @@ export async function processJobs(db:Admin,limit=2){
       const p=jobPayload.parse(j.payload);
       const confirmation=isOrderConfirmationJob(j.dedup_key);
       const handoffNotice=j.dedup_key.startsWith('handoff:');
+      const legacyLunchCampaign=j.dedup_key.startsWith('campaign:')&&!j.dedup_key.includes(':afternoon:');
+      if(j.kind==='text'&&(legacyLunchCampaign||j.dedup_key.startsWith('menu-reminder:'))){
+        checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;
+      }
       if(j.dedup_key.startsWith('receipt-ack:')){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
       const business=businessSchema.parse(cfg.business);
       if(p.automatic&&business.stockExhausted&&!['interpret','receipt'].includes(j.kind)&&!isStockExhaustedJob(j.dedup_key)){
@@ -190,7 +192,16 @@ export async function processJobs(db:Admin,limit=2){
         }
       }
       if(confirmation&&!p.orderId&&!p.requestId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
-      const c=check(await db.from('whatsapp_conversations').select('automation_paused,automation_pause_reason,last_inbound_at,attendance_status,assigned_to').eq('phone',j.phone).single());
+      const c=check(await db.from('whatsapp_conversations').select('automation_paused,automation_pause_reason,last_inbound_at,attendance_status,assigned_to,order_confirmed_at,draft,draft_version').eq('phone',j.phone).single());
+      if(isOrderConfirmationReminderJob(j.dedup_key)){
+        const currentDraft=conversationDraftSchema.safeParse(c.draft);
+        if(c.order_confirmed_at||c.draft_version!==p.summaryVersion||!currentDraft.success||!currentDraft.data.summarySent){
+          checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;
+        }
+      }
+      if(isFirstContactReminderJob(j.dedup_key)&&c.order_confirmed_at){
+        checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;
+      }
       const confirmedOrderIntake=j.kind==='interpret'&&c.automation_pause_reason==='order_confirmed';
       // Pausa órfã: pedido já recusado/cancelado e ninguém atendendo — o robô volta a responder.
       if(p.automatic&&c.automation_paused&&c.automation_pause_reason!=='order_confirmed'&&c.attendance_status==='new'&&!c.assigned_to){
@@ -211,7 +222,7 @@ export async function processJobs(db:Admin,limit=2){
         let providerId:string|undefined;
         if(j.kind==='text'){
           const text=confirmation?ORDER_CONFIRMED_MESSAGE:j.dedup_key.endsWith(':pix-key')?pixPaymentMessage(business.pixKey):p.text??'';
-          if(p.automatic&&(j.dedup_key.startsWith('campaign:')||j.dedup_key.startsWith('menu-reminder:'))&&p.inboundId){
+          if(p.automatic&&(j.dedup_key.startsWith('campaign:')||isFirstContactJob(j.dedup_key)||isFirstContactReminderJob(j.dedup_key)||isOrderConfirmationReminderJob(j.dedup_key))&&p.inboundId){
             const latest=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id').eq('phone',j.phone).eq('direction','in').order('provider_at',{ascending:false}).limit(1))??[];
             if(latest[0]?.wa_message_id!==p.inboundId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
           }
@@ -237,8 +248,11 @@ export async function processJobs(db:Admin,limit=2){
             if((live.automation_paused&&!handoffNotice)||!liveCfg.auto_reply_enabled||wrongMode){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
           }
           providerId=await sendText(db,j.phone,text,{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
-          if(p.automatic&&p.inboundId&&isMenuCardMessage(text)){
-            await queueJob(db,`menu-reminder:${p.inboundId}:${j.phone}`,j.phone,'text',{text:MENU_REMINDER_MESSAGE,automatic:true,inboundId:p.inboundId},{delayMs:MENU_REMINDER_DELAY_MS});
+          if(p.automatic&&p.inboundId&&p.attendanceStartedAt&&isFirstContactJob(j.dedup_key)&&!isFirstContactReminderJob(j.dedup_key)){
+            await queueJob(db,`first-contact-reminder:${p.attendanceStartedAt}:${j.phone}`,j.phone,'text',{text:FIRST_CONTACT_REMINDER_MESSAGE,automatic:true,inboundId:p.inboundId,attendanceStartedAt:p.attendanceStartedAt},{delayMs:FIRST_CONTACT_REMINDER_DELAY_MS});
+          }
+          if(p.automatic&&p.inboundId&&p.confirmationPrompt&&p.summaryVersion!==undefined){
+            await queueJob(db,`confirmation-reminder:${p.summaryVersion}:${j.phone}`,j.phone,'text',{text:CONFIRM_HINT,automatic:true,inboundId:p.inboundId,summaryVersion:p.summaryVersion,summaryTotal:p.summaryTotal,confirmationReminder:true},{delayMs:ORDER_CONFIRMATION_REMINDER_DELAY_MS});
           }
         }
         else{

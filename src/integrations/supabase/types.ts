@@ -975,6 +975,7 @@ export type Database = {
         Row: {
           assigned_name: string | null
           assigned_to: string | null
+          attendance_started_at: string | null
           attendance_status: string
           automation_pause_reason: string | null
           automation_paused: boolean
@@ -996,6 +997,7 @@ export type Database = {
         Insert: {
           assigned_name?: string | null
           assigned_to?: string | null
+          attendance_started_at?: string | null
           attendance_status?: string
           automation_pause_reason?: string | null
           automation_paused?: boolean
@@ -1017,6 +1019,7 @@ export type Database = {
         Update: {
           assigned_name?: string | null
           assigned_to?: string | null
+          attendance_started_at?: string | null
           attendance_status?: string
           automation_pause_reason?: string | null
           automation_paused?: boolean

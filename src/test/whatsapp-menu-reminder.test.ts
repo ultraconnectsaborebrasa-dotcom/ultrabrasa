@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultBusiness } from '@/lib/whatsapp-business';
-import { MENU_REMINDER_DELAY_MS, MENU_REMINDER_MESSAGE } from '@/lib/whatsapp-rulebot';
+import {
+  FIRST_CONTACT_MESSAGE,
+  FIRST_CONTACT_REMINDER_DELAY_MS,
+  FIRST_CONTACT_REMINDER_MESSAGE,
+} from '@/lib/whatsapp-rulebot';
 
 vi.mock('@/lib/whatsapp.server', () => ({
   gateway: vi.fn(), sendText: vi.fn(), sendTyping: vi.fn(), digits: (s: string) => s,
@@ -15,7 +19,19 @@ type Db = Parameters<typeof processJobs>[0];
 type Job = { id: string; phone: string; kind: string; dedup_key: string; payload: Record<string, unknown> };
 type QueuedJob = Record<string, unknown> & { dedup_key: string; next_attempt_at: string; payload: Record<string, unknown> };
 
-function mockDb(job: Job, { paused = false, latestInbound = 'wamid.old' } = {}) {
+const attendanceStartedAt = '2026-11-19T15:00:00.000Z';
+const firstJob: Job = {
+  id: 'first-job', phone: '5573999999999', kind: 'text',
+  dedup_key: `first-contact:${attendanceStartedAt}:phone`,
+  payload: { text: FIRST_CONTACT_MESSAGE, inboundId: 'wamid.old', automatic: true, attendanceStartedAt },
+};
+const reminderJob: Job = {
+  id: 'reminder-job', phone: '5573999999999', kind: 'text',
+  dedup_key: `first-contact-reminder:${attendanceStartedAt}:phone`,
+  payload: { text: FIRST_CONTACT_REMINDER_MESSAGE, inboundId: 'wamid.old', automatic: true, attendanceStartedAt },
+};
+
+function mockDb(job: Job, { paused = false, latestInbound = 'wamid.old', orderConfirmed = false } = {}) {
   let claims = 0;
   const queued: QueuedJob[] = [];
   const updates: Record<string, unknown>[] = [];
@@ -32,7 +48,14 @@ function mockDb(job: Job, { paused = false, latestInbound = 'wamid.old' } = {}) 
         single: async () => ({
           data: table === 'whatsapp_settings'
             ? { business: defaultBusiness, account_state: 'ok', auto_reply_enabled: true }
-            : { automation_paused: paused, automation_pause_reason: paused ? 'human' : null, attendance_status: paused ? 'in_service' : 'new', assigned_to: paused ? 'staff' : null, last_inbound_at: new Date().toISOString() },
+            : {
+                automation_paused: paused,
+                automation_pause_reason: orderConfirmed ? 'order_confirmed' : paused ? 'human' : null,
+                attendance_status: paused ? 'in_service' : 'new',
+                assigned_to: paused ? 'staff' : null,
+                last_inbound_at: new Date().toISOString(),
+                order_confirmed_at: orderConfirmed ? new Date().toISOString() : null,
+              },
           error: null,
         }),
         maybeSingle: async () => ({ data: null, error: null }),
@@ -58,63 +81,75 @@ async function finishTimers(db: Db) {
 
 afterEach(() => { vi.useRealTimers(); vi.clearAllMocks(); });
 
-describe('Lembrete cinco minutos após o cardápio', () => {
-  it('usa exatamente a mensagem confirmada pelo responsável', () => {
-    expect(MENU_REMINDER_MESSAGE).toBe('Oi! Tudo bem? 😊 Já escolheu o que vai pedir? Aproveite nossa promoção com entrega grátis para toda Eunápolis. Estamos esperando seu pedido! ❤️');
+describe('Primeiro atendimento e lembrete de três minutos', () => {
+  it('usa exatamente as mensagens e o atraso definidos', () => {
+    expect(FIRST_CONTACT_MESSAGE).toBe('Olá! Tudo bem? 😊 Você pode conferir nosso cardápio do dia e fazer seu pedido por aqui:\n\n👉 https://ultraconnectbrasa.com.br/marmita-do-dia\n\nConfirmando pelo link, seu pedido já chega para nossa equipe e conseguimos adiantar tudo para despachar mais rapidinho!');
+    expect(FIRST_CONTACT_REMINDER_MESSAGE).toBe('E aí, conseguiu? Se teve alguma dificuldade, posso montar seu pedido por aqui mesmo, sem problema!');
+    expect(FIRST_CONTACT_REMINDER_DELAY_MS).toBe(180000);
   });
 
-  it('agenda exatamente cinco minutos somente depois do envio do cardápio ser aceito', async () => {
+  it('agenda três minutos somente depois da primeira mensagem ser aceita', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-19T15:00:00.000Z'));
     let menuAcceptedAt = 0;
     vi.mocked(sendText).mockImplementation(async () => { menuAcceptedAt = Date.now(); return 'wamid.menu'; });
-    const job = { id: 'menu-job', phone: '5573999999999', kind: 'text', dedup_key: 'campaign:today:2:phone', payload: { text: 'Hoje de cardápio temos:\n\nMarmita completa', inboundId: 'wamid.old', automatic: true } };
-    const { db, queued } = mockDb(job);
-    expect(MENU_REMINDER_DELAY_MS).toBe(300000);
+    const { db, queued } = mockDb(firstJob);
     await finishTimers(db);
     expect(sendText).toHaveBeenCalledTimes(1);
     expect(queued).toHaveLength(1);
     expect(queued[0]).toMatchObject({
-      dedup_key: 'menu-reminder:wamid.old:5573999999999',
+      dedup_key: `first-contact-reminder:${attendanceStartedAt}:5573999999999`,
       kind: 'text',
-      payload: { text: MENU_REMINDER_MESSAGE, automatic: true, inboundId: 'wamid.old' },
+      payload: { text: FIRST_CONTACT_REMINDER_MESSAGE, automatic: true, inboundId: 'wamid.old', attendanceStartedAt },
     });
     expect(menuAcceptedAt).toBeGreaterThan(0);
-    expect(Date.parse(queued[0]!.next_attempt_at) - menuAcceptedAt).toBe(300000);
+    expect(Date.parse(queued[0]!.next_attempt_at) - menuAcceptedAt).toBe(180000);
   });
 
-  it('envia uma única mensagem de acompanhamento quando não houve resposta', async () => {
+  it('envia somente o lembrete, sem repetir a abertura ou o link', async () => {
     vi.useFakeTimers();
     vi.mocked(sendText).mockResolvedValue('wamid.reminder');
-    const job = { id: 'reminder-job', phone: '5573999999999', kind: 'text', dedup_key: 'menu-reminder:wamid.old:phone', payload: { text: MENU_REMINDER_MESSAGE, inboundId: 'wamid.old', automatic: true } };
-    const { db } = mockDb(job);
+    const { db } = mockDb(reminderJob);
     await finishTimers(db);
     expect(sendText).toHaveBeenCalledTimes(1);
-    expect(sendText).toHaveBeenCalledWith(db, '5573999999999', MENU_REMINDER_MESSAGE, { source: 'auto', replyTo: 'reminder-job', orderId: null });
+    expect(sendText).toHaveBeenCalledWith(db, '5573999999999', FIRST_CONTACT_REMINDER_MESSAGE, { source: 'auto', replyTo: 'reminder-job', orderId: null });
+    expect(FIRST_CONTACT_REMINDER_MESSAGE).not.toContain('http');
   });
 
-  it('cancela o lembrete se o cliente responder antes dos cinco minutos', async () => {
-    const job = { id: 'reminder-job', phone: '5573999999999', kind: 'text', dedup_key: 'menu-reminder:wamid.old:phone', payload: { text: MENU_REMINDER_MESSAGE, inboundId: 'wamid.old', automatic: true } };
-    const { db, updates } = mockDb(job, { latestInbound: 'wamid.new' });
+  it('cancela o lembrete se o cliente responder antes dos três minutos', async () => {
+    const { db, updates } = mockDb(reminderJob, { latestInbound: 'wamid.new' });
     await processJobs(db, 1);
     expect(sendText).not.toHaveBeenCalled();
     expect(updates.some(update => update['state'] === 'cancelled')).toBe(true);
   });
 
   it('cancela o lembrete quando um atendente assume a conversa', async () => {
-    const job = { id: 'reminder-job', phone: '5573999999999', kind: 'text', dedup_key: 'menu-reminder:wamid.old:phone', payload: { text: MENU_REMINDER_MESSAGE, inboundId: 'wamid.old', automatic: true } };
-    const { db, updates } = mockDb(job, { paused: true });
+    const { db, updates } = mockDb(reminderJob, { paused: true });
     await processJobs(db, 1);
     expect(sendText).not.toHaveBeenCalled();
     expect(updates.some(update => update['state'] === 'cancelled')).toBe(true);
   });
 
-  it('não agenda lembrete quando o cardápio não é aceito para envio', async () => {
+  it('cancela o lembrete quando o cliente já fez pedido pelo link', async () => {
+    const { db, updates } = mockDb(reminderJob, { orderConfirmed: true });
+    await processJobs(db, 1);
+    expect(sendText).not.toHaveBeenCalled();
+    expect(updates.some(update => update['state'] === 'cancelled')).toBe(true);
+  });
+
+  it('não agenda lembrete quando a primeira mensagem não é aceita', async () => {
     vi.useFakeTimers();
     vi.mocked(sendText).mockRejectedValue(new Error('WhatsApp [400]: envio recusado'));
-    const job = { id: 'menu-job', phone: '5573999999999', kind: 'text', dedup_key: 'campaign:today:2:phone', payload: { text: 'Hoje de cardápio temos:\n\nMarmita completa', inboundId: 'wamid.old', automatic: true } };
-    const { db, queued } = mockDb(job);
+    const { db, queued } = mockDb(firstJob);
     await finishTimers(db);
     expect(queued).toHaveLength(0);
+  });
+
+  it('cancela o lembrete antigo de cinco minutos sem reenviar', async () => {
+    const legacy: Job = { id: 'legacy', phone: '5573999999999', kind: 'text', dedup_key: 'menu-reminder:wamid.old:phone', payload: { text: 'Lembrete antigo', inboundId: 'wamid.old', automatic: true } };
+    const { db, updates } = mockDb(legacy);
+    await processJobs(db, 1);
+    expect(sendText).not.toHaveBeenCalled();
+    expect(updates.some(update => update['state'] === 'cancelled')).toBe(true);
   });
 });

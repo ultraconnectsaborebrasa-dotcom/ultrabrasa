@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {useServerFn} from '@tanstack/react-start';
 import {toast} from 'sonner';
 import {Button} from '@/components/ui/button';
-import {businessSchema,initialLunchMessage,type Business} from '@/lib/whatsapp-business';
+import {businessSchema,type Business} from '@/lib/whatsapp-business';
+import {FIRST_CONTACT_MESSAGE} from '@/lib/whatsapp-rulebot';
 import {whatsappSaveBusiness} from '@/lib/whatsapp-attendance.functions';
 import {supabase} from '@/integrations/supabase/client';
 import {useStore} from '@/lib/pdv-store';
@@ -28,7 +29,7 @@ export function WhatsAppBusinessSettings({initial,enabled,quick,onSaved}:{initia
  </div>
  <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left"><th>Dia</th><th>Fim do almoço</th><th>Abre à noite</th><th>Fecha à noite</th></tr></thead><tbody>{['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'].map((day,i)=><tr key={day}><td>{day}</td>{(['lunchEnd','nightStart','nightEnd'] as const).map(key=><td className="p-1" key={key}><input aria-label={`${day} ${key}`} type="time" className="field" value={b.hours.find(h=>h.day===i)?.[key]??''} onChange={e=>{const h=b.hours.find(h=>h.day===i)??{day:i,lunchEnd:'',nightStart:'',nightEnd:''};setB({...b,hours:[...b.hours.filter(x=>x.day!==i),{...h,[key]:e.target.value}]});}}/></td>)}</tr>)}</tbody></table></div>
  <label className="block text-sm">Respostas rápidas (uma por linha)<textarea className="field min-h-20" value={q} onChange={e=>setQ(e.target.value)}/></label>
- <details><summary className="cursor-pointer text-sm font-semibold">Prévia da apresentação</summary><p className="whitespace-pre-wrap border-l-2 border-primary p-3 text-sm">{initialLunchMessage(b)}</p></details>
+ <details><summary className="cursor-pointer text-sm font-semibold">Prévia da primeira mensagem</summary><p className="whitespace-pre-wrap border-l-2 border-primary p-3 text-sm">{FIRST_CONTACT_MESSAGE}</p></details>
  <Button disabled={busy} onClick={()=>void submit()}>Salvar configurações</Button>
  </div>;
 }
