@@ -44,3 +44,10 @@ describe('WhatsApp guarded job processing',()=>{
   expect(sendText).not.toHaveBeenCalled();
  });
 });
+import { brazilPhoneAlias } from '@/lib/whatsapp-automation.server';
+describe('telefone do pedido do cardápio', () => {
+  it('liga o celular com 9 à conversa do WhatsApp sem o 9', () => {
+    expect(brazilPhoneAlias('5573981654592')).toBe('557381654592');
+    expect(brazilPhoneAlias('557381654592')).toBe('5573981654592');
+  });
+});

@@ -42,6 +42,10 @@ export function isStoreLocationQuestion(text: string): boolean {
     || /\bcomo\s+(?:faco|chego|faz|fazer)\b.*\b(?:chegar|chego|ai|voces|vcs|loja|ultrabrasa)\b/.test(n)
     || /\bendereco\s+d(?:e|os|as)\s+(?:voces|vcs|loja|ultrabrasa)\b/.test(n);
 }
+/** Mensagem gerada pelo cardápio digital: o pedido já está registrado no PDV. */
+export function isCatalogOrderMessage(text: string): boolean {
+  return /^\*?pedido\s+c\d+\*?\s*[—-]/i.test(text.trim()) && /card[aá]pio|marmita do dia/i.test(text);
+}
 /** O link é uma opção: a escolha de pedir na conversa entra na coleta manual existente. */
 export function prefersManualOrder(text: string): boolean {
   const n = norm(text);

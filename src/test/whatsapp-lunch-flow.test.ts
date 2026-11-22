@@ -359,3 +359,11 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.queued.length).toBeGreaterThan(0);
   });
 });
+
+import { isCatalogOrderMessage } from '@/lib/whatsapp-rulebot';
+describe('mensagem do cardápio digital', () => {
+  it('reconhece o pedido enviado pelo cardápio para o robô não montar outro', () => {
+    expect(isCatalogOrderMessage('*Pedido C1046* — Marmita do Dia · Cardápio público\nCliente: Celso')).toBe(true);
+    expect(isCatalogOrderMessage('Quero 2 marmitas na Rua Viena 86')).toBe(false);
+  });
+});

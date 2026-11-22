@@ -1,7 +1,7 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
 // Delivery or lunch questions start the scripted lunch flow instead of a human handoff.
 const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
-import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,prefersManualOrder,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob,isStoreLocationQuestion,isStoreLocationJob,STORE_LOCATION_MESSAGE,STORE_LOCATION,STORE_LOCATION_MAPS_MESSAGE } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,prefersManualOrder,isCatalogOrderMessage,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob,isStoreLocationQuestion,isStoreLocationJob,STORE_LOCATION_MESSAGE,STORE_LOCATION,STORE_LOCATION_MAPS_MESSAGE } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete,customerNameWithProfile } from './whatsapp-business';
 import { gateway,sendText,sendLocation,sendTyping,digits } from './whatsapp.server';
@@ -23,6 +23,11 @@ async function handoff(db:Admin,phone:string,reason:string,inboundId?:string,not
   void inboundId;void notify;
   checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,automation_pause_reason:'human',order_confirmed_at:null,attendance_status:'needs_reply'}).eq('phone',phone));return reason;
 }
+export function brazilPhoneAlias(phone:string):string|null{
+  if(/^55\d{2}9\d{8}$/.test(phone))return phone.slice(0,4)+phone.slice(5);
+  if(/^55\d{2}[6-9]\d{7}$/.test(phone))return phone.slice(0,4)+'9'+phone.slice(4);
+  return null;
+}
 async function interpret(db:Admin,j:Job){
   // Static/rule-based attendance: no AI generation calls in this flow.
   const payload=jobPayload.parse(j.payload);
@@ -35,6 +40,11 @@ async function interpret(db:Admin,j:Job){
   const latestInbound=messages.filter(m=>m.direction==='in').at(-1);
   if(latestInbound?.wa_message_id!==payload.inboundId)return;
   const text=(current?.body??'').trim();
+  if(isCatalogOrderMessage(text)){
+    // Pedido do cardápio já está no PDV: silêncio total até o aceite (confirmação e Pix saem pelo aceite).
+    if(!c.automation_paused)checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,automation_pause_reason:'order_confirmed',order_confirmed_at:new Date().toISOString(),draft:{},draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version));
+    return;
+  }
   if(c.automation_paused){
     // Pedido do cardápio já registrado fica pausado até o aceite: nunca gerar outro resumo ou pedir "SIM".
     const newOrder=c.automation_pause_reason==='order_confirmed'&&c.order_confirmed_at&&shouldResumeAfterConfirmedOrder(text,c.order_confirmed_at,new Date());
@@ -204,6 +214,15 @@ export async function processJobs(db:Admin,limit=2){
         }
       }
       if(confirmation&&!p.orderId&&!p.requestId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+      // Pedido do cardápio grava o celular com o 9; o WhatsApp do Brasil identifica a conversa sem ele (e vice-versa).
+      const alias=brazilPhoneAlias(j.phone);
+      if(alias){
+        const own=checkEmpty(await db.from('whatsapp_conversations').select('last_inbound_at').eq('phone',j.phone).maybeSingle());
+        if(!own?.last_inbound_at){
+          const other=checkEmpty(await db.from('whatsapp_conversations').select('phone,last_inbound_at').eq('phone',alias).maybeSingle());
+          if(other?.last_inbound_at){checkEmpty(await db.from('whatsapp_jobs').update({phone:alias}).eq('id',j.id));j.phone=alias;}
+        }
+      }
       const c=check(await db.from('whatsapp_conversations').select('automation_paused,automation_pause_reason,last_inbound_at,attendance_status,assigned_to,order_confirmed_at,draft,draft_version').eq('phone',j.phone).single());
       if(isOrderConfirmationReminderJob(j.dedup_key)){
         const currentDraft=conversationDraftSchema.safeParse(c.draft);
