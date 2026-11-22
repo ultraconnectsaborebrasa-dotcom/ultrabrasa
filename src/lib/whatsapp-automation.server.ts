@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete,customerNameWithProfile } from './whatsapp-business';
 import { gateway,sendText,sendLocation,sendTyping,digits } from './whatsapp.server';
 import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-attachments';
-import { ORDER_CONFIRMED_MESSAGE, isOrderConfirmationJob, canSendOrderConfirmation } from './whatsapp-confirmation';
+import { isOrderConfirmationJob, canSendOrderConfirmation, orderConfirmedMessage } from './whatsapp-confirmation';
 import { pixPaymentMessage } from './whatsapp-payment';
 import { STOCK_EXHAUSTED_MESSAGE, isStockExhaustedJob } from './whatsapp-stock-exhausted';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
@@ -248,7 +248,7 @@ export async function processJobs(db:Admin,limit=2){
         if(pre)throw new Error('Envio anterior requer revisão');
         let providerId:string|undefined;
         if(j.kind==='text'){
-          const text=confirmation?ORDER_CONFIRMED_MESSAGE:j.dedup_key.endsWith(':pix-key')?pixPaymentMessage(business.pixKey):p.text??'';
+          const text=confirmation?orderConfirmedMessage():j.dedup_key.endsWith(':pix-key')?pixPaymentMessage(business.pixKey):p.text??'';
           if(p.automatic&&(j.dedup_key.startsWith('campaign:')||isFirstContactJob(j.dedup_key)||isFirstContactReminderJob(j.dedup_key)||isAfternoonReminderJob(j.dedup_key)||isOrderConfirmationReminderJob(j.dedup_key))&&p.inboundId){
             const latest=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id').eq('phone',j.phone).eq('direction','in').order('provider_at',{ascending:false}).limit(1))??[];
             if(latest[0]?.wa_message_id!==p.inboundId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
