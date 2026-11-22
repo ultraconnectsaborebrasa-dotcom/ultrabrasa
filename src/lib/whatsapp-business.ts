@@ -29,7 +29,7 @@ export type ConversationDraft = z.infer<typeof conversationDraftSchema>;
 const plainWords = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const placeWords = (value: string) => plainWords(value).replace(/(?:\s+eunapolis)$/, '').trim();
 const blockedIdentity = /\b(?:pagamento|pedido|pix|cartao|credito|debito|dinheiro|marmit\w*|quentinh\w*|entreg\w*|delivery|cardapio|por favor|vcs|voces|em frente|ao lado|perto de|proximo a)\b|^(?:a|o|no|na|aqui)\b/;
-const conversationalIdentity = /^(?:ok|okay|tudo bem|tbem|ok tudo bem|ok tbem|oi|oi tudo bem|ola|ola tudo bem|bom dia|boa tarde|boa noite|obrigado|obrigada|valeu|sim|nao|isso|isso mesmo|isso ai|certo|perfeito|combinado|pode|pode ser|pode mandar|beleza|blz|fechado|positivo|um|uma|dois|duas|tres|quatro|cinco)$/;
+const conversationalIdentity = /^(?:ok|okay|tudo bem|tbem|ok tudo bem|ok tbem|oi|oi tudo bem|ola|ola tudo bem|(?:(?:oi+|ola|opa) )?(?:bom dia|boa tarde|boa noite)(?: tudo bem)?|obrigado|obrigada|valeu|sim|nao|isso|isso mesmo|isso ai|certo|perfeito|combinado|pode|pode ser|pode mandar|beleza|blz|fechado|positivo|um|uma|dois|duas|tres|quatro|cinco)$/;
 const operationalIdentity = /\b(?:vai|vou|quero|queria|gostaria|preciso|entreg\w*|retir\w*|buscar|manda|coloca|colocar)\b/;
 export function validCustomerName(value: string) {
   const v = value.trim();

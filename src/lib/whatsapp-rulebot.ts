@@ -140,7 +140,7 @@ export function ruleParse(text: string, prev: ConversationDraft, lunchProductId:
   const d: ConversationDraft = { ...prev, items: prev.items.map(i => ({ ...i })), address: { ...prev.address } };
   let extracted = false;
   const simple = n.replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-  const greeting = /^(oi+|ola|bom dia|boa tarde|boa noite|opa|e ai|eai|oi tudo bem|ola tudo bem)( tudo bem)?$/.test(simple);
+  const greeting = /^(?:(?:oi+|ola|opa|e ai|eai)(?: tudo bem)?|(?:(?:oi+|ola|opa) )?(?:bom dia|boa tarde|boa noite)(?: tudo bem)?)$/.test(simple);
   const thanks = /^(obrigad[oa]|obg|valeu|vlw|brigad[oa])( .*)?$/.test(simple);
   const wantsHuman = /\b(atendente|humano|falar com (alguem|uma pessoa|o dono|a dona)|reclama|reclamacao|cancelar|cancela|divergencia|pedido errado|problema com (pagamento|entrega)|nao recebi|atrasado)\b/.test(n);
   const confirms = /^(sim|s|isso|isso mesmo|pode|pode sim|pode confirmar|confirmo|confirma|confirmado|correto|certo|ta certo|tudo certo|esta certo|perfeito|ok|okay|beleza|blz|positivo|fechado|pode mandar)$/.test(simple);

@@ -743,6 +743,13 @@
       "when": 1795351228468,
       "tag": "0105_first_contact_attendance_sequence",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1795355266629,
+      "tag": "0106_start_legacy_attendance_on_inbound",
+      "breakpoints": true
     }
   ]
 }

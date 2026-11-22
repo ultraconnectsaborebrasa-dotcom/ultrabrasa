@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Saudação não segue a abertura do roteiro
+- [x] Reproduzir o atendimento informado e corrigir conversas antigas sem data de início para reconhecer saudações combinadas como “Oi bom dia”.
+- [x] Enviar a abertura com o link somente uma vez, sem reiniciar pedidos com dados já preenchidos nem repetir a coleta genérica; saudações não são mais aceitas como nome.
+- [x] Atendimento afetado confirmado: abertura entregue uma vez e comanda #40 aceita como DG, com duas marmitas e R$ 39,80, sem duplicar pedido ou alterar pagamento.
+- [x] Função do banco validada em transação revertida; 513 testes e typecheck aprovados.
+
 ## Novo atendimento sem resposta do robô
 - [x] Retomar somente a conversa identificada pelo responsável como novo atendimento, preservando as demais pausas humanas.
 - [x] Iniciar a abertura única com o link para a mensagem mais recente; envio real confirmado como enviado, uma única vez, e lembrete de três minutos agendado.

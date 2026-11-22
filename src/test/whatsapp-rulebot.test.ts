@@ -61,6 +61,12 @@ describe('bot tradicional', () => {
   it('confirmação com sim', () => {
     expect(ruleParse('Sim', empty, 'm', []).confirms).toBe(true);
   });
+  it.each(['Oi bom dia', 'Olá, boa tarde', 'Bom dia, tudo bem'])('reconhece "%s" somente como saudação, sem extrair nome', text => {
+    const parsed = ruleParse(text, empty, 'm', missingOrderFields(empty));
+    expect(parsed.greeting).toBe(true);
+    expect(parsed.extracted).toBe(false);
+    expect(parsed.draft.customer).toBe('');
+  });
   it('disponibiliza o cardápio até 14h e os pedidos até 14h20', () => {
     expect(lunchMenuOpen(at('13:59'))).toBe(true);
     expect(lunchMenuOpen(at('14:00'))).toBe(false);

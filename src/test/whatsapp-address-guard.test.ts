@@ -73,7 +73,7 @@ describe('nome e endereço sem adivinhação', () => {
     expect(summaryReady(d, 19.9)).toBe(false);
   });
 
-  it.each(['Ok Tbem', 'tudo bem', 'bom dia', 'obrigado'])('não reconhece a resposta conversacional "%s" como nome', (text) => {
+  it.each(['Ok Tbem', 'tudo bem', 'bom dia', 'Oi bom dia', 'Olá, boa tarde', 'Bom dia, tudo bem', 'obrigado'])('não reconhece a resposta conversacional "%s" como nome', (text) => {
     const d = parse(text, { ...valid, customer: '' });
     expect(d.customer).toBe('');
     expect(summaryReady(d, 19.9)).toBe(false);

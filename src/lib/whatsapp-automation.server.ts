@@ -44,11 +44,10 @@ async function interpret(db:Admin,j:Job){
   }
   if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>86400000)return;
   const now=new Date();const win=botWindow(now);const since=windowStart(now);
+  const attendanceStartedAt=c.attendance_started_at??c.last_inbound_at;
   const sentSince=checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').gte('created_at',since)) ?? [];
-  const firstContactRows=c.attendance_started_at
-    ? checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').eq('body',FIRST_CONTACT_MESSAGE).gte('created_at',c.attendance_started_at).limit(1)) ?? []
-    : [];
-  const firstContactSeen=c.attendance_started_at?firstContactRows.length>0:sentSince.some(m=>m.body===FIRST_CONTACT_MESSAGE);
+  const firstContactRows=checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').eq('body',FIRST_CONTACT_MESSAGE).gte('created_at',attendanceStartedAt).limit(1)) ?? [];
+  const firstContactSeen=firstContactRows.length>0||(!c.attendance_started_at&&sentSince.some(m=>m.body===FIRST_CONTACT_MESSAGE));
   const already=(t:string)=>sentSince.some(m=>(m.body??'').startsWith(t.slice(0,40)));
   if(b.stockExhausted){
     if(!already(STOCK_EXHAUSTED_MESSAGE))await queueJob(db,`stock-exhausted:${since}:${j.phone}`,j.phone,'text',{text:STOCK_EXHAUSTED_MESSAGE,automatic:true,inboundId:payload.inboundId});
@@ -101,8 +100,10 @@ async function interpret(db:Admin,j:Job){
   if(!lunchP){await handoff(db,j.phone,'Marmita não configurada no PDV');return;}
   if(lunchP.stock!==null&&lunchP.stock<=0){await handoff(db,j.phone,'Disponibilidade da marmita precisa de conferência',payload.inboundId,true);return;}
   // A abertura pertence ao atendimento, não ao período: voltar a chamar não repete o link.
-  if(c.attendance_started_at&&!firstContactSeen){
-    await queueJob(db,`first-contact:${c.attendance_started_at}:${j.phone}`,j.phone,'text',{text:FIRST_CONTACT_MESSAGE,automatic:true,inboundId:payload.inboundId,attendanceStartedAt:c.attendance_started_at});
+  // Conversas antigas sem início recebem a abertura somente se ainda não houver pedido em coleta.
+  if(!inProgress&&!firstContactSeen&&(c.attendance_started_at||parsed.greeting)){
+    if(!c.attendance_started_at)checkEmpty(await db.from('whatsapp_conversations').update({attendance_started_at:attendanceStartedAt}).eq('phone',j.phone).is('attendance_started_at',null));
+    await queueJob(db,`first-contact:${attendanceStartedAt}:${j.phone}`,j.phone,'text',{text:FIRST_CONTACT_MESSAGE,automatic:true,inboundId:payload.inboundId,attendanceStartedAt});
     return;
   }
   // Depois do resumo válido, qualquer interação confirma exatamente o que foi apresentado.

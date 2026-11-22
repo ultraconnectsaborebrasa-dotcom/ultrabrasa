@@ -27,7 +27,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
       let body = '';
       let createdAfter = '';
       const q = {
-        select: () => q, order: () => q, limit: () => q, like: () => q,
+        select: () => q, order: () => q, limit: () => q, like: () => q, is: () => q,
         gte: (field: string, value: string) => { if (field === 'created_at') createdAfter = value; return q; },
         eq: (field: string, value: string) => { if (field === 'direction') direction = value; if (field === 'body') body = value; return q; },
         update: (data: Record<string, unknown>) => { update = data; return q; },
@@ -41,6 +41,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
           if (update && 'automation_paused' in update) paused = Boolean(update['automation_paused']);
           if (update && 'automation_pause_reason' in update) pauseReason = update['automation_pause_reason'] as string | null;
           if (update && 'order_confirmed_at' in update) confirmedAt = update['order_confirmed_at'] as string | null;
+          if (update && 'attendance_started_at' in update) attendanceStartedAt = update['attendance_started_at'] as string;
           const messages = direction === 'out' ? outbound.filter(message => (!body || message.body === body) && (!createdAfter || Date.parse(message.created_at) >= Date.parse(createdAfter))) : [inbound];
           return Promise.resolve({ error: null, data: update ? [{ phone: 'test' }] : table === 'whatsapp_order_requests' ? [] : messages }).then(resolve);
         },
@@ -55,6 +56,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
   };
   return {
     queued, requests, draft: () => draft, paused: () => paused,
+    seedDraft(value: unknown) { draft = conversationDraftSchema.parse(value); version += 1; },
     pauseForConfirmedOrder(at: string) { paused = true; pauseReason = 'order_confirmed'; confirmedAt = at; },
     finish() { finished = true; paused = true; },
     async receive(text: string, time: string, id: string, kind = 'text') {
@@ -163,6 +165,25 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.queued).toHaveLength(1);
     expect(flow.queued[0]?.payload.text).toBe(FIRST_CONTACT_MESSAGE);
     expect(generateResponse).not.toHaveBeenCalled();
+  });
+  it.each(['Oi bom dia', 'Olá, boa tarde', 'Bom dia, tudo bem'])('abre uma conversa antiga sem início ao receber "%s"', async text => {
+    vi.useFakeTimers();
+    const flow = attendance('dg😎😎');
+    await flow.receive(text, '10:44', `legacy-greeting-${text}`);
+    expect(flow.queued).toHaveLength(1);
+    expect(flow.queued[0]?.payload.text).toBe(FIRST_CONTACT_MESSAGE);
+    expect(flow.draft().customer).toBe('');
+    expect(flow.requests).toEqual([]);
+  });
+  it('continua uma coleta antiga sem reiniciar a abertura e corrige a saudação salva como nome', async () => {
+    vi.useFakeTimers();
+    const flow = attendance('dg😎😎');
+    flow.seedDraft({ customer: 'Oi Bom Dia', items: [{ productId: 'm', qty: 2, note: '' }] });
+    await flow.receive('Duas marmitas', '10:45', 'legacy-in-progress');
+    expect(flow.queued.filter(job => job.payload.text === FIRST_CONTACT_MESSAGE)).toHaveLength(0);
+    expect(flow.draft().items).toEqual([{ productId: 'm', qty: 2, note: '' }]);
+    expect(flow.draft().customer).toBe('dg😎😎');
+    expect(flow.queued.at(-1)?.dedup_key).toBe('reply:legacy-in-progress');
   });
   it('reinicia a abertura somente quando um atendimento finalizado recebe nova mensagem', async () => {
     vi.useFakeTimers();
