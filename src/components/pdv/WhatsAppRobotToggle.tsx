@@ -43,8 +43,8 @@ export function WhatsAppRobotToggle({ enabled, stockExhausted, circuitPaused, ci
       onChange({ enabled: next ? true : enabled, stockExhausted: result.stockExhausted, circuitPaused });
       toast.success(next ? 'Aviso de estoque esgotado ativado' : 'Atendimento normal restaurado', {
         description: next
-          ? 'Quem falar com a loja receberá o aviso de encerramento, sem mensagem em massa.'
-          : 'O roteiro automático de pedidos voltou a funcionar.',
+          ? 'O cardápio ficou indisponível e quem falar com a loja receberá o aviso de encerramento, sem mensagem em massa.'
+          : 'O cardápio e o roteiro automático de pedidos voltaram a funcionar.',
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Não foi possível alterar o aviso de estoque');

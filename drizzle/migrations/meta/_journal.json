@@ -715,6 +715,13 @@
       "when": 1795192032648,
       "tag": "0101_fix_ready_marmita_payment_and_delivery_stage",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1795310039796,
+      "tag": "0102_stock_exhausted_blocks_public_catalog",
+      "breakpoints": true
     }
   ]
 }

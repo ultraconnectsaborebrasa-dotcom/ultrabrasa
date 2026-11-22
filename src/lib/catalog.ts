@@ -13,7 +13,7 @@ export type CatalogSettings = {
   deliveryStart?: string; preparationStart?: string; freeDeliveryEunapolis?: boolean;
   dailyOffer?: DailyOfferConfig;
 };
-export type PublicCatalog = { settings: CatalogSettings | null; products: CatalogProduct[]; dailyOffer: DailyOffer | null };
+export type PublicCatalog = { stockExhausted: boolean; settings: CatalogSettings | null; products: CatalogProduct[]; dailyOffer: DailyOffer | null };
 
 export const DEFAULT_DAILY_OFFER: DailyOfferConfig = {
   productId: 'product-marmita-completa', title: 'Cardápio de hoje',
@@ -22,7 +22,8 @@ export const DEFAULT_DAILY_OFFER: DailyOfferConfig = {
 };
 
 export type DailyOfferState = 'available' | 'inactive' | 'sold-out' | 'unavailable' | 'closed';
-export function dailyOfferState(offer: DailyOffer, scheduled: boolean): DailyOfferState {
+export function dailyOfferState(offer: DailyOffer, scheduled: boolean, stockExhausted = false): DailyOfferState {
+  if (stockExhausted) return 'unavailable';
   if (!offer.active) return 'inactive';
   if (offer.stock === 0) return 'sold-out';
   if (!offer.available) return 'unavailable';

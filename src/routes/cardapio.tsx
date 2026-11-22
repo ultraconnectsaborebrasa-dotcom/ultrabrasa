@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Brand } from '@/components/pdv/Brand';
 import { brl } from '@/lib/pdv-store';
 
-const catalogQuery = queryOptions({ queryKey: ['public-catalog'], queryFn: () => getPublicCatalog(), staleTime: 30_000 });
+const catalogQuery = queryOptions({ queryKey: ['public-catalog'], queryFn: () => getPublicCatalog(), staleTime: 15_000, refetchInterval: 15_000 });
 
 export const Route = createFileRoute('/cardapio')({
   head: () => ({
@@ -44,7 +44,9 @@ function CardapioPage() {
   const s = data.settings;
   const [cart, setCart] = useState<CartLine[]>([]);
   const [open, setOpen] = useState(false);
-  const add = (p: CatalogProduct) => { if (!p.available || !catalogScheduleAvailable(p.category, s)) return; setCart((c) => c.some((l) => l.productId === p.id) ? c.map((l) => l.productId === p.id ? { ...l, qty: Math.min(99, l.qty + 1) } : l) : [...c, { productId: p.id, name: p.name, price: p.price, qty: 1, note: '' }]); };
+  const stockExhausted = data.stockExhausted;
+  useEffect(() => { if (stockExhausted) setOpen(false); }, [stockExhausted]);
+  const add = (p: CatalogProduct) => { if (stockExhausted || !p.available || !catalogScheduleAvailable(p.category, s)) return; setCart((c) => c.some((l) => l.productId === p.id) ? c.map((l) => l.productId === p.id ? { ...l, qty: Math.min(99, l.qty + 1) } : l) : [...c, { productId: p.id, name: p.name, price: p.price, qty: 1, note: '' }]); };
   const inCart = (id: string) => cart.find((l) => l.productId === id)?.qty ?? 0;
 
   return (
@@ -65,9 +67,10 @@ function CardapioPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 pb-28">
+        {stockExhausted && <p role="status" className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-center font-bold text-destructive">Cardápio indisponível no momento. Não estamos recebendo novos pedidos.</p>}
         {data.dailyOffer?.active && <Link to="/marmita-do-dia" className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/10 p-4">
           <span><span className="block text-xs font-bold uppercase tracking-wide text-primary">Marmita do Dia</span><span className="font-display text-lg font-bold">{data.dailyOffer.title}</span><span className="block text-sm text-muted-foreground">{data.dailyOffer.description}</span></span>
-          <span className="shrink-0 text-right font-bold text-primary">{brl(data.dailyOffer.price)}<span className="block text-xs text-foreground">Pedir agora →</span></span>
+          <span className="shrink-0 text-right font-bold text-primary">{brl(data.dailyOffer.price)}<span className="block text-xs text-foreground">{stockExhausted ? 'Indisponível' : 'Pedir agora →'}</span></span>
         </Link>}
         <section className="mt-4 grid gap-2 rounded-lg border border-border bg-card p-4 text-sm">
           {period === 'closed' && <p className="font-bold text-warning">Loja fechada agora. Você pode ver o cardápio; pedidos antecipados a partir das {s?.lunchStart ?? '09:00'}.</p>}
@@ -82,19 +85,19 @@ function CardapioPage() {
           <section key={cat} id={slug(cat)} className="scroll-mt-32 pt-8">
             <h2 className="mb-3 font-display text-2xl font-bold">{cat}</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              {items.map((p) => <ProductCard key={p.id} p={p} scheduled={now !== null && catalogScheduleAvailable(p.category, s, now)} qty={inCart(p.id)} onAdd={() => add(p)} />)}
+              {items.map((p) => <ProductCard key={p.id} p={p} scheduled={now !== null && catalogScheduleAvailable(p.category, s, now)} orderingDisabled={stockExhausted} qty={inCart(p.id)} onAdd={() => add(p)} />)}
             </div>
           </section>
         ))}
       </main>
-      <CatalogCheckout cart={cart} setCart={setCart} open={open} setOpen={setOpen} />
+      <CatalogCheckout cart={cart} setCart={setCart} open={open} setOpen={setOpen} orderingDisabled={stockExhausted} />
     </div>
   );
 }
 
-function ProductCard({ p, scheduled, qty, onAdd }: { p: CatalogProduct; scheduled: boolean; qty: number; onAdd: () => void }) {
+function ProductCard({ p, scheduled, orderingDisabled, qty, onAdd }: { p: CatalogProduct; scheduled: boolean; orderingDisabled: boolean; qty: number; onAdd: () => void }) {
   return (
-    <article className={`flex gap-3 rounded-lg border border-border bg-card p-3 ${p.available && scheduled ? '' : 'opacity-60'}`}>
+    <article className={`flex gap-3 rounded-lg border border-border bg-card p-3 ${p.available && scheduled && !orderingDisabled ? '' : 'opacity-60'}`}>
       <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-md bg-muted">
         {p.image
           ? <img src={p.image} alt={p.name} loading="lazy" width={112} height={112} className="h-full w-full object-cover" />
@@ -105,7 +108,7 @@ function ProductCard({ p, scheduled, qty, onAdd }: { p: CatalogProduct; schedule
         {p.description && <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{p.description}</p>}
         <div className="mt-auto flex items-center justify-between pt-2">
           <span className="text-lg font-bold text-primary">{brl(p.price)}</span>
-          {!scheduled ? <span className="text-xs font-bold text-muted-foreground">Indisponível neste horário</span> : !p.available ? <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">Esgotado</span>
+          {orderingDisabled ? <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">Indisponível</span> : !scheduled ? <span className="text-xs font-bold text-muted-foreground">Indisponível neste horário</span> : !p.available ? <span className="rounded bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">Esgotado</span>
             : <Button onClick={onAdd} aria-label={`Adicionar ${p.name}`} size="sm"><Plus className="h-4 w-4" />{qty ? qty : 'Adicionar'}</Button>}
         </div>
       </div>

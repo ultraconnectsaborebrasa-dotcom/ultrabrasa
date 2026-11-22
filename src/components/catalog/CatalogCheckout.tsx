@@ -26,9 +26,9 @@ const PAYMENTS: PaymentChoice[] = ['Pix', 'Crédito', 'Débito', 'Dinheiro'];
 type Placed = { code: string; link: string };
 const PLACED_KEY = 'ub-catalog-last-order';
 
-export function CatalogCheckout({ cart, setCart, open, setOpen, channel = 'catalog' }: {
+export function CatalogCheckout({ cart, setCart, open, setOpen, channel = 'catalog', orderingDisabled = false }: {
   cart: CartLine[]; setCart: (f: (c: CartLine[]) => CartLine[]) => void; open: boolean; setOpen: (v: boolean) => void;
-  channel?: 'catalog' | 'daily-menu';
+  channel?: 'catalog' | 'daily-menu'; orderingDisabled?: boolean;
 }) {
   const [form, setForm] = useState<CheckoutForm>(emptyForm);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +48,7 @@ export function CatalogCheckout({ cart, setCart, open, setOpen, channel = 'catal
 
   async function submit() {
     if (sending) return;
+    if (orderingDisabled) { setError('Cardápio indisponível no momento'); return; }
     const problem = validateCheckout(form, cart);
     if (problem) { setError(problem); return; }
     setError(null); setSending(true);
@@ -71,7 +72,7 @@ export function CatalogCheckout({ cart, setCart, open, setOpen, channel = 'catal
     window.open(p.link, '_blank', 'noopener');
   }
 
-  if (!open) return (
+  if (!open) return orderingDisabled ? null : (
     <>
       {cart.length > 0 && (
         <button onClick={() => setOpen(true)} className="fixed inset-x-4 bottom-4 z-30 mx-auto flex max-w-3xl items-center justify-between rounded-lg bg-primary px-5 py-4 font-bold text-primary-foreground shadow-lg">
@@ -104,6 +105,7 @@ export function CatalogCheckout({ cart, setCart, open, setOpen, channel = 'catal
           )}
           {!cart.length && !placed && <p className="text-muted-foreground">Seu carrinho está vazio.</p>}
           {cart.length > 0 && <>
+            {orderingDisabled && <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm font-bold text-destructive">Cardápio indisponível no momento. Este pedido não pode ser enviado.</p>}
             <ul className="space-y-3">
               {cart.map((l) => (
                 <li key={l.productId} className="rounded-md border border-border p-3">
@@ -166,7 +168,7 @@ export function CatalogCheckout({ cart, setCart, open, setOpen, channel = 'catal
         </div>
         {cart.length > 0 && <div className="space-y-2 border-t border-border p-4">
           {error && <p role="alert" className="text-sm font-semibold text-destructive">{error}</p>}
-          <Button className="h-12 w-full text-base" disabled={sending} onClick={() => void submit()}>{sending ? 'Registrando…' : `Finalizar pedido · ${brl(total)}`}</Button>
+          <Button className="h-12 w-full text-base" disabled={sending || orderingDisabled} onClick={() => void submit()}>{orderingDisabled ? 'Indisponível no momento' : sending ? 'Registrando…' : `Finalizar pedido · ${brl(total)}`}</Button>
         </div>}
       </div>
     </div>

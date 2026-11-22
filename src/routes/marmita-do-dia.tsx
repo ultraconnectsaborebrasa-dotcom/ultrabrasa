@@ -41,12 +41,13 @@ function DailyMenuPage() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [open, setOpen] = useState(false);
   useEffect(() => { const update = () => setNow(new Date()); update(); const timer = setInterval(update, 30_000); return () => clearInterval(timer); }, []);
+  useEffect(() => { if (data.stockExhausted) setOpen(false); }, [data.stockExhausted]);
 
   if (!offer) return <main className="grid min-h-screen place-items-center bg-background p-6 text-center"><div><Brand /><h1 className="mt-4 text-2xl font-bold">Oferta não configurada</h1><p className="mt-2 text-muted-foreground">A loja ainda não publicou a marmita do dia.</p></div></main>;
 
   const scheduled = now !== null && catalogScheduleAvailable('Marmitas', data.settings, now);
-  const state = dailyOfferState(offer, scheduled);
-  const lowStock = dailyOfferHasLowStock(offer);
+  const state = dailyOfferState(offer, scheduled, data.stockExhausted);
+  const lowStock = !data.stockExhausted && dailyOfferHasLowStock(offer);
   const order = () => {
     if (state !== 'available') return;
     setCart([{ productId: offer.productId, name: offer.name, price: offer.price, qty: 1, note: '' }]);
@@ -94,6 +95,7 @@ function DailyMenuPage() {
         </section>
 
         {data.settings?.freeDeliveryEunapolis && <div className="mt-4 flex items-center gap-3 rounded-xl border border-success/40 bg-success/10 p-4 text-success"><Truck className="h-6 w-6 shrink-0" /><div><p className="font-bold">Entrega grátis para todo Eunápolis</p><p className="text-sm">Você também pode escolher retirada.</p></div></div>}
+        {data.stockExhausted && <p role="status" className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-center font-bold text-destructive">Cardápio indisponível no momento. Não estamos recebendo novos pedidos.</p>}
         {lowStock && <p role="status" className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-center text-sm font-bold text-warning">Poucas unidades disponíveis hoje.</p>}
         {state === 'sold-out' && <p role="status" className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-center font-bold text-destructive">Esgotado por hoje</p>}
         {state === 'closed' && <p className="mt-4 text-center text-sm text-muted-foreground">Pedidos da marmita disponíveis das 09:00 às 14:00.</p>}
@@ -104,7 +106,7 @@ function DailyMenuPage() {
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 p-4 backdrop-blur">
         <Button className="mx-auto flex h-14 w-full max-w-xl text-lg font-extrabold shadow-glow" disabled={state !== 'available'} onClick={order}>{BUTTON_LABEL[state]}</Button>
       </div>
-      <CatalogCheckout cart={cart} setCart={setCart} open={open} setOpen={setOpen} channel="daily-menu" />
+      <CatalogCheckout cart={cart} setCart={setCart} open={open} setOpen={setOpen} channel="daily-menu" orderingDisabled={data.stockExhausted} />
     </div>
   );
 }

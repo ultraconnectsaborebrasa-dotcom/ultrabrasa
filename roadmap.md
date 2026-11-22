@@ -1,5 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Estoque esgotado no cardápio público
+- [x] Mostrar “Indisponível” em `/cardapio` e `/marmita-do-dia` quando o modo esgotado estiver ativo, impedindo novos pedidos na tela e no banco.
+- [x] 474 testes e typecheck aprovados; páginas reais verificadas sem botões de adicionar e envio fictício recusado pelo banco, sem criar pedidos ou alterar o modo atualmente ativo.
+
 ## Correção no mapa e designação por bairro
 - [x] Permitir ao Administrador/Caixa corrigir manualmente o ponto da entrega no mapa e salvar no endereço existente, sem nova consulta ao Google.
 - [x] Agrupar saídas prontas pelo bairro informado, permitir selecionar o grupo inteiro e designar as entregas compatíveis em uma única revisão.
