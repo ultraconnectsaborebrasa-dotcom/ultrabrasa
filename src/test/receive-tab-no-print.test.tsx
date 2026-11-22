@@ -39,7 +39,7 @@ describe('baixa na aba Receber', () => {
   });
 
   it('registra pagamento Pix sem acionar a impressora', async () => {
-    render(<OrdersView admin goSell={() => undefined} />);
+    render(<OrdersView admin />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Dar baixa' }));
     fireEvent.change(screen.getByLabelText('Forma de pagamento'), { target: { value: 'Pix' } });

@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Edição completa de comandas abertas
+- [x] Permitir a Administrador e Caixa adicionar/remover produtos, alterar quantidades e editar observações gerais e por item em comandas abertas e não pagas.
+- [x] Salvar itens, preços e estoque em uma transação, recalcular serviço e sincronizar Delivery e reservas do entregador sem alterar pagamentos.
+- [x] 555 testes e typecheck aprovados; edição da comanda #64 validada no banco em transação revertida e janela conferida em 1280/890 sem salvar alterações reais.
+
 ## Correção do ponto após designar o motoboy
 - [x] Exibir “Corrigir ponto no mapa” nas entregas ativas de cada motoboy e permitir salvar o novo ponto sem mudar entregador, rota, pagamento ou estoque.
 - [x] Liberar no servidor e no banco somente entregas prontas ou em rota; concluídas e canceladas permanecem protegidas.

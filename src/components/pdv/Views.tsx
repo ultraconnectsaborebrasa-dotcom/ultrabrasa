@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Clock, Pencil, Plus, Printer, Star } from "lucide-react";
 import {
-  brl, isToday, loadOrderToDraft, paid, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
+  brl, isToday, paid, setOrderStatus, setState, totals, uid, useStore, type Order, type Product,
 } from "@/lib/pdv-store";
 import { EditProduct } from "./EditProduct";
 import { SalesHistory } from "./SalesHistory";
@@ -20,6 +20,7 @@ import { ManualPaymentDialog } from './ManualPaymentDialog';
 import { openCloud } from '@/lib/pdv-cloud';
 import { runKitchenBulkAction } from '@/lib/kitchen-bulk';
 import { BulkDeliveryDeparture } from './BulkDeliveryDeparture';
+import { EditOpenOrderDialog } from './EditOpenOrderDialog';
 
 const mins = (t: number) => Math.floor((Date.now() - t) / 60000);
 function useTick() { const [, s] = useState(0); useEffect(() => { const i = setInterval(() => s((x) => x + 1), 15000); return () => clearInterval(i); }, []); }
@@ -29,12 +30,14 @@ function printManual(o: Order, pct: number, target: 'kitchen' | 'cashier' = 'cas
 }
 
 /* ---------------- COMANDAS ---------------- */
-export function OrdersView({ goSell, admin = false }: { goSell: () => void; admin?: boolean }) {
+export function OrdersView({ admin = false }: { admin?: boolean }) {
   useTick();
   const orders = useStore((s) => s.orders);
+  const products = useStore((s) => s.products);
   const settings = useStore((s) => s.settings);
   const cashOpen = useStore((s) => s.cash.open);
   const [paying, setPaying] = useState<Order | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [search,setSearch]=useState('');
   // Comanda paga sai daqui; a etapa de cozinha/entrega continua nas telas próprias.
   const open = orders.filter((o) => o.status !== 'cancelado' && o.status !== 'pago' && o.status !== 'entrega' && o.paymentStatus !== 'pago' && totals(o,settings.serviceFeePct).total-paid(o)>0.004);
@@ -62,7 +65,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {admin&&o.type==='Delivery'&&<DeliveryDeparture orderId={o.id}/>}
-                <button className="btn btn-ghost text-xs" onClick={() => { loadOrderToDraft(o); goSell(); }}><Pencil size={13} />Editar</button>
+                <button className="btn btn-ghost text-xs" onClick={() => setEditingOrder(o)}><Pencil size={13} />Editar comanda</button>
                 <button className="btn btn-ghost text-xs" onClick={() => printManual(o, settings.serviceFeePct)}><Printer size={13} />Imprimir</button>
                 {admin && <CancelOrderButton orderId={o.id} number={o.number} hadPayment={o.payments.length>0}/>}
                 {admin&&<Button size="sm" disabled={o.payments.length>0} onClick={() => cashOpen ? setPaying(o) : toast.error("Caixa fechado. Abra o caixa na aba Caixa antes de dar baixa.")}>Dar baixa</Button>}
@@ -75,6 +78,7 @@ export function OrdersView({ goSell, admin = false }: { goSell: () => void; admi
       <details><summary className="cursor-pointer text-sm font-semibold">Pagamentos recebidos e histórico</summary><SalesHistory /></details>
 
       {paying&&<ManualPaymentDialog markReady order={{id:paying.id,number:paying.number,total:totals(paying,settings.serviceFeePct).total}} onClose={()=>setPaying(null)} methods={settings.paymentMethods} onPaid={openCloud}/>}
+      {editingOrder&&<EditOpenOrderDialog order={editingOrder} products={products} serviceFeePct={settings.serviceFeePct} onClose={()=>setEditingOrder(null)} onSaved={()=>void openCloud()}/>}
     </div>
   );
 }

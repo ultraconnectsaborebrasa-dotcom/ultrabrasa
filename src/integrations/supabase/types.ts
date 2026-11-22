@@ -1672,6 +1672,10 @@ export type Database = {
         Args: { delivery_id: string; issue?: string; new_status: string }
         Returns: undefined
       }
+      update_pdv_open_order: {
+        Args: { input_items: Json; order_id: string; order_note?: string }
+        Returns: Json
+      }
       valid_person_name: { Args: { _n: string }; Returns: boolean }
       validate_delivery_input: { Args: { input: Json }; Returns: undefined }
       wa_accept_request: { Args: { _id: string }; Returns: Json }
