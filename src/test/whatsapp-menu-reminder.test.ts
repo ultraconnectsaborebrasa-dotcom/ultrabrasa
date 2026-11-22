@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultBusiness } from '@/lib/whatsapp-business';
 import {
+  AFTERNOON_MESSAGES,
+  AFTERNOON_REMINDER_DELAY_MS,
+  AFTERNOON_REMINDER_MESSAGE,
   FIRST_CONTACT_MESSAGE,
   FIRST_CONTACT_REMINDER_DELAY_MS,
   FIRST_CONTACT_REMINDER_MESSAGE,
@@ -29,6 +32,16 @@ const reminderJob: Job = {
   id: 'reminder-job', phone: '5573999999999', kind: 'text',
   dedup_key: `first-contact-reminder:${attendanceStartedAt}:phone`,
   payload: { text: FIRST_CONTACT_REMINDER_MESSAGE, inboundId: 'wamid.old', automatic: true, attendanceStartedAt },
+};
+const afternoonMenuJob: Job = {
+  id: 'afternoon-menu-job', phone: '5573999999999', kind: 'text',
+  dedup_key: `campaign:${attendanceStartedAt}:afternoon:1:phone`,
+  payload: { text: AFTERNOON_MESSAGES[1], inboundId: 'wamid.old', automatic: true, attendanceStartedAt },
+};
+const afternoonReminderJob: Job = {
+  id: 'afternoon-reminder-job', phone: '5573999999999', kind: 'text',
+  dedup_key: `afternoon-reminder:${attendanceStartedAt}:phone`,
+  payload: { text: AFTERNOON_REMINDER_MESSAGE, inboundId: 'wamid.old', automatic: true, attendanceStartedAt },
 };
 
 function mockDb(job: Job, { paused = false, latestInbound = 'wamid.old', orderConfirmed = false } = {}) {
@@ -148,6 +161,63 @@ describe('Primeiro atendimento e lembrete de três minutos', () => {
   it('cancela o lembrete antigo de cinco minutos sem reenviar', async () => {
     const legacy: Job = { id: 'legacy', phone: '5573999999999', kind: 'text', dedup_key: 'menu-reminder:wamid.old:phone', payload: { text: 'Lembrete antigo', inboundId: 'wamid.old', automatic: true } };
     const { db, updates } = mockDb(legacy);
+    await processJobs(db, 1);
+    expect(sendText).not.toHaveBeenCalled();
+    expect(updates.some(update => update['state'] === 'cancelled')).toBe(true);
+  });
+});
+
+describe('Lembrete do cardápio da tarde', () => {
+  it('usa a pergunta confirmada e cinco minutos de espera', () => {
+    expect(AFTERNOON_REMINDER_MESSAGE).toBe('E aí, conseguiu escolher? Se precisar de ajuda, posso montar seu pedido por aqui mesmo! 😊');
+    expect(AFTERNOON_REMINDER_DELAY_MS).toBe(300000);
+    expect(AFTERNOON_REMINDER_MESSAGE).not.toContain('http');
+  });
+
+  it('agenda cinco minutos somente depois do cardápio da tarde ser aceito', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-19T18:00:00.000Z'));
+    let menuAcceptedAt = 0;
+    vi.mocked(sendText).mockImplementation(async () => { menuAcceptedAt = Date.now(); return 'wamid.afternoon-menu'; });
+    const { db, queued } = mockDb(afternoonMenuJob);
+    await finishTimers(db);
+    expect(sendText).toHaveBeenCalledTimes(1);
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({
+      dedup_key: `afternoon-reminder:${attendanceStartedAt}:5573999999999`,
+      kind: 'text',
+      payload: { text: AFTERNOON_REMINDER_MESSAGE, automatic: true, inboundId: 'wamid.old', attendanceStartedAt },
+    });
+    expect(Date.parse(queued[0]!.next_attempt_at) - menuAcceptedAt).toBe(300000);
+  });
+
+  it('não agenda o lembrete depois apenas da apresentação da tarde', async () => {
+    vi.useFakeTimers();
+    vi.mocked(sendText).mockResolvedValue('wamid.afternoon-opening');
+    const openingJob: Job = { ...afternoonMenuJob, dedup_key: `campaign:${attendanceStartedAt}:afternoon:0:phone`, payload: { ...afternoonMenuJob.payload, text: AFTERNOON_MESSAGES[0] } };
+    const { db, queued } = mockDb(openingJob);
+    await finishTimers(db);
+    expect(queued).toHaveLength(0);
+  });
+
+  it('envia somente a pergunta, sem repetir o cardápio ou o link', async () => {
+    vi.useFakeTimers();
+    vi.mocked(sendText).mockResolvedValue('wamid.afternoon-reminder');
+    const { db } = mockDb(afternoonReminderJob);
+    await finishTimers(db);
+    expect(sendText).toHaveBeenCalledTimes(1);
+    expect(sendText).toHaveBeenCalledWith(db, '5573999999999', AFTERNOON_REMINDER_MESSAGE, { source: 'auto', replyTo: 'afternoon-reminder-job', orderId: null });
+  });
+
+  it('cancela o lembrete da tarde quando o cliente responde', async () => {
+    const { db, updates } = mockDb(afternoonReminderJob, { latestInbound: 'wamid.new' });
+    await processJobs(db, 1);
+    expect(sendText).not.toHaveBeenCalled();
+    expect(updates.some(update => update['state'] === 'cancelled')).toBe(true);
+  });
+
+  it('cancela o lembrete da tarde quando já existe pedido confirmado', async () => {
+    const { db, updates } = mockDb(afternoonReminderJob, { orderConfirmed: true });
     await processJobs(db, 1);
     expect(sendText).not.toHaveBeenCalled();
     expect(updates.some(update => update['state'] === 'cancelled')).toBe(true);

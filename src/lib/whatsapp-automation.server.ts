@@ -1,7 +1,7 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
 // Delivery or lunch questions start the scripted lunch flow instead of a human handoff.
 const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
-import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,prefersManualOrder,isCatalogOrderMessage,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob,isStoreLocationQuestion,isStoreLocationJob,STORE_LOCATION_MESSAGE,STORE_LOCATION,STORE_LOCATION_MAPS_MESSAGE } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,AFTERNOON_REMINDER_MESSAGE,AFTERNOON_REMINDER_DELAY_MS,isAfternoonMenuJob,isAfternoonReminderJob,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,prefersManualOrder,isCatalogOrderMessage,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob,isStoreLocationQuestion,isStoreLocationJob,STORE_LOCATION_MESSAGE,STORE_LOCATION,STORE_LOCATION_MAPS_MESSAGE } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete,customerNameWithProfile } from './whatsapp-business';
 import { gateway,sendText,sendLocation,sendTyping,digits } from './whatsapp.server';
@@ -93,7 +93,7 @@ async function interpret(db:Admin,j:Job){
     for(let i=0;i<AFTERNOON_MESSAGES.length;i++){
       const msg=AFTERNOON_MESSAGES[i];
       if(!msg||already(msg))continue;
-      await queueJob(db,`campaign:${since}:afternoon:${i}:${j.phone}`,j.phone,'text',{text:msg,automatic:true,inboundId:payload.inboundId});
+      await queueJob(db,`campaign:${since}:afternoon:${i}:${j.phone}`,j.phone,'text',{text:msg,automatic:true,inboundId:payload.inboundId,attendanceStartedAt});
     }
     return;
   }
@@ -226,7 +226,7 @@ export async function processJobs(db:Admin,limit=2){
           checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;
         }
       }
-      if(isFirstContactReminderJob(j.dedup_key)&&c.order_confirmed_at){
+      if((isFirstContactReminderJob(j.dedup_key)||isAfternoonReminderJob(j.dedup_key))&&c.order_confirmed_at){
         checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;
       }
       const confirmedOrderIntake=j.kind==='interpret'&&c.automation_pause_reason==='order_confirmed';
@@ -249,7 +249,7 @@ export async function processJobs(db:Admin,limit=2){
         let providerId:string|undefined;
         if(j.kind==='text'){
           const text=confirmation?ORDER_CONFIRMED_MESSAGE:j.dedup_key.endsWith(':pix-key')?pixPaymentMessage(business.pixKey):p.text??'';
-          if(p.automatic&&(j.dedup_key.startsWith('campaign:')||isFirstContactJob(j.dedup_key)||isFirstContactReminderJob(j.dedup_key)||isOrderConfirmationReminderJob(j.dedup_key))&&p.inboundId){
+          if(p.automatic&&(j.dedup_key.startsWith('campaign:')||isFirstContactJob(j.dedup_key)||isFirstContactReminderJob(j.dedup_key)||isAfternoonReminderJob(j.dedup_key)||isOrderConfirmationReminderJob(j.dedup_key))&&p.inboundId){
             const latest=checkEmpty(await db.from('whatsapp_messages').select('wa_message_id').eq('phone',j.phone).eq('direction','in').order('provider_at',{ascending:false}).limit(1))??[];
             if(latest[0]?.wa_message_id!==p.inboundId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));continue;}
           }
@@ -279,6 +279,9 @@ export async function processJobs(db:Admin,limit=2){
             :await sendText(db,j.phone,text,{source:p.automatic?'auto':'pdv',replyTo:j.id,orderId:p.orderId??null});
           if(p.automatic&&p.inboundId&&p.attendanceStartedAt&&isFirstContactJob(j.dedup_key)&&!isFirstContactReminderJob(j.dedup_key)){
             await queueJob(db,`first-contact-reminder:${p.attendanceStartedAt}:${j.phone}`,j.phone,'text',{text:FIRST_CONTACT_REMINDER_MESSAGE,automatic:true,inboundId:p.inboundId,attendanceStartedAt:p.attendanceStartedAt},{delayMs:FIRST_CONTACT_REMINDER_DELAY_MS});
+          }
+          if(p.automatic&&p.inboundId&&p.attendanceStartedAt&&isAfternoonMenuJob(j.dedup_key)){
+            await queueJob(db,`afternoon-reminder:${p.attendanceStartedAt}:${j.phone}`,j.phone,'text',{text:AFTERNOON_REMINDER_MESSAGE,automatic:true,inboundId:p.inboundId,attendanceStartedAt:p.attendanceStartedAt},{delayMs:AFTERNOON_REMINDER_DELAY_MS});
           }
           if(p.automatic&&p.inboundId&&p.confirmationPrompt&&p.summaryVersion!==undefined){
             await queueJob(db,`confirmation-reminder:${p.summaryVersion}:${j.phone}`,j.phone,'text',{text:CONFIRM_HINT,automatic:true,inboundId:p.inboundId,summaryVersion:p.summaryVersion,summaryTotal:p.summaryTotal,confirmationReminder:true},{delayMs:ORDER_CONFIRMATION_REMINDER_DELAY_MS});

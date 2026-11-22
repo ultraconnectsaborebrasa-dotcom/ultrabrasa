@@ -15,6 +15,10 @@ export const AFTERNOON_MESSAGES = [
   'Boa tarde, tudo bem? 😊 Nosso atendimento da noite começa a partir das 17:00, com hambúrgueres, espetinhos, salgados e acompanhamentos. Os preparos começam às 18:00.',
   'Você já pode escolher seu pedido no nosso cardápio digital: https://ultraconnectbrasa.com.br/cardapio\n\nDá uma olhadinha e me conta o que você gostaria de pedir. Se precisar de ajuda, estou por aqui!',
 ] as const;
+export const AFTERNOON_REMINDER_MESSAGE = 'E aí, conseguiu escolher? Se precisar de ajuda, posso montar seu pedido por aqui mesmo! 😊';
+export const AFTERNOON_REMINDER_DELAY_MS = 5 * 60 * 1000;
+export const isAfternoonMenuJob = (key: string) => key.startsWith('campaign:') && key.includes(':afternoon:1:');
+export const isAfternoonReminderJob = (key: string) => key.startsWith('afternoon-reminder:');
 export const CLOSING_MESSAGE = 'Infelizmente, hoje já encerramos nossos atendimentos!\n\nNossa demanda foi muito alta e todos os pedidos foram atendidos.\n\nAmanhã estaremos funcionando normalmente. Então, já garanta seu pedido mais cedo para não ficar sem!\n\nAgradecemos pela compreensão e preferência. Deus abençoe!';
 export const HANDOFF_MESSAGE = 'Vou encaminhar sua mensagem para um atendente, que vai ajudar você por aqui.';
 export const CONFIRM_HINT = 'É só responder *SIM* para eu confirmar seu pedido. Se quiser mudar algo, me fala o que corrigir.';
