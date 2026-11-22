@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { MapPinned } from 'lucide-react';
+import { Check, LoaderCircle, MapPinned, Pencil, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
 import { decodeRoutePolyline, isCourierLocationStale, type CourierLiveLocation, type DeliveryBase, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 
 type GoogleApi = any;
 type MapMarker = { setMap: (map: unknown) => void };
 export type DeliveryMapFocus = { type: 'all' | 'base' | 'courier' | 'delivery'; courierId?: string | undefined; deliveryId?: string | undefined; token: number };
+export type DeliveryLocationDraft = { deliveryId: string; latitude: number; longitude: number; touched: boolean };
 let mapsLoader: Promise<GoogleApi> | null = null;
 
 function loadGoogleMaps(): Promise<GoogleApi> {
@@ -40,7 +42,7 @@ function markerIcon(api: GoogleApi, kind: 'base' | 'courier', color: string, sel
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, scaledSize: new api.maps.Size(size, size), anchor: new api.maps.Point(size / 2, size / 2) };
 }
 
-export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, focus, selectedDeliveryId, onSelectCourier, onSelectDelivery }: {
+export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, focus, selectedDeliveryId, selectedDeliveryIds, editingLocation = null, savingLocation = false, onSelectCourier, onSelectDelivery, onDeliveryPositionChange, onSaveDeliveryPosition, onCancelDeliveryPosition }: {
   base: DeliveryBase | null;
   locations: CourierLiveLocation[];
   deliveries: Delivery[];
@@ -48,8 +50,14 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
   route: (DeliveryRouteCalculation & { routeId: string }) | null;
   focus?: DeliveryMapFocus | null;
   selectedDeliveryId?: string | null;
+  selectedDeliveryIds?: string[];
+  editingLocation?: DeliveryLocationDraft | null;
+  savingLocation?: boolean;
   onSelectCourier?: (courierId: string) => void;
   onSelectDelivery?: (deliveryId: string) => void;
+  onDeliveryPositionChange?: (position: { latitude: number; longitude: number }) => void;
+  onSaveDeliveryPosition?: () => void;
+  onCancelDeliveryPosition?: () => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<GoogleApi>(null);
@@ -57,8 +65,10 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
   const line = useRef<GoogleApi>(null);
   const fitted = useRef('');
   const lastFocus = useRef(0);
+  const editingCentered = useRef('');
   const [api, setApi] = useState<GoogleApi>(null);
   const [error, setError] = useState('');
+  const editingDelivery = editingLocation ? deliveries.find(delivery => delivery.id === editingLocation.deliveryId) : undefined;
 
   useEffect(() => {
     let active = true;
@@ -77,16 +87,28 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
   }, [base?.id, base?.base_latitude, base?.base_longitude]);
 
   useEffect(() => {
+    if (!api || !map.current || !editingLocation) return;
+    map.current.setOptions({ draggableCursor: 'crosshair' });
+    const listener = map.current.addListener('click', (event: GoogleApi) => {
+      const latitude = event.latLng?.lat();
+      const longitude = event.latLng?.lng();
+      if (typeof latitude === 'number' && typeof longitude === 'number') onDeliveryPositionChange?.({ latitude, longitude });
+    });
+    return () => { api.maps.event.removeListener(listener); map.current?.setOptions({ draggableCursor: null }); };
+  }, [api, editingLocation?.deliveryId, onDeliveryPositionChange]);
+
+  useEffect(() => {
     if (!api || !map.current || !base) return;
     markers.current.forEach(marker => marker.setMap(null));
     markers.current = [];
     if (line.current) line.current.setMap(null);
     const bounds = new api.maps.LatLngBounds();
     const info = new api.maps.InfoWindow();
-    const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void, selected = false, kind: 'circle' | 'base' | 'courier' = 'circle') => {
+    const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void, selected = false, kind: 'circle' | 'base' | 'courier' = 'circle', onDragEnd?: (position: { latitude: number; longitude: number }) => void) => {
       const marker = new api.maps.Marker({
         map: map.current, position, title, label: kind === 'circle' ? label : null, zIndex: selected ? 20 : kind === 'courier' ? 10 : 1,
         animation: selected ? api.maps.Animation.DROP : undefined,
+        draggable: Boolean(onDragEnd),
         icon: kind === 'circle'
           ? { path: api.maps.SymbolPath.CIRCLE, fillColor: tokenColor(color), fillOpacity: 1, strokeColor: tokenColor(selected ? 'primary' : 'background'), strokeWeight: selected ? 4 : 2, scale: selected ? scale + 2 : scale }
           : markerIcon(api, kind, color, selected),
@@ -97,6 +119,10 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
         info.setContent(content);
         info.open(map.current, marker);
         onClick?.();
+      });
+      if (onDragEnd) marker.addListener('dragend', () => {
+        const point = marker.getPosition();
+        if (point) onDragEnd({ latitude: point.lat(), longitude: point.lng() });
       });
       markers.current.push(marker);
       bounds.extend(position);
@@ -121,6 +147,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
     });
     const routeStops = new Map(route?.stops.map(stop => [stop.delivery_id, stop]) ?? []);
     const pointForDelivery = (delivery: Delivery) => {
+      if (editingLocation?.deliveryId === delivery.id) return { latitude: editingLocation.latitude, longitude: editingLocation.longitude };
       const routed = routeStops.get(delivery.id);
       if (routed) return { latitude: routed.latitude, longitude: routed.longitude };
       return deliveryCoordinates(delivery);
@@ -129,12 +156,14 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       const point = pointForDelivery(delivery);
       if (!point) return;
       const available = !delivery.route_id && delivery.status === 'Pronto para entrega';
-      const selected = delivery.id === selectedDeliveryId;
+      const selected = delivery.id === selectedDeliveryId || selectedDeliveryIds?.includes(delivery.id) || delivery.id === editingLocation?.deliveryId;
+      const editing = delivery.id === editingLocation?.deliveryId;
       addMarker(
         { lat: point.latitude, lng: point.longitude },
-        `#${delivery.number} · ${delivery.customer} · ${available ? 'DISPONÍVEL · ' : ''}${deliveryMarmitaQuantity(delivery)} marmita(s) · ${delivery.status}`,
-        String(delivery.position || delivery.number), selected ? 'destructive' : available ? 'ember' : 'warning', available ? 8 : 6,
-        available ? () => onSelectDelivery?.(delivery.id) : undefined, selected,
+        `#${delivery.number} · ${delivery.customer} · ${editing ? 'PONTO EM CORREÇÃO · ' : available ? 'DISPONÍVEL · ' : ''}${deliveryMarmitaQuantity(delivery)} marmita(s) · ${delivery.status}`,
+        String(delivery.position || delivery.number), editing ? 'destructive' : selected ? 'destructive' : available ? 'ember' : 'warning', available ? 8 : 6,
+        available && !editingLocation ? () => onSelectDelivery?.(delivery.id) : undefined, selected, 'circle',
+        editing ? onDeliveryPositionChange : undefined,
       );
     });
     if (route?.polyline) {
@@ -144,30 +173,46 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
     }
     const fitKey = `${base.base_latitude}:${base.base_longitude}:${route?.routeId ?? ''}:${deliveries.map(item => item.id).join(',')}:${locations.map(item => item.courier_id).join(',')}`;
     const explicitFocus = focus && focus.token !== lastFocus.current;
-    if (explicitFocus) {
-      if (focus.type === 'courier') {
-        const location = locations.find(item => item.courier_id === focus.courierId);
-        if (location) { map.current.panTo({ lat: location.latitude, lng: location.longitude }); map.current.setZoom(16); }
-      } else if (focus.type === 'delivery') {
-        const delivery = deliveries.find(item => item.id === focus.deliveryId);
-        const point = delivery ? pointForDelivery(delivery) : null;
-        if (point) { map.current.panTo({ lat: point.latitude, lng: point.longitude }); map.current.setZoom(16); }
-      } else if (focus.type === 'base') {
-        map.current.panTo(basePosition); map.current.setZoom(15);
-      } else if (!bounds.isEmpty()) {
-        map.current.fitBounds(bounds, 56);
+    if (editingLocation) {
+      if (editingCentered.current !== editingLocation.deliveryId) {
+        map.current.panTo({ lat: editingLocation.latitude, lng: editingLocation.longitude });
+        map.current.setZoom(17);
+        editingCentered.current = editingLocation.deliveryId;
       }
       fitted.current = fitKey;
-      lastFocus.current = focus.token;
-    } else if (!bounds.isEmpty() && fitted.current !== fitKey) {
-      map.current.fitBounds(bounds, 56);
-      fitted.current = fitKey;
+    } else {
+      editingCentered.current = '';
+      if (explicitFocus) {
+        if (focus.type === 'courier') {
+          const location = locations.find(item => item.courier_id === focus.courierId);
+          if (location) { map.current.panTo({ lat: location.latitude, lng: location.longitude }); map.current.setZoom(16); }
+        } else if (focus.type === 'delivery') {
+          const delivery = deliveries.find(item => item.id === focus.deliveryId);
+          const point = delivery ? pointForDelivery(delivery) : null;
+          if (point) { map.current.panTo({ lat: point.latitude, lng: point.longitude }); map.current.setZoom(16); }
+        } else if (focus.type === 'base') {
+          map.current.panTo(basePosition); map.current.setZoom(15);
+        } else if (!bounds.isEmpty()) {
+          map.current.fitBounds(bounds, 56);
+        }
+        fitted.current = fitKey;
+        lastFocus.current = focus.token;
+      } else if (!bounds.isEmpty() && fitted.current !== fitKey) {
+        map.current.fitBounds(bounds, 56);
+        fitted.current = fitKey;
+      }
     }
     return () => { info.close(); };
-  }, [api, base, locations, deliveries, couriers, route, focus, selectedDeliveryId, onSelectCourier, onSelectDelivery]);
+  }, [api, base, locations, deliveries, couriers, route, focus, selectedDeliveryId, selectedDeliveryIds, editingLocation, onSelectCourier, onSelectDelivery, onDeliveryPositionChange]);
 
   if (!base) return <p className="rounded-lg border p-4 text-sm text-muted-foreground">A base ainda não foi configurada.</p>;
-  return <div>
+  return <div className="space-y-2">
+    {editingLocation && editingDelivery && <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary bg-primary/10 p-3" role="region" aria-label={`Correção do ponto do pedido ${editingDelivery.number}`}>
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground"><Pencil size={17} /></span>
+      <div className="min-w-52 flex-1"><b className="text-sm">Corrigindo o ponto do pedido #{editingDelivery.number}</b><p className="text-xs text-muted-foreground">Toque no local correto ou arraste o alfinete. O endereço escrito não muda.</p></div>
+      <Button size="sm" variant="outline" disabled={savingLocation} onClick={onCancelDeliveryPosition}><X size={14} />Cancelar</Button>
+      <Button size="sm" disabled={!editingLocation.touched || savingLocation} onClick={onSaveDeliveryPosition}>{savingLocation ? <LoaderCircle size={14} className="animate-spin" /> : <Check size={14} />}{savingLocation ? 'Salvando…' : 'Salvar ponto'}</Button>
+    </div>}
     {error ? <div role="alert" className="grid h-[360px] place-items-center rounded-xl border bg-muted p-6 text-center md:h-[480px]"><div><MapPinned className="mx-auto mb-3 text-muted-foreground" /><p className="max-w-lg text-sm text-muted-foreground">{error}</p><p className="mt-2 text-xs text-muted-foreground">Os endereços e os botões para abrir a navegação continuam disponíveis.</p></div></div> : <div ref={container} className="h-[360px] w-full rounded-xl border md:h-[480px]" aria-label="Mapa da base, entregadores e entregas" />}
   </div>;
 }

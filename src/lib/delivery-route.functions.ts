@@ -169,6 +169,30 @@ export const locateDeliveryOnMap = createServerFn({ method: 'POST' })
     return { deliveryId: delivery.id, ...position };
   });
 
+export const saveDeliveryMapPin = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    deliveryId: z.string().uuid(),
+    latitude: z.number().finite().min(-90).max(90),
+    longitude: z.number().finite().min(-180).max(180),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const [{ data: isAdmin }, { data: isCashier }] = await Promise.all([
+      context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'admin' }),
+      context.supabase.rpc('has_role', { _user_id: context.userId, _role: 'cashier' }),
+    ]);
+    if (!isAdmin && !isCashier) throw new Error('Somente o administrador ou o caixa pode corrigir o ponto da entrega.');
+    const boardResult = await context.supabase.rpc('read_delivery_board');
+    if (boardResult.error) throw new Error(boardResult.error.message);
+    const board = boardResult.data as unknown as { deliveries: Delivery[] };
+    const delivery = board.deliveries.find(item => item.id === data.deliveryId && item.status === 'Pronto para entrega' && !item.route_id);
+    if (!delivery) throw new Error('Esta entrega não está mais disponível para correção do ponto.');
+    const address = { ...delivery.address, latitude: String(data.latitude), longitude: String(data.longitude) };
+    const { error } = await context.supabase.rpc('update_delivery_address', { delivery_id: delivery.id, input: address as unknown as Json });
+    if (error) throw new Error(`Não foi possível salvar o ponto: ${error.message}`);
+    return { deliveryId: delivery.id, latitude: data.latitude, longitude: data.longitude };
+  });
+
 export type CourierDeliveryEstimate = { courierId: string; distanceMeters?: number; durationSeconds?: number; error?: string };
 
 /** Calcula estimativas reais somente sob comando explícito do gestor, no máximo cinco motoboys. */

@@ -73,4 +73,32 @@ describe('designação da entrega pelo motoboy mais próximo', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Designar Perto' }));
     expect(assign).toHaveBeenCalledWith('near', 'Base Teste', ['delivery-1']);
   });
+
+  it('designa todas as entregas selecionadas do mesmo bairro em uma única revisão', () => {
+    const second = { ...delivery, id: 'delivery-2', order_id: 'order-2', number: 901 };
+    const assign = vi.fn();
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[delivery, second]} couriers={couriers} locations={[location('near', -16.35, new Date().toISOString())]} baseAddress="Base Teste" selectedDeliveryId={delivery.id} selectedDeliveryIds={[delivery.id, second.id]} onFocusDelivery={vi.fn()} onLocated={vi.fn()} onAssign={assign} /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Designar 2 entregas para Perto' }));
+    expect(assign).toHaveBeenCalledWith('near', 'Base Teste', ['delivery-1', 'delivery-2']);
+    expect(locateMock).not.toHaveBeenCalled();
+    expect(estimateMock).not.toHaveBeenCalled();
+  });
+
+  it('seleciona o grupo pelo bairro sem chamar a localização automática', () => {
+    const select = vi.fn();
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[delivery]} couriers={couriers} locations={[]} baseAddress="Base Teste" selectedDeliveryId={null} selectedDeliveryIds={[]} onFocusDelivery={vi.fn()} onSelectDeliveries={select} onLocated={vi.fn()} onAssign={vi.fn()} /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: /Centro.*Selecionar grupo/ }));
+    expect(select).toHaveBeenCalledWith([delivery]);
+    expect(locateMock).not.toHaveBeenCalled();
+  });
+
+  it('abre a correção manual do ponto da entrega escolhida', () => {
+    const edit = vi.fn();
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[delivery]} couriers={couriers} locations={[]} baseAddress="Base Teste" selectedDeliveryId={delivery.id} onFocusDelivery={vi.fn()} onLocated={vi.fn()} onEditLocation={edit} onAssign={vi.fn()} /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Corrigir ponto no mapa' }));
+    expect(edit).toHaveBeenCalledWith(delivery);
+  });
 });

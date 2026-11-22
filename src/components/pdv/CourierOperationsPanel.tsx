@@ -7,9 +7,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
 import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, shouldSendCourierPosition, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
-import { courierMarmitaStock as stockFor, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
-import { calculateDeliveryRoute } from '@/lib/delivery-route.functions';
-import { LiveDeliveryMap, type DeliveryMapFocus } from './LiveDeliveryMap';
+import { courierMarmitaStock as stockFor, deliveryCoordinates, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
+import { calculateDeliveryRoute, saveDeliveryMapPin } from '@/lib/delivery-route.functions';
+import { LiveDeliveryMap, type DeliveryLocationDraft, type DeliveryMapFocus } from './LiveDeliveryMap';
 import { AvailableDeliveryPanel } from './AvailableDeliveryPanel';
 import { DeliveryOperationsReport } from './DeliveryOperationsReport';
 import { DeliveryOperatingHours } from './DeliveryOperatingHours';
@@ -34,10 +34,14 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
   const [routeBusy, setRouteBusy] = useState(false);
   const [focus, setFocus] = useState<DeliveryMapFocus>({ type: 'all', token: 0 });
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
+  const [selectedDeliveryIds, setSelectedDeliveryIds] = useState<string[]>([]);
+  const [locationDraft, setLocationDraft] = useState<DeliveryLocationDraft | null>(null);
+  const [savingLocation, setSavingLocation] = useState(false);
   const [locatedPositions, setLocatedPositions] = useState<Record<string, { latitude: string; longitude: string }>>({});
   const [stockForm, setStockForm] = useState<{ driver: Courier; mode: 'load' | 'replenish' | 'return' | 'loss' | 'correct'; quantity: string; reason: string; productId: string } | null>(null);
   const [stockBusy, setStockBusy] = useState(false);
   const calculate = useServerFn(calculateDeliveryRoute);
+  const saveMapPin = useServerFn(saveDeliveryMapPin);
   const query = useQuery({
     queryKey: ['courier-operations', day],
     enabled: canReadCourierOperations({ admin, manager, courier }),
@@ -74,12 +78,51 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
   }, []);
   const selectCourier = useCallback((courierId: string) => focusMap('courier', courierId), [focusMap]);
   const focusDelivery = useCallback((delivery: Delivery) => {
+    setLocationDraft(current => current?.deliveryId === delivery.id ? current : null);
     setSelectedDeliveryId(delivery.id);
+    setSelectedDeliveryIds([delivery.id]);
     setFocus(current => ({ type: 'delivery', deliveryId: delivery.id, token: current.token + 1 }));
+  }, []);
+  const focusDeliveries = useCallback((selection: Delivery[]) => {
+    const valid = selection.filter(delivery => delivery.status === 'Pronto para entrega' && !delivery.route_id);
+    const first = valid[0];
+    setLocationDraft(null);
+    setSelectedDeliveryIds(valid.map(delivery => delivery.id));
+    setSelectedDeliveryId(first?.id ?? null);
+    setFocus(current => first ? { type: 'delivery', deliveryId: first.id, token: current.token + 1 } : { type: 'all', token: current.token + 1 });
   }, []);
   const deliveryLocated = useCallback((delivery: Delivery, position: { latitude: number; longitude: number }) => {
     setLocatedPositions(current => ({ ...current, [delivery.id]: { latitude: String(position.latitude), longitude: String(position.longitude) } }));
   }, []);
+  const changeLocationDraft = useCallback((position: { latitude: number; longitude: number }) => {
+    setLocationDraft(current => current ? { ...current, ...position, touched: true } : null);
+  }, []);
+
+  function beginLocationEdit(delivery: Delivery) {
+    const point = deliveryCoordinates(delivery);
+    const fallback = operations.base ? { latitude: operations.base.base_latitude, longitude: operations.base.base_longitude } : null;
+    if (!point && !fallback) { toast.error('Configure a base antes de corrigir o ponto no mapa.'); return; }
+    focusDelivery(delivery);
+    setLocationDraft({ deliveryId: delivery.id, ...(point ?? fallback!), touched: false });
+  }
+
+  async function saveLocation() {
+    if (!locationDraft?.touched) return;
+    const delivery = deliveries.find(item => item.id === locationDraft.deliveryId);
+    if (!delivery) { toast.error('A entrega não está mais disponível.'); setLocationDraft(null); return; }
+    setSavingLocation(true);
+    try {
+      const position = await saveMapPin({ data: { deliveryId: locationDraft.deliveryId, latitude: locationDraft.latitude, longitude: locationDraft.longitude } });
+      deliveryLocated(delivery, position);
+      setLocationDraft(null);
+      toast.success(`Ponto do pedido #${delivery.number} corrigido e salvo.`);
+      await client.invalidateQueries({ queryKey: ['delivery-board'] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível salvar o ponto.');
+    } finally {
+      setSavingLocation(false);
+    }
+  }
   const selectDelivery = useCallback((deliveryId: string) => {
     const delivery = activeDeliveries.find(item => item.id === deliveryId);
     if (delivery) focusDelivery(delivery);
@@ -164,10 +207,10 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
         <span className="inline-flex items-center gap-1.5"><PackageCheck size={14} className="text-warning" />Entrega atual</span>
         <span className="ml-auto inline-flex items-center gap-1.5"><Radio size={13} className={query.isFetching ? 'animate-pulse text-primary' : ''} />{query.isFetching ? 'Atualizando posições…' : `Atualizado às ${new Date(query.dataUpdatedAt).toLocaleTimeString('pt-BR')}`}</span>
       </div>
-      <LiveDeliveryMap base={operations.base} locations={operations.locations} deliveries={mapDeliveries} couriers={couriers} route={route} focus={focus} selectedDeliveryId={selectedDeliveryId} onSelectCourier={selectCourier} onSelectDelivery={selectDelivery} />
+      <LiveDeliveryMap base={operations.base} locations={operations.locations} deliveries={mapDeliveries} couriers={couriers} route={route} focus={focus} selectedDeliveryId={selectedDeliveryId} selectedDeliveryIds={selectedDeliveryIds} editingLocation={locationDraft} savingLocation={savingLocation} onSelectCourier={selectCourier} onSelectDelivery={selectDelivery} onDeliveryPositionChange={changeLocationDraft} onSaveDeliveryPosition={() => void saveLocation()} onCancelDeliveryPosition={() => setLocationDraft(null)} />
       {!liveLocations.length && <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">Para ver uma moto se movendo, o entregador precisa bater a entrada, ativar a localização no celular e manter a página aberta. Posições antigas aparecem em cinza.</p>}
 
-      {canManage && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={couriers} locations={operations.locations} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} onFocusDelivery={focusDelivery} onLocated={deliveryLocated} onAssign={onAssign} />}
+      {canManage && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={couriers} locations={operations.locations} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} selectedDeliveryIds={selectedDeliveryIds} onFocusDelivery={focusDelivery} onSelectDeliveries={focusDeliveries} onLocated={deliveryLocated} onEditLocation={beginLocationEdit} onAssign={onAssign} />}
 
       {canManage && <div className="space-y-3">
         <div><h3 className="flex items-center gap-2 font-semibold"><Users size={18} /> Motoboys e cargas</h3><p className="text-xs text-muted-foreground">Localize, registre a carga ou escolha quem receberá as próximas entregas.</p></div>

@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Correção no mapa e designação por bairro
+- [x] Permitir ao Administrador/Caixa corrigir manualmente o ponto da entrega no mapa e salvar no endereço existente, sem nova consulta ao Google.
+- [x] Agrupar saídas prontas pelo bairro informado, permitir selecionar o grupo inteiro e designar as entregas compatíveis em uma única revisão.
+- [x] Simplificar a escolha do motoboy; 43 testes e typecheck aprovados, tela real conferida sem salvar pontos, designar entregas ou alterar pagamentos/estoque. Interação manual no mapa continua sujeita à validação no domínio autorizado.
+
 ## Organização das novidades e do histórico no WhatsApp
 - [x] Lista de conversas sempre com as mais recentes primeiro; “Hoje” destacada no topo e “Conversas anteriores” em seção separada abaixo.
 - [x] Sete testes focados e typecheck passaram; ordem e separador verificados visualmente com duas conversas fictícias, sem alterar atendimentos reais.
