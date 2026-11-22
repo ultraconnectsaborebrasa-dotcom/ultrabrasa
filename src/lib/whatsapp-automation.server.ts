@@ -1,7 +1,7 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
 // Delivery or lunch questions start the scripted lunch flow instead of a human handoff.
 const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
-import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,prefersManualOrder,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete,customerNameWithProfile } from './whatsapp-business';
 import { gateway,sendText,sendTyping,digits } from './whatsapp.server';
@@ -61,6 +61,7 @@ async function interpret(db:Admin,j:Job){
   const openReq=checkEmpty(await db.from('whatsapp_order_requests').select('id').eq('phone',j.phone).eq('status','awaiting_acceptance').limit(1));
   if(openReq?.length){await handoff(db,j.phone,'Cliente escreveu com pedido aguardando aceite');return;}
   const inProgress=previous.items.length>0||!!previous.address.street||!!previous.payment;
+  const manualByChat=prefersManualOrder(text);
   const missingBefore=missingOrderFields(previous);
   // Lê a sequência atual sem reprocesar mensagens antigas nem sobrescrever correções do cliente.
   const chunks=previous.summarySent?[text]:recentInboundChunks(messages,payload.inboundId,since);
@@ -112,7 +113,7 @@ async function interpret(db:Admin,j:Job){
   const earlyCampaign=earlyLunchMessages(b,lunchP.price);
   const regularCampaign=regularLunchMessages(b,lunchP.price);
   const campaignSeen=firstContactSeen||already(GREETING_MESSAGE)||already(earlyMessage)||earlyCampaign.some(already)||regularCampaign.some(already);
-  const lunchInterest=parsed.greeting||LUNCH_INTEREST.test(text);
+  const lunchInterest=parsed.greeting||manualByChat||LUNCH_INTEREST.test(text);
   if(!inProgress&&!campaignSeen&&!parsed.extracted&&!lunchInterest){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
   const d=interactionConfirms?previous:parsed.draft;
   const total=interactionConfirms?previousTotal:Math.round(d.items.reduce((s,i)=>s+lunchP.price*i.qty,0)*100)/100;
@@ -142,7 +143,8 @@ async function interpret(db:Admin,j:Job){
       if(b.circuitPaused)pendingSummary=true;
       else{d.summarySent=true;d.quotedTotal=total;}
     }
-  } else if(parsed.thanks&&!parsed.extracted){reply='Imagina! 😊 '+followUpMessage(missing);}
+  } else if(manualByChat&&!parsed.extracted){reply=`Sem problema! Vamos montar seu pedido por aqui. ${followUpMessage(missing)}`;}
+  else if(parsed.thanks&&!parsed.extracted){reply='Imagina! 😊 '+followUpMessage(missing);}
   else if(!parsed.extracted&&!parsed.greeting&&inProgress&&previous.summarySent){reply=CONFIRM_HINT;}
   else if(!lunchMenuOpen(now)&&!parsed.extracted&&!parsed.greeting&&!inProgress&&campaignSeen&&!messages.slice(0,-1).every(m=>m.direction==='out'||m.wa_message_id===payload.inboundId)&&!LUNCH_INTEREST.test(text)){await handoff(db,j.phone,'Mensagem não identificada pelo robô',payload.inboundId,true);return;}
   else{

@@ -25,6 +25,13 @@ export const FIRST_CONTACT_REMINDER_MESSAGE = 'E aí, conseguiu? Se teve alguma 
 export const FIRST_CONTACT_REMINDER_DELAY_MS = 3 * 60 * 1000;
 export const isFirstContactJob = (key: string) => key.startsWith('first-contact:');
 export const isFirstContactReminderJob = (key: string) => key.startsWith('first-contact-reminder:');
+/** O link é uma opção: a escolha de pedir na conversa entra na coleta manual existente. */
+export function prefersManualOrder(text: string): boolean {
+  const n = norm(text);
+  if (!/\bpor aqui(?: mesmo)?\b/.test(n)) return false;
+  if (/\bnao\s+(?:quero|prefiro|prefere)\s+(?:pedir\s+|fazer\s+|montar\s+)?por aqui\b/.test(n)) return false;
+  return /\b(?:prefir\w*|prefer\w*|quero|pode(?:\s+ser)?|melhor|faz|fazer|monta|montar|vou)\b/.test(n);
+}
 /** As campanhas antigas não podem mais agendar lembretes; somente a abertura única faz isso. */
 export const isMenuCardMessage = (text: string) => text === FIRST_CONTACT_MESSAGE;
 

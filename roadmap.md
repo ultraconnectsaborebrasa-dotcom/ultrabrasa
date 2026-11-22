@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Novo atendimento sem resposta do robô
+- [x] Retomar somente a conversa identificada pelo responsável como novo atendimento, preservando as demais pausas humanas.
+- [x] Iniciar a abertura única com o link para a mensagem mais recente; envio real confirmado como enviado, uma única vez, e lembrete de três minutos agendado.
+- [x] Quando o cliente preferir pedir por aqui ou começar a enviar seus dados, seguir o roteiro manual de coleta sem repetir a abertura nem exigir o link.
+- [x] Testar as frases de escolha e a coleta dos dados; 503 testes e typecheck aprovados, sem criar pedidos durante os testes.
+
 ## Primeiro atendimento e lembrete de três minutos
 - [x] Substituir a abertura do almoço pela mensagem única com o link Marmita do Dia, sem reiniciar quando o cliente apenas voltar a chamar.
 - [x] Reiniciar somente em novo atendimento após finalização; cancelar lembrete após resposta, pedido pelo link ou atendimento humano.

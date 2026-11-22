@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { conversationDraftSchema, defaultBusiness } from '@/lib/whatsapp-business';
-import { NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, AFTERNOON_MESSAGES, CLOSING_MESSAGE, HANDOFF_MESSAGE, FIRST_CONTACT_MESSAGE } from '@/lib/whatsapp-rulebot';
+import { NIGHT_MESSAGE, NIGHT_MENU_MESSAGE, AFTERNOON_MESSAGES, CLOSING_MESSAGE, HANDOFF_MESSAGE, FIRST_CONTACT_MESSAGE, prefersManualOrder } from '@/lib/whatsapp-rulebot';
 import { STOCK_EXHAUSTED_MESSAGE } from '@/lib/whatsapp-stock-exhausted';
 vi.mock('@/lib/whatsapp.server', () => ({ gateway: vi.fn(), sendText: vi.fn(), sendTyping: vi.fn(), digits: (s: string) => s }));
 vi.mock('@lovable.dev/ai-gateway', () => ({ generateResponse: vi.fn(), GatewayError: class GatewayError extends Error {} }));
@@ -172,6 +172,37 @@ describe('marmitas: atendimento por regras', () => {
     flow.finish();
     await flow.receive('Bom dia', '08:32', 'attendance-3');
     expect(flow.queued.filter(job => job.payload.text === FIRST_CONTACT_MESSAGE)).toHaveLength(2);
+  });
+  it.each([
+    'Prefiro pedir por aqui',
+    'Prefere por aqui',
+    'Quero fazer meu pedido por aqui',
+    'Pode ser por aqui mesmo',
+  ])('ao escolher "%s", segue a coleta manual sem repetir a abertura', async text => {
+    expect(prefersManualOrder(text)).toBe(true);
+    vi.useFakeTimers();
+    const flow = attendance(null, false, false, true);
+    await flow.receive('Olá', '10:00', `manual-opening-${text}`);
+    await flow.receive(text, '10:01', `manual-choice-${text}`);
+    expect(flow.paused()).toBe(false);
+    expect(flow.queued.filter(job => job.payload.text === FIRST_CONTACT_MESSAGE)).toHaveLength(1);
+    expect(flow.queued.at(-1)?.dedup_key).toBe(`reply:manual-choice-${text}`);
+    expect(flow.requests).toEqual([]);
+  });
+  it('após a abertura, usa os dados enviados na conversa para montar o resumo', async () => {
+    vi.useFakeTimers();
+    const flow = attendance(null, false, false, true);
+    await flow.receive('Olá', '10:00', 'manual-data-opening');
+    await flow.receive('Prefiro por aqui. Quero 2 marmitas, meu nome é Maria, Rua A, 12, bairro Centro, Pix', '10:01', 'manual-data');
+    expect(flow.draft().items).toEqual([{ productId: 'm', qty: 2, note: '' }]);
+    expect(flow.draft().customer).toBe('Maria');
+    expect(flow.draft().address.street).toBe('Rua A');
+    expect(flow.draft().address.number).toBe('12');
+    expect(flow.draft().address.neighborhood).toBe('Centro');
+    expect(flow.draft().payment).toBe('Pix');
+    expect(flow.draft().summarySent).toBe(true);
+    expect(flow.queued.filter(job => job.payload.text === FIRST_CONTACT_MESSAGE)).toHaveLength(1);
+    expect(flow.requests).toEqual([]);
   });
   it('não cria pedido de marmita às 14h20, mesmo com rascunho anterior', async () => {
     vi.useFakeTimers();
