@@ -20,6 +20,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
   const queued: { dedup_key: string; payload: { text?: string; summaryVersion?: number; summaryTotal?: number; location?: typeof STORE_LOCATION } }[] = [];
   const outbound: { body: string; created_at: string }[] = [];
   const requests: string[] = [];
+  const cancelledAutomaticJobs: Record<string, unknown>[] = [];
   const db = {
     from(table: string) {
       let update: Record<string, unknown> | undefined;
@@ -27,7 +28,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
       let body = '';
       let createdAfter = '';
       const q = {
-        select: () => q, order: () => q, limit: () => q, like: () => q, is: () => q,
+        select: () => q, order: () => q, limit: () => q, like: () => q, is: () => q, in: () => q,
         gte: (field: string, value: string) => { if (field === 'created_at') createdAfter = value; return q; },
         eq: (field: string, value: string) => { if (field === 'direction') direction = value; if (field === 'body') body = value; return q; },
         update: (data: Record<string, unknown>) => { update = data; return q; },
@@ -42,6 +43,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
           if (update && 'automation_pause_reason' in update) pauseReason = update['automation_pause_reason'] as string | null;
           if (update && 'order_confirmed_at' in update) confirmedAt = update['order_confirmed_at'] as string | null;
           if (update && 'attendance_started_at' in update) attendanceStartedAt = update['attendance_started_at'] as string;
+          if (update && table === 'whatsapp_jobs' && update['state'] === 'cancelled') cancelledAutomaticJobs.push(update);
           const messages = direction === 'out' ? outbound.filter(message => (!body || message.body === body) && (!createdAfter || Date.parse(message.created_at) >= Date.parse(createdAfter))) : [inbound];
           return Promise.resolve({ error: null, data: update ? [{ phone: 'test' }] : table === 'whatsapp_order_requests' ? [] : messages }).then(resolve);
         },
@@ -55,7 +57,7 @@ function attendance(whatsappName: string | null = null, stockExhausted = false, 
     },
   };
   return {
-    queued, requests, draft: () => draft, paused: () => paused,
+    queued, requests, cancelledAutomaticJobs, draft: () => draft, paused: () => paused,
     seedDraft(value: unknown) { draft = conversationDraftSchema.parse(value); version += 1; },
     pauseForConfirmedOrder(at: string) { paused = true; pauseReason = 'order_confirmed'; confirmedAt = at; },
     pauseForCatalogOrder() { paused = true; pauseReason = null; confirmedAt = null; },
@@ -323,11 +325,15 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.draft().type).toBeNull();
     expect(flow.requests).toEqual([]);
   });
-  it('não pede confirmação novamente para um pedido já registrado pelo cardápio público', async () => {
+  it('identifica o pedido do cardápio, cancela lembretes e não responde nem a novas mensagens', async () => {
     vi.useFakeTimers();
     const flow = attendance('Maria');
-    flow.pauseForCatalogOrder();
     await flow.receive('*Pedido C1042* — Marmita do Dia · Cardápio público\nCliente: Maria\n1x Marmita completa\nPagamento: Pix', '11:00', 'catalog-awaiting-acceptance');
+    expect(flow.queued).toHaveLength(0);
+    expect(flow.requests).toEqual([]);
+    expect(flow.paused()).toBe(true);
+    expect(flow.cancelledAutomaticJobs).toHaveLength(1);
+    await flow.receive('Quero fazer outro pedido', '11:01', 'catalog-after-order');
     expect(flow.queued).toHaveLength(0);
     expect(flow.requests).toEqual([]);
     expect(flow.paused()).toBe(true);
@@ -349,14 +355,14 @@ describe('marmitas: atendimento por regras', () => {
     expect(flow.queued).toHaveLength(0);
     expect(flow.paused()).toBe(true);
   });
-  it('depois da confirmação, só uma nova compra explícita inicia outro fluxo', async () => {
+  it('depois do pedido, nem mesmo outra intenção de compra religa o robô no mesmo atendimento', async () => {
     vi.useFakeTimers();
     const flow = attendance();
     flow.pauseForConfirmedOrder('2026-11-16T13:00:00.000Z');
     await flow.receive('Quero fazer outro pedido', '11:05', 'confirmed-new-order-1');
-    expect(flow.paused()).toBe(false);
-    expect(flow.draft()).toEqual(conversationDraftSchema.parse({}));
-    expect(flow.queued.length).toBeGreaterThan(0);
+    expect(flow.paused()).toBe(true);
+    expect(flow.queued).toHaveLength(0);
+    expect(flow.requests).toEqual([]);
   });
 });
 

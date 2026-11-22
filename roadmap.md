@@ -359,3 +359,8 @@
 - [x] Pedido do cardápio já registrado não inicia outro resumo nem pergunta “Posso confirmar?” ou pede “SIM”.
 - [x] Enviar a confirmação somente depois do aceite da loja; para Pix, enviar a chave combinada em seguida, sem reenviar pedidos antigos.
 - [x] Setenta testes aprovados e build OK; nenhum pedido criado nem mensagem real enviada durante a validação.
+
+## Silêncio do robô depois de qualquer pedido
+- [x] Identificar o pedido, pausar o atendimento e cancelar lembretes automáticos pendentes sem bloquear aceite, Pix ou mensagens manuais.
+- [x] Impedir que saudações, dúvidas ou “quero outro pedido” retomem o robô no mesmo atendimento; somente novo atendimento após finalização pela equipe.
+- [x] 248 testes de WhatsApp, typecheck e build aprovados, sem criar pedidos nem enviar mensagens reais.

@@ -8,7 +8,6 @@ import { gateway,sendText,sendLocation,sendTyping,digits } from './whatsapp.serv
 import { ATTACHMENT_ACK, ATTACHMENT_GROUP_MS, hasRecentReply } from './whatsapp-attachments';
 import { ORDER_CONFIRMED_MESSAGE, isOrderConfirmationJob, canSendOrderConfirmation } from './whatsapp-confirmation';
 import { pixPaymentMessage } from './whatsapp-payment';
-import { shouldResumeAfterConfirmedOrder } from './whatsapp-order-followup';
 import { STOCK_EXHAUSTED_MESSAGE, isStockExhaustedJob } from './whatsapp-stock-exhausted';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
@@ -41,18 +40,15 @@ async function interpret(db:Admin,j:Job){
   if(latestInbound?.wa_message_id!==payload.inboundId)return;
   const text=(current?.body??'').trim();
   if(isCatalogOrderMessage(text)){
-    // Pedido do cardápio já está no PDV: silêncio total até o aceite (confirmação e Pix saem pelo aceite).
-    if(!c.automation_paused)checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,automation_pause_reason:'order_confirmed',order_confirmed_at:new Date().toISOString(),draft:{},draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version));
+    // O pedido já existe: cancela lembretes e não responde. Aceite, Pix e mensagens manuais não são automáticos.
+    checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null,completed_at:new Date().toISOString()}).eq('phone',j.phone).eq('kind','text').eq('payload->>automatic','true').in('state',['pending','leased','unknown']));
+    if(!c.automation_paused||c.automation_pause_reason!=='order_confirmed'||!c.order_confirmed_at){
+      checkEmpty(await db.from('whatsapp_conversations').update({automation_paused:true,automation_pause_reason:'order_confirmed',order_confirmed_at:new Date().toISOString(),draft:{},draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version));
+    }
     return;
   }
-  if(c.automation_paused){
-    // Pedido do cardápio já registrado fica pausado até o aceite: nunca gerar outro resumo ou pedir "SIM".
-    const newOrder=c.automation_pause_reason==='order_confirmed'&&c.order_confirmed_at&&shouldResumeAfterConfirmedOrder(text,c.order_confirmed_at,new Date());
-    if(!newOrder)return;
-    const resumed=check(await db.from('whatsapp_conversations').update({automation_paused:false,automation_pause_reason:null,order_confirmed_at:null,assigned_to:null,assigned_name:null,attendance_status:'new',awaiting_since:null,draft:{},draft_version:c.draft_version+1}).eq('phone',j.phone).eq('draft_version',c.draft_version).eq('automation_paused',true).eq('automation_pause_reason','order_confirmed').select('phone'));
-    if(!resumed.length)return;
-    c.automation_paused=false;c.automation_pause_reason=null;c.order_confirmed_at=null;c.draft={};c.draft_version+=1;
-  }
+  // Depois de qualquer pedido, só um novo atendimento iniciado pela equipe pode reabrir o robô.
+  if(c.automation_paused)return;
   if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>86400000)return;
   const now=new Date();const win=botWindow(now);const since=windowStart(now);
   const attendanceStartedAt=c.attendance_started_at??c.last_inbound_at;
