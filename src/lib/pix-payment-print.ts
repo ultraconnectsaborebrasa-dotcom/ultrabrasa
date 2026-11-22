@@ -12,16 +12,23 @@ function isPaidOrder(order: Order): boolean {
 
 // Exclusivo para o recebimento durante a montagem da venda. Baixas posteriores
 // na aba Receber e na conferência de comprovantes nunca chamam esta função.
-export async function autoPrintPaidPixReceipt(order: Order, serviceFeePct = 0): Promise<boolean> {
-  if (!isPaidOrder(order) || !order.payments.some(payment => isPixPaymentMethod(payment.method))) return false;
+export async function autoPrintPaidReceipt(order: Order, serviceFeePct = 0): Promise<boolean> {
+  if (!isPaidOrder(order) || !order.payments.length) return false;
+  const pix = order.payments.some(payment => isPixPaymentMethod(payment.method));
+  const label = pix ? 'cupom pago no Pix' : 'cupom pago';
   try {
-    toast.info(`Imprimindo cupom pago no Pix do pedido #${order.number}...`);
+    toast.info(`Imprimindo ${label} do pedido #${order.number}...`);
     await printOrder(order, serviceFeePct, { manual: true, force: true, target: 'cashier' });
-    toast.success(`Cupom pago no Pix do pedido #${order.number} impresso`);
+    toast.success(`${label.charAt(0).toUpperCase()}${label.slice(1)} do pedido #${order.number} impresso`);
     return true;
   } catch (error) {
     const detail = error instanceof Error ? error.message : 'verifique o QZ Tray e a impressora selecionada';
-    toast.error(`Pedido #${order.number} pago no Pix, mas o cupom não foi impresso: ${detail}`);
+    toast.error(`Pedido #${order.number} pago${pix ? ' no Pix' : ''}, mas o cupom não foi impresso: ${detail}`);
     return false;
   }
+}
+
+export async function autoPrintPaidPixReceipt(order: Order, serviceFeePct = 0): Promise<boolean> {
+  if (!order.payments.some(payment => isPixPaymentMethod(payment.method))) return false;
+  return autoPrintPaidReceipt(order, serviceFeePct);
 }

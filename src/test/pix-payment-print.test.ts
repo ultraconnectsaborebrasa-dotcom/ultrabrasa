@@ -9,7 +9,7 @@ vi.mock('@/services/thermalPrinter', async importOriginal => ({
 }));
 vi.mock('sonner', () => ({ toast: { error: toastError, info: toastInfo, success: toastSuccess } }));
 
-import { autoPrintPaidPixReceipt, isPixPaymentMethod } from '@/lib/pix-payment-print';
+import { autoPrintPaidPixReceipt, autoPrintPaidReceipt, isPixPaymentMethod } from '@/lib/pix-payment-print';
 
 const paidOrder: Order = {
   id: 'order-1', number: 1001, type: 'Balcão', customer: 'Maria', status: 'pago', createdAt: 123,
@@ -32,6 +32,18 @@ describe('cupom automático ao receber durante a montagem', () => {
   it('imprime uma venda local paga no Pix durante a montagem', async () => {
     await expect(autoPrintPaidPixReceipt(paidOrder)).resolves.toBe(true);
     expect(printOrder).toHaveBeenCalledWith(paidOrder, 0, { manual: true, force: true, target: 'cashier' });
+  });
+
+  it.each(['Dinheiro', 'Cartão'])('imprime ao cobrar com %s durante a montagem', async method => {
+    const order = { ...paidOrder, payments: [{ method, amount: 19.9 }] };
+    await expect(autoPrintPaidReceipt(order)).resolves.toBe(true);
+    expect(printOrder).toHaveBeenCalledWith(order, 0, { manual: true, force: true, target: 'cashier' });
+  });
+
+  it('imprime uma única vez um recebimento dividido', async () => {
+    const order = { ...paidOrder, payments: [{ method: 'Dinheiro', amount: 10 }, { method: 'Cartão', amount: 9.9 }] };
+    await expect(autoPrintPaidReceipt(order)).resolves.toBe(true);
+    expect(printOrder).toHaveBeenCalledTimes(1);
   });
 
   it('não trata pedido apenas destinado ao Pix como pagamento confirmado', async () => {
