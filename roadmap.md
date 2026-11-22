@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Correção do ponto após designar o motoboy
+- [x] Exibir “Corrigir ponto no mapa” nas entregas ativas de cada motoboy e permitir salvar o novo ponto sem mudar entregador, rota, pagamento ou estoque.
+- [x] Liberar no servidor e no banco somente entregas prontas ou em rota; concluídas e canceladas permanecem protegidas.
+- [x] Testar a regra e conferir o fluxo sem alterar endereços reais: 24 testes e typecheck aprovados, pedido #58 aberto e ajustado sem salvar; gravação no banco validada em transação revertida.
+
 ## Saudação não segue a abertura do roteiro
 - [x] Reproduzir o atendimento informado e corrigir conversas antigas sem data de início para reconhecer saudações combinadas como “Oi bom dia”.
 - [x] Enviar a abertura com o link somente uma vez, sem reiniciar pedidos com dados já preenchidos nem repetir a coleta genérica; saudações não são mais aceitas como nome.

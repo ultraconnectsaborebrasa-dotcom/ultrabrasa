@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Boxes, Clock3, Crosshair, LocateFixed, MapPin, Motorbike, Navigation, PackageCheck, PackagePlus, Radio, Route as RouteIcon, Users } from 'lucide-react';
+import { Boxes, Clock3, Crosshair, LocateFixed, MapPin, Motorbike, Navigation, PackageCheck, PackagePlus, Pencil, Radio, Route as RouteIcon, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
 import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, shouldSendCourierPosition, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
-import { courierMarmitaStock as stockFor, deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
+import { canCorrectDeliveryMapPin, courierMarmitaStock as stockFor, deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
 import { courierActiveDeliveries } from '@/lib/delivery-dispatch';
 import { deliveryZone } from '@/lib/eunapolis-delivery';
 import { calculateDeliveryRoute, saveDeliveryMapPin } from '@/lib/delivery-route.functions';
@@ -116,6 +116,7 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
     try {
       const position = await saveMapPin({ data: { deliveryId: locationDraft.deliveryId, latitude: locationDraft.latitude, longitude: locationDraft.longitude } });
       deliveryLocated(delivery, position);
+      setRoute(current => current?.stops.some(stop => stop.delivery_id === delivery.id) ? null : current);
       setLocationDraft(null);
       toast.success(`Ponto do pedido #${delivery.number} corrigido e salvo.`);
       await client.invalidateQueries({ queryKey: ['delivery-board'] });
@@ -238,11 +239,14 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
                 <div className="flex items-center justify-between gap-2"><b className="text-sm">Entregas com {driver.name}</b><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{assigned.length} · {assignedMarmitas} marmita(s)</span></div>
                 {assigned.length ? <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">{assigned.map(delivery => {
                   const zone = deliveryZone(delivery.address);
-                  return <li key={delivery.id}><button type="button" onClick={() => focusDelivery(delivery)} className="w-full rounded-lg border bg-background p-2.5 text-left transition-colors hover:border-primary">
-                    <span className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm">#{delivery.number} · {delivery.customer}</b><span className="text-xs text-warning">{delivery.status === 'Em rota' ? 'Na rua' : delivery.status}</span></span>
-                    <span className="mt-1 block text-xs font-medium text-primary">{zone?.name ?? 'Distrito a confirmar'} · {delivery.address.neighborhood || 'Bairro não informado'}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">{delivery.address.street}, {delivery.address.number} · toque para ver no mapa</span>
-                  </button></li>;
+                  return <li key={delivery.id} className="space-y-2 rounded-lg border bg-background p-2.5">
+                    <button type="button" onClick={() => focusDelivery(delivery)} className="w-full text-left">
+                      <span className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm">#{delivery.number} · {delivery.customer}</b><span className="text-xs text-warning">{delivery.status === 'Em rota' ? 'Na rua' : delivery.status}</span></span>
+                      <span className="mt-1 block text-xs font-medium text-primary">{zone?.name ?? 'Distrito a confirmar'} · {delivery.address.neighborhood || 'Bairro não informado'}</span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">{delivery.address.street}, {delivery.address.number} · toque para ver no mapa</span>
+                    </button>
+                    {canCorrectDeliveryMapPin(delivery) && <Button size="sm" variant="outline" className="w-full" aria-label={`Corrigir ponto do pedido #${delivery.number}`} onClick={() => beginLocationEdit(delivery)}><Pencil size={14} />Corrigir ponto no mapa</Button>}
+                  </li>;
                 })}</ul> : <p className="mt-2 text-xs text-muted-foreground">Nenhuma entrega atribuída no momento.</p>}
               </div>
               <div className="grid grid-cols-2 gap-2">

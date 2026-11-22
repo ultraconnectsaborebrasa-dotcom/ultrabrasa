@@ -1,9 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
-import { addressText, type Delivery, type DeliveryRoute } from '@/lib/delivery';
+import { addressText, canCorrectDeliveryMapPin, deliveryCoordinates, type Delivery, type DeliveryRoute } from '@/lib/delivery';
 import { isCourierLocationStale, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
-import { deliveryCoordinates } from '@/lib/delivery';
 import { geocodingFailureMessage } from '@/lib/google-geocoding';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -185,8 +184,8 @@ export const saveDeliveryMapPin = createServerFn({ method: 'POST' })
     const boardResult = await context.supabase.rpc('read_delivery_board');
     if (boardResult.error) throw new Error(boardResult.error.message);
     const board = boardResult.data as unknown as { deliveries: Delivery[] };
-    const delivery = board.deliveries.find(item => item.id === data.deliveryId && item.status === 'Pronto para entrega' && !item.route_id);
-    if (!delivery) throw new Error('Esta entrega não está mais disponível para correção do ponto.');
+    const delivery = board.deliveries.find(item => item.id === data.deliveryId && canCorrectDeliveryMapPin(item));
+    if (!delivery) throw new Error('Somente entregas prontas ou em rota podem ter o ponto corrigido.');
     const address = { ...delivery.address, latitude: String(data.latitude), longitude: String(data.longitude) };
     const { error } = await context.supabase.rpc('update_delivery_address', { delivery_id: delivery.id, input: address as unknown as Json });
     if (error) throw new Error(`Não foi possível salvar o ponto: ${error.message}`);

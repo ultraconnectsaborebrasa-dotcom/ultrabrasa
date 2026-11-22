@@ -764,6 +764,13 @@
       "when": 1795356432454,
       "tag": "0108_restore_catalog_order_confirmation",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1795390000893,
+      "tag": "0109_correct_assigned_delivery_map_pin",
+      "breakpoints": true
     }
   ]
 }

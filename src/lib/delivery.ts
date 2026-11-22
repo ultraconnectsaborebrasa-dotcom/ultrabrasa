@@ -45,6 +45,7 @@ export function deliveryCoordinates(delivery:Pick<Delivery,'address'>):{latitude
   if(!delivery.address.latitude||!delivery.address.longitude||!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)return null;
   return {latitude,longitude};
 }
+export const canCorrectDeliveryMapPin = (delivery: Pick<Delivery, 'status'>) => delivery.status === 'Pronto para entrega' || delivery.status === 'Em rota';
 export function googleMapsLink(address:DeliveryAddress) {return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapLocation(address))}`;}
 export function routeMapsLink(deliveries:Delivery[],origin:string):string|null {
   if(!deliveries.length||deliveries.length>10)return null;
