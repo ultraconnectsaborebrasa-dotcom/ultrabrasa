@@ -30,7 +30,7 @@ describe('Delivery order receipt address', () => {
     expect(resolved.delivery?.address).toEqual(delivery.address);
     expect(resolved.customerPhone).toBe('5573999998888');
     const text = formatReceipt(resolved, 0);
-    for (const value of ['Rua das Palmeiras', '123', 'Centro', 'Casa 2', 'Eunapolis', 'BA', '45820-000', 'Portao azul']) expect(text.replace(/\s+/g, ' ')).toContain(value);
+    for (const value of ['DISTRITO: 01 - Centro', 'Rua das Palmeiras', '123', 'Centro', 'Casa 2', 'Eunapolis', 'BA', '45820-000', 'Portao azul']) expect(text.replace(/\s+/g, ' ')).toContain(value);
     expect(text).not.toContain('Rua errada');
     expect(text.split('\n').every(line => line.length <= 28)).toBe(true);
   });
@@ -49,6 +49,7 @@ describe('Delivery order receipt address', () => {
     expect(await receiptOrderWithDelivery(original)).toBe(original);
     expect(rpc).not.toHaveBeenCalled();
     expect(formatReceipt(original, 0)).not.toContain('Rua das Palmeiras');
+    expect(formatReceipt(original, 0)).not.toContain('DISTRITO:');
   });
   it('blocks an incomplete Delivery print when the address cannot be read', async () => {
     rpc.mockResolvedValue({ data: { deliveries: [] }, error: null });

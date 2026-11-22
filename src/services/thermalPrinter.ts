@@ -1,10 +1,13 @@
 import type { Order } from '@/lib/pdv-store';
 import { totals } from '@/lib/pdv-store';
-import { addressText, type Delivery } from '@/lib/delivery';
+import { addressText, type Delivery, type DeliveryAddress } from '@/lib/delivery';
+import { deliveryZone } from '@/lib/eunapolis-delivery';
 import { receiptOrderWithDelivery, isDeliveryOrder } from './deliveryReceipt';
 import { paperWidthForPrinter, parsePrinterModel, preferredPhysicalPrinter, receiptColumnsForPrinter, sortPrinters, type PrintColumns, type PrinterModel } from '@/lib/printer-models';
 import privateKeyPem from '@/assets/qz-private-key.txt?raw';
 import certificatePem from '@/assets/qz-certificate.txt?raw';
+
+const districtLabel = (address: DeliveryAddress) => `DISTRITO: ${(deliveryZone(address)?.name ?? 'A confirmar').replace('·', '-')}`;
 
 type QZ = {
  websocket: { connect: (options?: { retries?: number; delay?: number }) => Promise<void>; disconnect: () => Promise<void>; isActive: () => boolean };
@@ -82,7 +85,7 @@ export function formatReceipt(order: Order, serviceFeePct: number, columns: Prin
  if (order.customer) lines.push(...wrap('CLIENTE: ' + order.customer));
   if (isDeliveryOrder(order) && order.delivery?.address) {
    if (order.customerPhone) lines.push(...wrap('WHATSAPP: ' + order.customerPhone));
-   lines.push(line, center('ENTREGAR EM:'), ...wrap(addressText(order.delivery.address)));
+   lines.push(line, ...wrap(districtLabel(order.delivery.address)), center('ENTREGAR EM:'), ...wrap(addressText(order.delivery.address)));
    if (order.delivery.address.reference) lines.push(...wrap('REF: ' + order.delivery.address.reference));
   }
  lines.push(line);
@@ -121,7 +124,7 @@ export function formatDeliveryTicket(delivery: Delivery, columns: PrintColumns =
   'DATA: ' + date.toLocaleDateString('pt-BR'), 'HORA: ' + date.toLocaleTimeString('pt-BR'), line];
  if (delivery.customer) lines.push(...wrap('CLIENTE: ' + delivery.customer));
  if (delivery.phone) lines.push(...wrap('WHATSAPP: ' + delivery.phone));
- lines.push(line, center('ENTREGAR EM:'), ...wrap(addressText(delivery.address)));
+ lines.push(line, ...wrap(districtLabel(delivery.address)), center('ENTREGAR EM:'), ...wrap(addressText(delivery.address)));
  if (delivery.address.reference) lines.push(...wrap('REF: ' + delivery.address.reference));
  lines.push(line);
  for (const item of delivery.items) {
@@ -145,6 +148,7 @@ export function formatRouteSheet(route: { name: string; courier?: string | null 
   ...wrap('ENTREGADOR: ' + (route.courier || 'Sem entregador')), line];
  stops.forEach((stop, index) => {
   lines.push(...wrap(`${index + 1}. #${stop.number} ${stop.customer || 'Cliente'}`));
+  lines.push(...wrap(districtLabel(stop.address)));
   lines.push(...wrap(addressText(stop.address)));
   if (stop.address.reference) lines.push(...wrap('REF: ' + stop.address.reference));
   if (stop.phone) lines.push(...wrap('WHATSAPP: ' + stop.phone));

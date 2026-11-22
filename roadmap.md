@@ -1,7 +1,9 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Distrito na impressão Delivery
-- [ ] Mostrar o distrito oficial do bairro no cupom Delivery para facilitar a organização das entregas, sem alterar endereço, pagamentos ou demais tipos de pedido.
+- [x] Mostrar o distrito oficial do bairro no cupom Delivery para facilitar a organização das entregas, sem alterar endereço, pagamentos ou demais tipos de pedido.
+- [x] Aplicar também ao ticket individual e à folha de rota; bairros desconhecidos mostram “Distrito: A confirmar”, sem consultar mapas.
+- [x] Testes dos três formatos e das larguras de 28/42 colunas aprovados; impressora física não acionada.
 
 ## Baixa de comprovantes sem vínculo
 - [x] Permitir baixa individual e em lote de todos os comprovantes como Pix, inclusive arquivos não reconhecidos e sem pedido vinculado.
