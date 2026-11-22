@@ -7,7 +7,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
 import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, shouldSendCourierPosition, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
-import { courierMarmitaStock as stockFor, deliveryCoordinates, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
+import { courierMarmitaStock as stockFor, deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
+import { courierActiveDeliveries } from '@/lib/delivery-dispatch';
+import { deliveryZone } from '@/lib/eunapolis-delivery';
 import { calculateDeliveryRoute, saveDeliveryMapPin } from '@/lib/delivery-route.functions';
 import { LiveDeliveryMap, type DeliveryLocationDraft, type DeliveryMapFocus } from './LiveDeliveryMap';
 import { AvailableDeliveryPanel } from './AvailableDeliveryPanel';
@@ -219,6 +221,8 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
             const location = operations.locations.find(item => item.courier_id === driver.id);
             const stale = location ? isCourierLocationStale(location.located_at) : false;
             const stock = stockFor(driver, deliveries);
+            const assigned = courierActiveDeliveries(deliveries, driver.id);
+            const assignedMarmitas = assigned.reduce((total, delivery) => total + deliveryMarmitaQuantity(delivery), 0);
             const selected = focus.type === 'courier' && focus.courierId === driver.id;
             return <article key={driver.id} className={`space-y-3 rounded-xl border bg-background p-4 ${selected ? 'border-primary ring-1 ring-primary' : ''}`}>
               <div className="flex items-start gap-2">
@@ -230,9 +234,20 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
                 <div className="rounded-lg bg-muted p-2"><span className="block text-xs text-muted-foreground">Reservadas</span><b className="text-lg">{stock.reserved}</b></div>
                 <div className="rounded-lg bg-primary/10 p-2"><span className="block text-xs text-muted-foreground">Disponíveis</span><b className={`text-lg ${(stock.available ?? 0) < 0 ? 'text-destructive' : 'text-primary'}`}>{stock.available}</b></div>
               </div>}
+              <div className="rounded-lg border bg-card p-3">
+                <div className="flex items-center justify-between gap-2"><b className="text-sm">Entregas com {driver.name}</b><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{assigned.length} · {assignedMarmitas} marmita(s)</span></div>
+                {assigned.length ? <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">{assigned.map(delivery => {
+                  const zone = deliveryZone(delivery.address);
+                  return <li key={delivery.id}><button type="button" onClick={() => focusDelivery(delivery)} className="w-full rounded-lg border bg-background p-2.5 text-left transition-colors hover:border-primary">
+                    <span className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm">#{delivery.number} · {delivery.customer}</b><span className="text-xs text-warning">{delivery.status === 'Em rota' ? 'Na rua' : delivery.status}</span></span>
+                    <span className="mt-1 block text-xs font-medium text-primary">{zone?.name ?? 'Distrito a confirmar'} · {delivery.address.neighborhood || 'Bairro não informado'}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{delivery.address.street}, {delivery.address.number} · toque para ver no mapa</span>
+                  </button></li>;
+                })}</ul> : <p className="mt-2 text-xs text-muted-foreground">Nenhuma entrega atribuída no momento.</p>}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button size="sm" variant="outline" disabled={!location} onClick={() => focusMap('courier', driver.id)}><LocateFixed size={14} />Localizar</Button>
-                <Button size="sm" disabled={!operations.base || !hasReadyToAssign} title={hasReadyToAssign ? 'Escolher entregas prontas para este motoboy' : 'Nenhuma entrega pronta para designar agora'} onClick={() => operations.base && onAssign(driver.id, operations.base.base_address)}><RouteIcon size={14} />Designar</Button>
+                <Button size="sm" disabled={!operations.base || !hasReadyToAssign} title={hasReadyToAssign ? 'Escolher entregas prontas para este motoboy' : 'Nenhuma entrega pronta para designar agora'} onClick={() => operations.base && onAssign(driver.id, operations.base.base_address, selectedDeliveryIds)}><RouteIcon size={14} />Designar</Button>
               </div>
               <label className="block text-xs">Disponibilidade<select aria-label={`Disponibilidade de ${driver.name}`} className="field mt-1" value={driver.operational_status ?? 'available'} onChange={event => void saveAvailability(driver.id, event.target.value as 'available' | 'unavailable' | 'returning')}><option value="available">Disponível</option><option value="unavailable">Indisponível</option><option value="returning">Voltando à base</option></select></label>
               {driver.product_name && <p className="text-xs text-muted-foreground">Carga: {driver.product_name} · {driver.journey_status === 'returned' ? 'jornada devolvida' : driver.journey_status === 'empty' ? 'estoque zerado' : 'em operação'}</p>}

@@ -1,9 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
 ## Entregas por motoboy e distritos oficiais
-- [ ] Mostrar as entregas atuais separadas por motoboy, com cliente, pedido, bairro e distrito.
-- [ ] Agrupar as saídas prontas pelos distritos oficiais já cadastrados e permitir selecionar bairros próximos do mesmo distrito.
-- [ ] Designar diretamente ao motoboy sem exigir nome, origem ou montagem manual de rota, preservando o recebimento no aplicativo e o estoque móvel.
+- [x] Mostrar as entregas atuais separadas por motoboy, com cliente, pedido, bairro e distrito.
+- [x] Agrupar as saídas prontas pelos distritos oficiais já cadastrados e permitir selecionar o distrito inteiro ou bairros próximos.
+- [x] Designar diretamente ao motoboy sem exigir nome, origem ou montagem manual de rota, preservando o recebimento no aplicativo e o estoque móvel.
+- [x] 479 testes e typecheck aprovados; tela real conferida com distritos Juca Rosa/Arnaldão e entregas por motoboy. Designação de duas entregas testada com salvamento interceptado, sem formulário de rota e sem alterar dados reais.
 
 ## Estoque esgotado no cardápio público
 - [x] Mostrar “Indisponível” em `/cardapio` e `/marmita-do-dia` quando o modo esgotado estiver ativo, impedindo novos pedidos na tela e no banco.

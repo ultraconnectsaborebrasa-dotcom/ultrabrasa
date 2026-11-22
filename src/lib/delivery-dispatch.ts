@@ -1,4 +1,5 @@
 import { canFinishDelivery, marmitaSelectionError, type Courier, type Delivery } from './delivery';
+import { DELIVERY_ZONES, deliveryZone } from './eunapolis-delivery';
 
 export type CourierLocationQuality = 'live' | 'stale' | 'missing';
 export type DispatchCandidate = {
@@ -39,6 +40,13 @@ export function rankDispatchCouriers(
 }
 
 export type DeliveryNeighborhoodGroup = { id: string; name: string; deliveries: Delivery[] };
+export type DeliveryDistrictGroup = { id: string; name: string; neighborhoods: DeliveryNeighborhoodGroup[]; deliveries: Delivery[] };
+
+/** Entregas ainda abertas que já pertencem ao motoboy, sem consultas externas. */
+export function courierActiveDeliveries(deliveries: Delivery[], courierId: string): Delivery[] {
+  return deliveries.filter(delivery => delivery.courier_id === courierId && canFinishDelivery(delivery.status))
+    .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.number - b.number);
+}
 
 /** Agrupa somente saídas designáveis, sem consultar o Google nem alterar os endereços. */
 export function groupDeliveriesByNeighborhood(deliveries: Delivery[]): DeliveryNeighborhoodGroup[] {
@@ -54,4 +62,24 @@ export function groupDeliveriesByNeighborhood(deliveries: Delivery[]): DeliveryN
     ...group,
     deliveries: group.deliveries.sort((a, b) => a.created_at.localeCompare(b.created_at) || a.number - b.number),
   })).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+/** Reúne bairros do mesmo distrito oficial para designar locais próximos em conjunto. */
+export function groupDeliveriesByDistrict(deliveries: Delivery[]): DeliveryDistrictGroup[] {
+  const groups = new Map<string, DeliveryDistrictGroup>();
+  groupDeliveriesByNeighborhood(deliveries).forEach(neighborhood => {
+    const first = neighborhood.deliveries[0];
+    if (!first) return;
+    const zone = deliveryZone(first.address);
+    const id = zone?.id ?? 'unassigned';
+    const group = groups.get(id) ?? { id, name: zone?.name ?? 'Distrito a confirmar', neighborhoods: [], deliveries: [] };
+    group.neighborhoods.push(neighborhood);
+    group.deliveries.push(...neighborhood.deliveries);
+    groups.set(id, group);
+  });
+  const officialOrder = new Map(DELIVERY_ZONES.map((zone, index) => [zone.id, index]));
+  return [...groups.values()].map(group => ({
+    ...group,
+    deliveries: group.deliveries.sort((a, b) => a.created_at.localeCompare(b.created_at) || a.number - b.number),
+  })).sort((a, b) => (officialOrder.get(a.id) ?? DELIVERY_ZONES.length) - (officialOrder.get(b.id) ?? DELIVERY_ZONES.length) || a.name.localeCompare(b.name, 'pt-BR'));
 }

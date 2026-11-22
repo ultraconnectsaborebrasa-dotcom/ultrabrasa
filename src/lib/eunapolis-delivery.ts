@@ -15,12 +15,16 @@ export const DELIVERY_ZONES = [
 ];
 export const EUNAPOLIS_NEIGHBORHOODS = DELIVERY_ZONES.flatMap(z => z.neighborhoods).sort((a,b) => a.localeCompare(b,'pt-BR'));
 const normalize = (name: string | undefined) => (name??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
-const aliases: Record<string,string> = { 'estela reis':'stela reis', 'santa isabel':'santa izabel', 'dina borges':'dinah borges i', 'dinah borges':'dinah borges i', 'niteroi':'niteroi i', 'renovacao':'renovacao i', 'encanto das aguas':'encanto das aguas i', 'recanto das arvores':'recantos das arvores i', 'recanto das arvores i':'recantos das arvores i', 'recanto das arvores ii':'recantos das arvores ii' };
+const aliases: Record<string,string> = { 'estela reis':'stela reis', 'santa isabel':'santa izabel', 'dina borges':'dinah borges i', 'dinah borges':'dinah borges i', 'niteroi':'niteroi i', 'renovacao':'renovacao i', 'encanto das aguas':'encanto das aguas i', 'recanto das arvores':'recantos das arvores i', 'recanto das arvores i':'recantos das arvores i', 'recanto das arvores ii':'recantos das arvores ii', 'ariosvaldo reis':'arisvaldo reis', 'alicrim':'alecrim', 'alicrim 01':'alecrim' };
 export function deliveryZone(address: Pick<DeliveryAddress,'neighborhood'|'city'|'state'>) {
   if (address.city?.trim() && normalize(address.city) !== 'eunapolis') return undefined;
   if (address.state?.trim() && normalize(address.state) !== 'ba') return undefined;
   const name = normalize(address.neighborhood);
-  return DELIVERY_ZONES.find(z => z.neighborhoods.some(n => normalize(n) === (aliases[name] ?? name)));
+  const normalized = aliases[name] ?? name;
+  return DELIVERY_ZONES.find(z => z.neighborhoods.some(n => normalize(n) === normalized)
+    || normalize(z.id) === normalized
+    || normalize(z.name) === normalized
+    || normalize(z.name.replace(/^\d+\s*·\s*/, '')) === normalized);
 }
 export function zoneBatch(deliveries: Delivery[], zoneId: string) {
   return deliveries.filter(d => !d.route_id && ['Aguardando preparo','Pronto para entrega'].includes(d.status) && (deliveryZone(d.address)?.id ?? 'unassigned') === zoneId)

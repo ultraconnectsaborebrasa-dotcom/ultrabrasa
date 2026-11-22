@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { addressText, deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
 import { formatCourierDistance, isCourierLocationStale, rankCourierLocations, type CourierLiveLocation } from '@/lib/courier-operations';
-import { groupDeliveriesByNeighborhood, rankDispatchCouriers, type CourierLocationQuality, type DeliveryNeighborhoodGroup } from '@/lib/delivery-dispatch';
+import { groupDeliveriesByDistrict, rankDispatchCouriers, type CourierLocationQuality } from '@/lib/delivery-dispatch';
 import { estimateCourierDelivery, locateDeliveryOnMap } from '@/lib/delivery-route.functions';
 
 export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAddress, selectedDeliveryId, selectedDeliveryIds, onFocusDelivery, onSelectDeliveries, onLocated, onEditLocation, onAssign }: {
@@ -31,7 +31,7 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
   const [limit, setLimit] = useState(6);
   const [locatingId, setLocatingId] = useState<string | null>(null);
   const filtered = deliveries.filter(delivery => `${delivery.number} ${delivery.customer} ${addressText(delivery.address)}`.toLocaleLowerCase('pt-BR').includes(query.trim().toLocaleLowerCase('pt-BR')));
-  const groups = useMemo(() => groupDeliveriesByNeighborhood(deliveries), [deliveries]);
+  const districts = useMemo(() => groupDeliveriesByDistrict(deliveries), [deliveries]);
   const selectedIds = selectedDeliveryIds ?? (selectedDeliveryId ? [selectedDeliveryId] : []);
   const selectedDeliveries = selectedIds.map(id => deliveries.find(delivery => delivery.id === id)).filter((delivery): delivery is Delivery => Boolean(delivery && delivery.status === 'Pronto para entrega' && !delivery.route_id));
   const selected = deliveries.find(delivery => delivery.id === selectedDeliveryId) ?? selectedDeliveries[0] ?? null;
@@ -86,7 +86,7 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
     }
   }
 
-  function chooseGroup(group: DeliveryNeighborhoodGroup) {
+  function chooseGroup(group: { deliveries: Delivery[] }) {
     const alreadySelected = group.deliveries.length === selectedDeliveries.length && group.deliveries.every(delivery => selectedIds.includes(delivery.id));
     if (alreadySelected) { onSelectDeliveries?.([]); return; }
     if (onSelectDeliveries) onSelectDeliveries(group.deliveries);
@@ -99,19 +99,25 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
 
   return <section className="space-y-4 rounded-xl border bg-background p-4" aria-label="Saídas atuais e designação por proximidade">
     {hasAvailableDeliveries && (!selected || selectionReady) ? <div className="grid gap-2 sm:grid-cols-3">
-      <Step number={1} title="Escolha saída ou bairro" active={!selectionReady} done={selectionReady} />
+      <Step number={1} title="Escolha saída, bairro ou distrito" active={!selectionReady} done={selectionReady} />
       <Step number={2} title="Compare os motoboys" active={selectionReady} done={Boolean(recommendedId)} />
       <Step number={3} title="Revise e designe" active={selectionReady} />
     </div> : <p className="rounded-lg bg-primary/10 p-3 text-sm text-primary"><b>{selected && !selectionReady ? 'Entrega já na rua.' : 'Saídas em andamento.'}</b> Toque em um endereço para localizar no mapa; entregas na rua não serão designadas novamente.</p>}
 
-    {groups.length > 0 && <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="flex items-center gap-2 font-semibold"><Layers3 size={17} className="text-primary" />Selecionar por bairro</h3><p className="text-xs text-muted-foreground">Reúna entregas próximas e designe tudo em uma única revisão.</p></div>{selectedDeliveries.length > 1 && <Button size="sm" variant="ghost" onClick={() => onSelectDeliveries?.([])}><X size={14} />Limpar grupo</Button>}</div>
-      <div className="flex gap-2 overflow-x-auto pb-1">{groups.map(group => {
-        const active = group.deliveries.length === selectedDeliveries.length && group.deliveries.every(delivery => selectedIds.includes(delivery.id));
-        return <button type="button" key={group.id} aria-pressed={active} onClick={() => chooseGroup(group)} className={`min-w-40 shrink-0 rounded-xl border p-3 text-left transition-colors ${active ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:border-primary'}`}>
-          <span className="flex items-center justify-between gap-2"><b className="truncate">{group.name}</b><span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-primary-foreground/15' : 'bg-primary/10 text-primary'}`}>{group.deliveries.length}</span></span>
-          <span className={`mt-1 block text-xs ${active ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{active ? 'Grupo selecionado' : 'Selecionar grupo'}</span>
-        </button>;
+    {districts.length > 0 && <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="flex items-center gap-2 font-semibold"><Layers3 size={17} className="text-primary" />Distritos e bairros próximos</h3><p className="text-xs text-muted-foreground">Selecione o distrito inteiro ou somente um bairro para designar em conjunto.</p></div>{selectedDeliveries.length > 1 && <Button size="sm" variant="ghost" onClick={() => onSelectDeliveries?.([])}><X size={14} />Limpar seleção</Button>}</div>
+      <div className="grid gap-3 lg:grid-cols-2">{districts.map(district => {
+        const districtActive = district.deliveries.length === selectedDeliveries.length && district.deliveries.every(delivery => selectedIds.includes(delivery.id));
+        return <section key={district.id} aria-label={district.name} className={`rounded-xl border p-3 transition-colors ${districtActive ? 'border-primary bg-primary/10' : 'bg-card'}`}>
+          <button type="button" aria-pressed={districtActive} aria-label={`${district.name} · Selecionar distrito`} onClick={() => chooseGroup(district)} className="flex w-full items-center justify-between gap-3 text-left">
+            <span><b className="block">{district.name}</b><span className="mt-0.5 block text-xs text-muted-foreground">{district.neighborhoods.length} {district.neighborhoods.length === 1 ? 'bairro' : 'bairros'} com entregas · {districtActive ? 'Distrito selecionado' : 'Selecionar distrito'}</span></span>
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{district.deliveries.length}</span>
+          </button>
+          <div className="mt-3 flex flex-wrap gap-2">{district.neighborhoods.map(group => {
+            const active = group.deliveries.length === selectedDeliveries.length && group.deliveries.every(delivery => selectedIds.includes(delivery.id));
+            return <button type="button" key={group.id} aria-pressed={active} aria-label={`${group.name} · Selecionar grupo`} onClick={() => chooseGroup(group)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${active ? 'border-primary bg-primary text-primary-foreground' : 'bg-background hover:border-primary'}`}>{group.name} · {group.deliveries.length}</button>;
+          })}</div>
+        </section>;
       })}</div>
     </div>}
 

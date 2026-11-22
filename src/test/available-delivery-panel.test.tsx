@@ -94,6 +94,17 @@ describe('designação da entrega pelo motoboy mais próximo', () => {
     expect(locateMock).not.toHaveBeenCalled();
   });
 
+  it('seleciona bairros próximos do mesmo distrito oficial sem chamar o Google', () => {
+    const select = vi.fn();
+    const second = { ...delivery, id: 'delivery-2', order_id: 'order-2', number: 901, address: { ...delivery.address, neighborhood: 'Vivendas Costa Azul' } };
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><AvailableDeliveryPanel deliveries={[delivery, second]} couriers={couriers} locations={[]} baseAddress="Base Teste" selectedDeliveryId={null} selectedDeliveryIds={[]} onFocusDelivery={vi.fn()} onSelectDeliveries={select} onLocated={vi.fn()} onAssign={vi.fn()} /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: '01 · Centro · Selecionar distrito' }));
+    expect(select).toHaveBeenCalledWith([delivery, second]);
+    expect(locateMock).not.toHaveBeenCalled();
+    expect(estimateMock).not.toHaveBeenCalled();
+  });
+
   it('abre a correção manual do ponto da entrega escolhida', () => {
     const edit = vi.fn();
     const client = new QueryClient();
