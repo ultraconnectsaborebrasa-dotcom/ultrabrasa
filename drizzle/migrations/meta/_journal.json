@@ -750,6 +750,13 @@
       "when": 1795355266629,
       "tag": "0106_start_legacy_attendance_on_inbound",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1795356190561,
+      "tag": "0107_catalog_public_pix_without_second_confirmation",
+      "breakpoints": true
     }
   ]
 }

@@ -354,3 +354,8 @@
 - [x] Reconhecer perguntas sobre endereço, localização, como chegar e retirada sem alterar o pedido em andamento.
 - [x] Enviar a mensagem combinada e o pino nativo nas coordenadas informadas, com link do Maps somente se o formato nativo for recusado.
 - [x] Testar o roteiro e os envios simulados sem criar pedidos nem enviar mensagens reais: 248 testes de WhatsApp, tipagem e build aprovados.
+
+## Pedidos do cardápio público no WhatsApp
+- [x] Não enviar uma nova confirmação depois do aceite de pedidos já registrados pelo cardápio público.
+- [x] Para esses pedidos com Pix, enviar somente a mensagem da chave; manter o fluxo atual dos pedidos montados direto no WhatsApp.
+- [x] Testar catálogo com Pix, cartão/dinheiro e WhatsApp manual sem reenviar mensagens antigas: 250 testes, tipagem e verificação temporária do banco aprovados; registros fictícios desfeitos.

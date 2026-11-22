@@ -12,7 +12,7 @@ import { shouldResumeAfterConfirmedOrder } from './whatsapp-order-followup';
 import { STOCK_EXHAUSTED_MESSAGE, isStockExhaustedJob } from './whatsapp-stock-exhausted';
 type Admin = Awaited<typeof import('@/integrations/supabase/client.server')>['supabaseAdmin'];
 type Job = {id:string;phone:string;kind:string;payload:unknown};
-const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional(),attendanceStartedAt:z.string().optional(),confirmationPrompt:z.boolean().optional(),confirmationReminder:z.boolean().optional(),location:z.object({latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),name:z.string().min(1).max(200),address:z.string().min(1).max(500)}).optional()});
+const jobPayload=z.object({text:z.string().max(4000).optional(),inboundId:z.string().optional(),orderId:z.string().nullable().optional(),requestId:z.string().optional(),pixPrompt:z.boolean().optional(),automatic:z.boolean().optional(),summaryVersion:z.number().int().optional(),summaryTotal:z.number().optional(),attendanceStartedAt:z.string().optional(),confirmationPrompt:z.boolean().optional(),confirmationReminder:z.boolean().optional(),skipConfirmation:z.boolean().optional(),location:z.object({latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),name:z.string().min(1).max(200),address:z.string().min(1).max(500)}).optional()});
 const check = <T>(r:{data:T;error:{message:string}|null}):NonNullable<T> => {if(r.error) throw new Error(r.error.message);if(r.data===null||r.data===undefined)throw new Error('Dados não encontrados');return r.data;};
 const checkEmpty = <T>(r:{data:T;error:{message:string}|null}):T => {if(r.error)throw new Error(r.error.message);return r.data;};
 export async function queueJob(db:Admin,key:string,phone:string,kind:'interpret'|'text'|'document'|'receipt',payload:Record<string,unknown>,options:{delayMs?:number}={}) {
@@ -203,6 +203,9 @@ export async function processJobs(db:Admin,limit=2){
         }
       }
       if(confirmation&&!p.orderId&&!p.requestId){checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',lease_until:null}).eq('id',j.id));continue;}
+      if(confirmation&&p.skipConfirmation){
+        checkEmpty(await db.from('whatsapp_jobs').update({state:'completed',completed_at:new Date().toISOString(),lease_until:null}).eq('id',j.id));continue;
+      }
       const c=check(await db.from('whatsapp_conversations').select('automation_paused,automation_pause_reason,last_inbound_at,attendance_status,assigned_to,order_confirmed_at,draft,draft_version').eq('phone',j.phone).single());
       if(isOrderConfirmationReminderJob(j.dedup_key)){
         const currentDraft=conversationDraftSchema.safeParse(c.draft);
