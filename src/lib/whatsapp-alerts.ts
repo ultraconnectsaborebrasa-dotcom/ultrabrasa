@@ -1,5 +1,6 @@
 import {useSyncExternalStore} from 'react';
 import {supabase} from '@/integrations/supabase/client';
+import {ORDER_ALARM_TONES,WHATSAPP_MESSAGE_TONES,playReceiptTone,scheduleNotificationTones} from '@/lib/notification-tones';
 export type AlertConversation={phone:string;name:string|null;unread:number;last_message:string|null;last_inbound_at:string|null;attendance_status:string;awaiting_since:string|null};
 export type OrderAlert={id:string;phone:string;name:string|null;code:string|null;total:number;items:{qty:number;productId:string;note:string|undefined}[];type:string|null;payment:string|null;createdAt:string};
 export type ReceiptAlert={id:string;phone:string;name:string|null;receivedAt:string;recognized:boolean};
@@ -28,8 +29,17 @@ export function orderAlertFromRequest(r:RequestRow,name:string|null):OrderAlert{
 }
 export function shouldRepeatOrderSound(now:number,lastAt:number,repeatSec:number,unacked:number){return unacked>0&&now-lastAt>=repeatSec*1000;}
 export function newReceipts<T extends {id:string}>(seen:Set<string>,rows:T[]):T[]{return rows.filter(r=>!seen.has(r.id));}
-const tone=(f:number,start:number,len:number,level:number,type:OscillatorType='square')=>{if(!audio)return;const osc=audio.createOscillator(),gain=audio.createGain();osc.type=type;osc.connect(gain);gain.connect(audio.destination);const t=audio.currentTime+start;osc.frequency.value=f;gain.gain.setValueAtTime(volume*level,t);gain.gain.exponentialRampToValueAtTime(.001,t+len);osc.start(t);osc.stop(t+len);};
-export function playWhatsAppSound(kind:'new'|'message'|'order'|'receipt'='new'){if(!enabled||!audio||volume<=0)return;if(kind==='order'){[0,.25,.5,.9,1.15,1.4,1.8,2.05,2.3].forEach((s,i)=>tone([523,659,784][i%3]!,s,.22,.35,'triangle'));return;}if(kind==='receipt'){[0,.2,.4,.75].forEach((s,i)=>tone([988,784,988,1319][i]!,s,.18,.3,'sine'));return;}if(kind==='new'){[0,.18,.36,.7,.88,1.06].forEach((s,i)=>tone(i%3===2?1320:i%3===1?1100:880,s,.16,.25));}else tone(660,0,.25,.08,'sine');}
+export function playWhatsAppSound(kind:'new'|'message'|'order'|'receipt'='new'){
+ if(!enabled||!audio||volume<=0)return;
+ if(kind==='order'){scheduleNotificationTones(audio,ORDER_ALARM_TONES,volume);return;}
+ if(kind==='receipt'){playReceiptTone(audio,volume);return;}
+ scheduleNotificationTones(audio,WHATSAPP_MESSAGE_TONES,volume);
+}
+export function shouldPlayReminderSound(now:number,lastAt:number){return now-lastAt>=8000;}
+function playReminderSound(kind:'message'|'order'){
+ const now=Date.now();if(!shouldPlayReminderSound(now,lastSound.get('reminder')??0))return;
+ lastSound.set('reminder',now);playWhatsAppSound(kind);
+}
 export async function activateWhatsAppSound(v=0.5):Promise<{sound:boolean;permission:string}>{volume=v;try{audio??=new AudioContext();await audio.resume();}catch{enabled=false;return {sound:false,permission:notifPermission()};}enabled=audio.state==='running';if(enabled)playWhatsAppSound('new');if('Notification' in window&&Notification.permission==='default'){try{await Notification.requestPermission();}catch{}}
  if(enabled&&'Notification' in window&&Notification.permission==='granted'){try{new Notification('Ultrabrasa · teste',{body:'Notificações do WhatsApp ativas',tag:'wa-test'});}catch{}}
  return {sound:enabled,permission:notifPermission()};}
@@ -49,7 +59,7 @@ export async function refreshWhatsAppConversations(){
    orderAlerts=alerts;pendingOrders=rows.length;
    if(grew){const first=alerts[alerts.length-1]!;playWhatsAppSound('order');lastRepeatAt=Date.now();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:first.phone,name:first.name,kind:'order',last_message:'Pedido fechado pelo robô — aguardando aceite'}}));notify('🔔 Novo pedido confirmado: '+(first.name||`+${first.phone}`),`Total ${first.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} · aguardando aceite da loja`,`wa-order-${first.id}`,first.phone);}
    if(shouldRepeatOrderSound(Date.now(),lastRepeatAt,getRepeatSeconds(),alerts.length)){playWhatsAppSound('order');lastRepeatAt=Date.now();}
-   for(const p of rows){const key='request:'+p.id;if(Date.now()-Date.parse(p.created_at)>reminderMinutes*60000&&!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:p.phone,name:nameOf(p.phone),kind:'order',last_message:'Pedido aguardando aceite da loja'}}));}}}
+   for(const p of rows){const key='request:'+p.id;if(Date.now()-Date.parse(p.created_at)>reminderMinutes*60000&&!reminded.has(key)){reminded.add(key);playReminderSound('order');window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:p.phone,name:nameOf(p.phone),kind:'order',last_message:'Pedido aguardando aceite da loja'}}));}}}
   const receipts=await supabase.from('payment_receipts').select('id,phone,received_at,evidence').is('reviewed_at',null).order('received_at',{ascending:false}).limit(20);
 
   if(!receipts.error){
@@ -64,7 +74,7 @@ export async function refreshWhatsAppConversations(){
    if(document.hidden)notify((kind==='new'?'Novo atendimento: ':'')+(c.name||`+${c.phone}`),c.last_message??'Nova mensagem',`wa-${c.phone}`,c.phone);
   }}}
   baseline=true;conversations=fresh;emit();
-  for(const c of fresh){if(c.attendance_status!=='waiting_customer'&&c.attendance_status!=='finished'&&c.awaiting_since&&Date.now()-Date.parse(c.awaiting_since)>reminderMinutes*60000){const key=c.phone+':'+c.awaiting_since;if(!reminded.has(key)){reminded.add(key);playWhatsAppSound();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{...c,last_message:'Cliente aguardando resposta'}}));}}}
+  for(const c of fresh){if(c.attendance_status!=='waiting_customer'&&c.attendance_status!=='finished'&&c.awaiting_since&&Date.now()-Date.parse(c.awaiting_since)>reminderMinutes*60000){const key=c.phone+':'+c.awaiting_since;if(!reminded.has(key)){reminded.add(key);playReminderSound('message');window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{...c,last_message:'Cliente aguardando resposta'}}));}}}
  }catch(e){console.error('WhatsApp inbox refresh failed');}finally{loading=false;}
 }
 export function mountWhatsAppInbox(){refs++;if(refs===1){baseline=false;loadAcked();seenReceipts=new Set();lastRepeatAt=0;void supabase.from('whatsapp_settings').select('business').eq('id',1).single().then(r=>{if(!r.error&&r.data.business&&typeof r.data.business==='object'&&!Array.isArray(r.data.business)&&typeof r.data.business['reminderMinutes']==='number')reminderMinutes=r.data.business['reminderMinutes'];});void refreshWhatsAppConversations();timer=setInterval(()=>void refreshWhatsAppConversations(),4000);}return()=>{refs--;if(refs===0){clearInterval(timer);timer=undefined;conversations=[];orderAlerts=[];receiptAlerts=[];baseline=false;emit();}};}

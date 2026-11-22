@@ -16,6 +16,6 @@ describe('Avisos de chegada', () => {
     vi.stubGlobal('AudioContext', class { state = 'running'; currentTime = 0; destination = {}; createOscillator() { return { frequency: { value: 0 }, connect: vi.fn(), disconnect: vi.fn(), start, stop: vi.fn() }; } createGain() { return gain; } });
     expect(await unlockOrderSound()).toBe(true);
     expect(playOrderSound()).toBe(true);
-    expect(start).toHaveBeenCalledTimes(3);
+    expect(start).toHaveBeenCalledTimes(8);
   });
 });

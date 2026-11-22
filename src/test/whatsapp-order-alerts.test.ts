@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { orderAlertFromRequest, shouldRepeatOrderSound, pruneAcked, newReceipts } from '@/lib/whatsapp-alerts';
+import { orderAlertFromRequest, shouldRepeatOrderSound, shouldPlayReminderSound, pruneAcked, newReceipts } from '@/lib/whatsapp-alerts';
 
 const row = { id: 'r1', phone: '5573999999999', created_at: '2026-11-03T12:00:00Z', quoted_total: 45.8, public_code: 'C1005', order_number: null, request: { type: 'Delivery', items: [{ productId: 'p1', qty: 2, note: 'sem cebola' }, { productId: 'p2', qty: 1 }], delivery: { paymentMethod: 'Pix' } } };
 
@@ -19,6 +19,11 @@ describe('Alerta de pedido confirmado', () => {
     expect(shouldRepeatOrderSound(31_000, 0, 30, 1)).toBe(true);
     expect(shouldRepeatOrderSound(29_000, 0, 30, 1)).toBe(false);
     expect(shouldRepeatOrderSound(60_000, 0, 30, 0)).toBe(false);
+  });
+  it('limita lembretes acumulados a um toque a cada oito segundos', () => {
+    expect(shouldPlayReminderSound(10_000, 0)).toBe(true);
+    expect(shouldPlayReminderSound(17_999, 10_000)).toBe(false);
+    expect(shouldPlayReminderSound(18_000, 10_000)).toBe(true);
   });
   it('esquece reconhecimentos de pedidos que saíram da fila', () => {
     expect([...pruneAcked(new Set(['a', 'b', 'c']), new Set(['b']))]).toEqual(['b']);

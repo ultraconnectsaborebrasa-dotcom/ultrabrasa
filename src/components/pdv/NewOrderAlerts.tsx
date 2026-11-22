@@ -23,12 +23,18 @@ export function NewOrderAlerts({ orders, ready = true, onOpen }: { orders: Alert
     if (!enabled) { setIncoming([]); return; }
     if (added.length) {
       setIncoming(pending => [...pending.filter(o => orders.some(p => p.id === o.id && p.status === 'cozinha')), ...added]);
-      playOrderSound();
       toast.info(added.length === 1 ? `Novo pedido #${added[0]?.number} na cozinha` : `${added.length} novos pedidos na cozinha`, { duration: 8000 });
     } else {
       setIncoming(pending => pending.filter(o => orders.some(p => p.id === o.id && p.status === 'cozinha')));
     }
   }, [orders, ready, enabled]);
+  const incomingKey = incoming.map(order => order.id).join(',');
+  useEffect(() => {
+    if (!enabled || !soundReady || !incomingKey) return;
+    playOrderSound();
+    const repeat = window.setInterval(() => { playOrderSound(); }, 12_000);
+    return () => window.clearInterval(repeat);
+  }, [enabled, soundReady, incomingKey]);
   return <div className="shrink-0 border-b bg-card px-3 py-2 sm:px-5">
     <div className="flex flex-wrap items-center gap-2">
       <span className="mr-auto text-xs text-muted-foreground">{enabled ? (soundReady ? 'Avisos com som' : 'Som aguardando ativação') : 'Avisos silenciados'}</span>

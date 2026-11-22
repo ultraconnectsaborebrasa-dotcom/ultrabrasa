@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { ORDER_ALARM_TONES, scheduleNotificationTones } from '@/lib/notification-tones';
 
 export type AlertOrder = { id: string; number: number; status: string; type?: string | undefined; tableNumber?: number | undefined; items: { qty: number; name: string }[] };
 let enabled = true;
@@ -30,23 +31,5 @@ export async function unlockOrderSound() {
   } catch { return false; }
 }
 export function playOrderSound() {
-  const context = audio;
-  if (!context || context.state !== 'running') return false;
-  try {
-    const start = context.currentTime;
-    [660, 880, 1100].forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      const at = start + index * 0.18;
-      oscillator.type = 'sine';
-      oscillator.frequency.value = frequency;
-      gain.gain.setValueAtTime(0, at);
-      gain.gain.linearRampToValueAtTime(0.18, at + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, at + 0.3);
-      oscillator.connect(gain); gain.connect(context.destination);
-      oscillator.start(at); oscillator.stop(at + 0.32);
-      oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
-    });
-    return true;
-  } catch { return false; }
+  return audio ? scheduleNotificationTones(audio, ORDER_ALARM_TONES, 0.85) : false;
 }
