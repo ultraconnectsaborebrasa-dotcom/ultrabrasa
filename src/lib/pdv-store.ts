@@ -122,7 +122,12 @@ let saving = false;
 export const isSaving = () => saving;
 export function subscribeState(listener:()=>void) { listeners.add(listener); return ()=>{listeners.delete(listener);}; }
 export function configurePersistence(save: typeof persistence) { persistence = save; }
-export function replaceState(next: State) { state = next; listeners.forEach(l => l()); }
+function normalizeState(next: State): State {
+  if (!Array.isArray(next.products)) return { ...next, products: [] };
+  const products = next.products.filter((product) => product !== null && typeof product === 'object' && typeof product.id === 'string' && typeof product.name === 'string');
+  return products.length === next.products.length ? next : { ...next, products };
+}
+export function replaceState(next: State) { state = normalizeState(next); listeners.forEach(l => l()); }
 export function useSaving() { return useSyncExternalStore(l => { listeners.add(l); return () => listeners.delete(l); }, () => saving, () => false); }
 
 export function hydrate() {
@@ -130,14 +135,14 @@ export function hydrate() {
   hydrated = true;
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { if (!localStorage.getItem(`${KEY}-before-cloud`)) localStorage.setItem(`${KEY}-before-cloud`, raw); state = { ...seed(), ...JSON.parse(raw) }; }
+    if (raw) { if (!localStorage.getItem(`${KEY}-before-cloud`)) localStorage.setItem(`${KEY}-before-cloud`, raw); state = normalizeState({ ...seed(), ...JSON.parse(raw) }); }
   } catch {}
   listeners.forEach((l) => l());
 }
 export function setState(fn: (s: State) => State) {
   if (saving) { toast.warning('Aguarde o salvamento anterior.'); return; }
   const previous = state;
-  state = fn(state);
+  state = normalizeState(fn(state));
   const sharedChanged = JSON.stringify({ ...previous, draft: undefined }) !== JSON.stringify({ ...state, draft: undefined });
   if (persistence && sharedChanged) {
     saving = true;

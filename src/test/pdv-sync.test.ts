@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {mergeSnapshot} from '@/lib/pdv-sync';
-import {getState,type State} from '@/lib/pdv-store';
+import {getState,replaceState,type Product,type State} from '@/lib/pdv-store';
 describe('Sincronização de dispositivos',()=>{
  it('recebe pedido do celular na fila da cozinha e preserva o carrinho do computador',()=>{
  const current:State={...getState(),draft:{...getState().draft,customer:'Mesa 4'},orders:[]};
@@ -10,4 +10,10 @@ describe('Sincronização de dispositivos',()=>{
  });
  it('não aplica evento antigo nem duplicado',()=>{expect(mergeSnapshot(getState(),{data:getState(),revision:4},5)).toBeNull();expect(mergeSnapshot(getState(),{data:getState(),revision:5},5)).toBeNull();});
  it('rejeita snapshot incompleto sem apagar o PDV',()=>{expect(mergeSnapshot(getState(),{data:{orders:[]},revision:6},5)).toBeNull();});
+ it('ignora produtos nulos de dados antigos sem apagar os cadastros válidos',()=>{
+ const original=getState();const valid=original.products[0];
+ expect(valid).toBeDefined();
+ try{replaceState({...original,products:[null,valid as Product] as Product[]});expect(getState().products).toEqual([valid]);}
+ finally{replaceState(original);}
+ });
 });
