@@ -799,6 +799,13 @@
       "when": 1795397513582,
       "tag": "0113_protect_pdv_products_from_null_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1795440837871,
+      "tag": "0114_courier_deactivation_and_soft_delete",
+      "breakpoints": true
     }
   ]
 }

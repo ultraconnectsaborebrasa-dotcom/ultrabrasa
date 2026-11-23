@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeftRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { marmitaSelectionError, type Courier, type Delivery } from '@/lib/delivery';
+import { canReceiveCourierAssignments, marmitaSelectionError, type Courier, type Delivery } from '@/lib/delivery';
 
 export function TransferDeliveryControl({ delivery, deliveries, couriers, busy, onTransfer }: {
   delivery: Delivery;
@@ -13,7 +13,7 @@ export function TransferDeliveryControl({ delivery, deliveries, couriers, busy, 
   const [open, setOpen] = useState(false);
   const [courierId, setCourierId] = useState('');
   const [saving, setSaving] = useState(false);
-  const candidates = couriers.filter(courier => courier.active && courier.id !== delivery.courier_id);
+  const candidates = couriers.filter(courier => canReceiveCourierAssignments(courier) && courier.id !== delivery.courier_id);
   const selectedError = courierId ? marmitaSelectionError(candidates.find(courier => courier.id === courierId), deliveries, [delivery]) : null;
 
   async function confirm() {

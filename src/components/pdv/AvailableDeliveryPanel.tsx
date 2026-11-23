@@ -4,7 +4,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { ArrowRight, Check, Crosshair, Layers3, LoaderCircle, MapPin, Navigation, Package, Pencil, Search, UserRound, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { addressText, deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
+import { addressText, canReceiveCourierAssignments, deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
 import { formatCourierDistance, isCourierLocationStale, rankCourierLocations, type CourierLiveLocation } from '@/lib/courier-operations';
 import { groupDeliveriesByDistrict, rankDispatchCouriers, type CourierLocationQuality } from '@/lib/delivery-dispatch';
 import { estimateCourierDelivery, locateDeliveryOnMap } from '@/lib/delivery-route.functions';
@@ -51,7 +51,7 @@ export function AvailableDeliveryPanel({ deliveries, couriers, locations, baseAd
   const sortedCouriers = candidates.map(candidate => candidate.courier);
   const nearestId = selectedDeliveries.length === 1 ? candidates.find(candidate => locationQuality.get(candidate.courier.id) === 'live')?.courier.id ?? null : null;
   const recommendedId = selectedDeliveries.length > 1 ? candidates[0]?.courier.id ?? null : nearestId;
-  const excludedCount = selectionReady ? couriers.filter(courier => courier.active).length - candidates.length : 0;
+  const excludedCount = selectionReady ? couriers.filter(canReceiveCourierAssignments).length - candidates.length : 0;
 
   async function calculateEstimates() {
     if (selectedDeliveries.length !== 1) return;

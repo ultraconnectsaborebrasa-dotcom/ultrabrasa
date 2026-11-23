@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Desativar e excluir entregadores
+- [x] Permitir desativar/reativar entregadores e ocultá-los das novas designações sem apagar o histórico.
+- [x] Oferecer exclusão com confirmação, mantendo nome, entregas, turnos e relatórios antigos; proteger entregas, turno e carga ainda em andamento.
+- [x] Validar permissões, regras do banco e interface sem excluir entregadores reais; 562 testes e typecheck aprovados, transação temporária revertida e confirmações canceladas na tela real.
+
 ## Edição completa de comandas abertas
 - [x] Permitir a Administrador e Caixa adicionar/remover produtos, alterar quantidades e editar observações gerais e por item em comandas abertas e não pagas.
 - [x] Salvar itens, preços e estoque em uma transação, recalcular serviço e sincronizar Delivery e reservas do entregador sem alterar pagamentos.

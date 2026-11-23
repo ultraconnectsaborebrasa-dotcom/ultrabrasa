@@ -1,4 +1,4 @@
-import { canFinishDelivery, marmitaSelectionError, type Courier, type Delivery } from './delivery';
+import { canFinishDelivery, canReceiveCourierAssignments, marmitaSelectionError, type Courier, type Delivery } from './delivery';
 import { DELIVERY_ZONES, deliveryZone } from './eunapolis-delivery';
 
 export type CourierLocationQuality = 'live' | 'stale' | 'missing';
@@ -24,7 +24,7 @@ export function rankDispatchCouriers(
   const selected = Array.isArray(selection) ? selection : [selection];
   if (!selected.length) return [];
   const selectedIds = new Set(selected.map(delivery => delivery.id));
-  return couriers.filter(courier => courier.active)
+  return couriers.filter(canReceiveCourierAssignments)
     .filter(courier => !marmitaSelectionError(courier, deliveries, selected))
     .map(courier => {
       const pending = deliveries.filter(delivery => !selectedIds.has(delivery.id) && delivery.courier_id === courier.id && canFinishDelivery(delivery.status)).length;

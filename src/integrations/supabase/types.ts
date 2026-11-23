@@ -398,6 +398,8 @@ export type Database = {
       delivery_couriers: {
         Row: {
           active: boolean
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           name: string
           operational_status: string
@@ -407,6 +409,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           name: string
           operational_status?: string
@@ -416,6 +420,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           name?: string
           operational_status?: string
@@ -1624,6 +1630,10 @@ export type Database = {
           }
       set_delivery_courier_availability: {
         Args: { p_courier_id: string; p_status: string }
+        Returns: undefined
+      }
+      set_delivery_courier_state: {
+        Args: { p_action: string; p_courier_id: string }
         Returns: undefined
       }
       set_pdv_role: {
