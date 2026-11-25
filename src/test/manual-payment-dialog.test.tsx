@@ -9,6 +9,15 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 afterEach(cleanup);
 
 describe('janela de recebimento na cozinha', () => {
+  it('aplica desconto e acréscimo junto com o pagamento', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null } as never);
+    render(<ManualPaymentDialog order={{id:'pedido-ajuste',number:1,total:39.8}} methods={['Dinheiro']} onClose={vi.fn()} onPaid={vi.fn()}/>);
+    fireEvent.change(screen.getByLabelText('Desconto em reais'),{target:{value:'5'}});
+    fireEvent.change(screen.getByLabelText('Acréscimo em reais'),{target:{value:'2'}});
+    fireEvent.change(screen.getByLabelText('Forma de pagamento'),{target:{value:'Dinheiro'}});
+    fireEvent.click(screen.getByRole('button',{name:'Confirmar baixa'}));
+    await waitFor(()=>expect(supabase.rpc).toHaveBeenCalledWith('pay_pdv_adjusted',{p_order:'pedido-ajuste',p_method:'Dinheiro',p_discount:5,p_extra:2,p_mark_ready:false}));
+  });
   it('recebe e marca o pedido em preparo como pronto', async () => {
     vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null } as never);
     const onPaid = vi.fn();

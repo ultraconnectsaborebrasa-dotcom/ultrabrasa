@@ -27,6 +27,7 @@ export type Order = {
   note: string;
   discount: number; // valor
   fee: number; // taxa/entrega
+  extraFee?: number;
   serviceFee: boolean;
   payments: Payment[];
   status: OrderStatus;

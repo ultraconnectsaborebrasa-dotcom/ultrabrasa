@@ -77,7 +77,7 @@ export function OrdersView({ admin = false }: { admin?: boolean }) {
 
       <details><summary className="cursor-pointer text-sm font-semibold">Pagamentos recebidos e histórico</summary><SalesHistory /></details>
 
-      {paying&&<ManualPaymentDialog markReady order={{id:paying.id,number:paying.number,total:totals(paying,settings.serviceFeePct).total}} onClose={()=>setPaying(null)} methods={settings.paymentMethods} onPaid={openCloud}/>}
+      {paying&&<ManualPaymentDialog markReady order={{...paying,total:totals(paying,settings.serviceFeePct).total,serviceAmount:paying.serviceAmount??totals(paying,settings.serviceFeePct).service}} onClose={()=>setPaying(null)} methods={settings.paymentMethods} onPaid={openCloud}/>}
       {editingOrder&&<EditOpenOrderDialog order={editingOrder} products={products} serviceFeePct={settings.serviceFeePct} onClose={()=>setEditingOrder(null)} onSaved={()=>void openCloud()}/>}
     </div>
   );

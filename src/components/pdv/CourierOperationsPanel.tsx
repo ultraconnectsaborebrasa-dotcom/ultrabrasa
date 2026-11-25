@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { Boxes, Clock3, Crosshair, LocateFixed, MapPin, Motorbike, Navigation, PackageCheck, PackagePlus, Pencil, Radio, Route as RouteIcon, Users } from 'lucide-react';
@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
-import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, shouldSendCourierPosition, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
+import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 import { canCorrectDeliveryMapPin, courierMarmitaStock as stockFor, deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
 import { courierActiveDeliveries } from '@/lib/delivery-dispatch';
 import { deliveryZone } from '@/lib/eunapolis-delivery';
@@ -194,7 +194,6 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
       <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Voltando à base</span><b className="block text-xl">{returningCount}</b></div>
       <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Estoque zerado</span><b className={`block text-xl ${emptyStockCount ? 'text-warning' : ''}`}>{emptyStockCount}</b></div>
     </div>
-    {courier && <CourierLocationControl operations={operations} refetch={query.refetch} />}
     {courier && ownCourier && <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background p-3"><span className="text-sm"><b>Minha disponibilidade</b><span className="block text-xs text-muted-foreground">Somente disponível recebe novas sugestões.</span></span><select aria-label="Minha disponibilidade" className="field w-auto" value={ownCourier.operational_status ?? 'available'} onChange={event => void saveAvailability(ownCourier.id, event.target.value as 'available' | 'unavailable' | 'returning')}><option value="available">Disponível</option><option value="unavailable">Indisponível</option><option value="returning">Voltando à base</option></select></div><CourierStockSummary driver={ownCourier} deliveries={deliveries} /></div>}
     {query.error && <p role="alert" className="text-sm text-destructive">{query.error.message}</p>}
     {query.isPending ? <p role="status" className="text-sm text-muted-foreground">Carregando operação…</p> : <>
@@ -211,6 +210,7 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
         <span className="ml-auto inline-flex items-center gap-1.5"><Radio size={13} className={query.isFetching ? 'animate-pulse text-primary' : ''} />{query.isFetching ? 'Atualizando posições…' : `Atualizado às ${new Date(query.dataUpdatedAt).toLocaleTimeString('pt-BR')}`}</span>
       </div>
       <LiveDeliveryMap base={operations.base} locations={operations.locations} deliveries={mapDeliveries} couriers={couriers} route={route} focus={focus} selectedDeliveryId={selectedDeliveryId} selectedDeliveryIds={selectedDeliveryIds} editingLocation={locationDraft} savingLocation={savingLocation} onSelectCourier={selectCourier} onSelectDelivery={selectDelivery} onDeliveryPositionChange={changeLocationDraft} onSaveDeliveryPosition={() => void saveLocation()} onCancelDeliveryPosition={() => setLocationDraft(null)} />
+      {canManage&&<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{couriers.filter(driver=>driver.active).map(driver=>{const location=operations.locations.find(item=>item.courier_id===driver.id);const stale=!location||isCourierLocationStale(location.located_at);return <Button key={driver.id} variant="outline" className="h-auto min-h-16 justify-start whitespace-normal text-left" onClick={()=>selectCourier(driver.id)} disabled={!location}><Motorbike className={stale?'text-warning':'text-success'} size={22}/><span className="min-w-0"><b className="block break-words">{driver.name}</b><span className="block text-xs text-muted-foreground">{location?`${stale?'Última posição, não ao vivo':'GPS ao vivo'} · ${clockTime(location.located_at)} · precisão ${Math.round(location.accuracy_meters)} m`:'GPS não compartilhado'}</span></span></Button>;})}</div>}
       {!liveLocations.length && <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">Para ver uma moto se movendo, o entregador precisa bater a entrada, ativar a localização no celular e manter a página aberta. Posições antigas aparecem em cinza.</p>}
 
       {canManage && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={couriers} locations={operations.locations} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} selectedDeliveryIds={selectedDeliveryIds} onFocusDelivery={focusDelivery} onSelectDeliveries={focusDeliveries} onLocated={deliveryLocated} onEditLocation={beginLocationEdit} onAssign={onAssign} />}
@@ -313,58 +313,4 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
 function CourierStockSummary({ driver, deliveries }: { driver: Courier; deliveries: Delivery[] }) {
   const stock = stockFor(driver, deliveries);
   return <div className="rounded-xl border bg-background p-4"><div className="flex items-center gap-2"><Boxes size={18} className="text-primary" /><h3 className="font-semibold">Minhas marmitas</h3></div>{stock.remaining === null ? <p className="mt-2 text-sm text-muted-foreground">A loja ainda não registrou sua carga.</p> : <div className="mt-3 grid grid-cols-3 gap-2 text-center"><div><span className="block text-xs text-muted-foreground">Comigo</span><b className="text-xl">{stock.remaining}</b></div><div><span className="block text-xs text-muted-foreground">Nas entregas</span><b className="text-xl">{stock.reserved}</b></div><div><span className="block text-xs text-muted-foreground">Livres</span><b className="text-xl text-primary">{stock.available}</b></div></div>}</div>;
-}
-
-function CourierLocationControl({ operations, refetch }: { operations: CourierOperations; refetch: () => Promise<unknown> }) {
-  const [sharing, setSharing] = useState(false);
-  const [status, setStatus] = useState('');
-  const lastSent = useRef<{ latitude: number; longitude: number; sentAt: number } | null>(null);
-  const hasOpenShift = operations.time_entries.some(entry => entry.exit_at === null);
-  const ownLocation = operations.locations.find(location => location.courier_id === operations.current_courier_id);
-
-  useEffect(() => { const active = operations.locations.length > 0; setSharing(active); if (!active) setStatus('Compartilhamento desativado.'); }, [operations.locations.length]);
-  useEffect(() => {
-    if (!sharing || !hasOpenShift || !navigator.geolocation) return;
-    let cancelled = false;
-    const watch = navigator.geolocation.watchPosition(position => {
-      const next = { latitude: position.coords.latitude, longitude: position.coords.longitude };
-      const now = Date.now();
-      if (!shouldSendCourierPosition(lastSent.current, next, now)) return;
-      lastSent.current = { ...next, sentAt: now };
-      void supabase.rpc('update_courier_location', { p_latitude: next.latitude, p_longitude: next.longitude, p_accuracy: position.coords.accuracy }).then(({ error }) => {
-        if (cancelled) return;
-        if (error) setStatus(error.message);
-        else { setStatus('Localização compartilhada com o administrador.'); void refetch(); }
-      });
-    }, error => {
-      setStatus(error.code === error.PERMISSION_DENIED ? 'Permita o acesso à localização no celular para aparecer no mapa.' : error.message);
-      if (error.code === error.PERMISSION_DENIED) setSharing(false);
-    }, { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 });
-    return () => { cancelled = true; navigator.geolocation.clearWatch(watch); };
-  }, [sharing, hasOpenShift, refetch]);
-
-  async function toggle() {
-    if (sharing) {
-      const { error } = await supabase.rpc('disable_courier_location');
-      if (error) { setStatus(error.message); return; }
-      setSharing(false);
-      setStatus('Compartilhamento desativado.');
-      await refetch();
-      return;
-    }
-    if (!hasOpenShift) { setStatus('Registre a entrada do turno antes de ativar a localização.'); return; }
-    if (!navigator.geolocation) { setStatus('Este celular não oferece suporte à localização.'); return; }
-    lastSent.current = null;
-    setSharing(true);
-    setStatus('Solicitando permissão de localização…');
-  }
-
-  return <div className="rounded-xl border bg-background p-4">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h3 className="flex items-center gap-2 font-semibold"><LocateFixed size={18} /> Minha localização</h3><p className="mt-1 text-xs text-muted-foreground">Durante o turno, o administrador verá sua posição. Você pode desativar a qualquer momento.</p></div>
-      <Button variant={sharing ? 'destructive' : 'default'} onClick={() => void toggle()}>{sharing ? 'Desativar localização' : 'Ativar localização'}</Button>
-    </div>
-    {(status || ownLocation) && <p role="status" className="mt-3 text-sm text-muted-foreground">{ownLocation ? `Última posição ${new Date(ownLocation.located_at).toLocaleTimeString('pt-BR')} · ` : ''}{status}</p>}
-    <p className="mt-2 text-xs text-warning">Mantenha esta página aberta: o navegador pode pausar o GPS com o aplicativo minimizado ou a tela bloqueada.</p>
-  </div>;
 }

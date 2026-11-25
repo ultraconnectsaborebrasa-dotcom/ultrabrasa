@@ -18,7 +18,7 @@ Subdirectories may have their own AGENTS.md (desktop rules: electron/AGENTS.md);
 - Operators receive prices and calculated totals only for active orders; their own attendance history is an explicit server allowlist without prices, totals or payments, so closed revenue cannot be recovered from the response.
 - Customer contacts and order-linked visits live outside the shared snapshot with admin-only reads; optional contact capture is transactional with operator submission and idempotent by order, with normalized phone deduplication and explicit promotion consent to prevent unauthorized marketing.
 - Promotions use consent-filtered CSV export and individual WhatsApp deep links, not automated sending; the customer directory never exposes connector credentials.
-- Team removal revokes only operator roles and never deletes profiles or order history; role mutation RPCs serialize changes and reject administrator targets to protect all admin accounts.
+- Ordinary team removal preserves history; explicit administrator-only permanent deletion previews linked records, blocks live work and protected accounts, deletes linked history transactionally, and cleans private files/Auth accounts through a retriable private cleanup job.
 - Android is a HTTPS-only native WebView of the published site, no JavaScript bridge or separate data store, keeping releases, login and role-enforced data consistent.
 - Operator submissions derive prices, stock and seller identity in a locked database function; client amounts are never accepted, and idempotency prevents duplicate sends.
 - Table selection is structured and validated against the fixed table list; kitchen and floor views share table labels to keep destinations unambiguous.
@@ -46,3 +46,5 @@ Subdirectories may have their own AGENTS.md (desktop rules: electron/AGENTS.md);
 - PDV order stage (`status`: aberta→cozinha→pronto→entrega→entregue/retirado) is separate from payment (`paymentStatus`/`payments`); `pay_pdv_cashier` never changes `status`, stage RPCs never touch payments.
 - Cashier value adjustments run through locked authorized RPCs; extra charges are stored separately and included in fee for compatibility, with audit entries and atomic adjustment/payment to avoid partially applied receipts.
 - Courier settlement is an allowlisted daily read, own-only for couriers and current-day-only for cashiers; cash/card collected by a courier requires payment-level courier attribution, never an inference from delivery completion or the requested payment method.
+- Permanent person deletion records order-ID tombstones and filters stale snapshot writes before terminal guards, so deleted sales cannot be restored by old terminals; unrelated people and products remain untouched.
+- Courier foreground GPS sharing mounts outside the optional map, requests OS consent, respects per-courier opt-out, and writes only during an open shift; map markers and focus controls distinguish live from last-known positions.

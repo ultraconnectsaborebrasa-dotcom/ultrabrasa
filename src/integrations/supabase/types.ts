@@ -923,6 +923,21 @@ export type Database = {
         }
         Relationships: []
       }
+      pdv_deleted_order_ids: {
+        Row: {
+          deleted_at: string
+          order_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          order_id: string
+        }
+        Update: {
+          deleted_at?: string
+          order_id?: string
+        }
+        Relationships: []
+      }
       pdv_state: {
         Row: {
           data: Json
@@ -941,6 +956,24 @@ export type Database = {
           id?: number
           revision?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      person_purge_cleanup: {
+        Row: {
+          auth_ids: string[]
+          id: string
+          storage_paths: string[]
+        }
+        Insert: {
+          auth_ids?: string[]
+          id?: string
+          storage_paths?: string[]
+        }
+        Update: {
+          auth_ids?: string[]
+          id?: string
+          storage_paths?: string[]
         }
         Relationships: []
       }
@@ -1521,6 +1554,15 @@ export type Database = {
       pay_pdv_kitchen: {
         Args: { order_id: string; payment_method: string }
         Returns: undefined
+      }
+      purge_person_history: {
+        Args: {
+          p_confirmation?: string
+          p_execute?: boolean
+          p_id: string
+          p_kind: string
+        }
+        Returns: Json
       }
       read_courier_operations: {
         Args: { p_from?: string; p_to?: string }

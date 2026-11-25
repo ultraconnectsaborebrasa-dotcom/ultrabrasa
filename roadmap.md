@@ -1,10 +1,16 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Aplicativo e localização dos entregadores
+- [ ] Retornar ao aplicativo depois do login Google: pendente de integração nativa segura e nova instalação; nenhuma alteração insegura ao login existente foi feita.
+- [x] Tornar posição e situação de GPS mais claras; solicitar permissão fora do mapa e retomar compartilhamento autorizado durante turno aberto, respeitando desativação.
+- [ ] Notificar o entregador fora do aplicativo: bloqueado pela ausência da configuração Firebase Android, confirmada pelo usuário, e de conexão de envio; requer nova versão nativa.
+- [x] Verificar comportamento suportado: testes de permissão e desativação aprovados; mapa Google e GPS em aparelho real não verificáveis neste ambiente. Login e notificação dependem da atualização nativa.
+
 ## Ajustes de valores e acerto dos entregadores
-- [ ] Desconto e acréscimo no Caixa, com total validado e preservação dos pagamentos.
-- [ ] Resumo por entregador separando dinheiro a repassar, maquininha e pedidos já pagos, visível à equipe e ao próprio entregador.
-- [ ] Exclusão definitiva de clientes, entregadores e atendentes, com prévia, confirmação explícita e proteção de administradores; não apagar registros reais em testes.
-- [ ] Testar cálculos, permissões e telas sem movimentar vendas reais.
+- [x] Desconto e acréscimo no Caixa, com total validado, auditoria e pagamento atômico; comandas já pagas protegidas.
+- [x] Resumo diário por entregador separando dinheiro a repassar, maquininha, pagos antes da saída e pendentes, com leitura protegida da equipe e do próprio entregador.
+- [x] Exclusão definitiva de clientes, entregadores e atendentes, com prévia, confirmação explícita, proteção de administradores e bloqueio de operações em andamento; cliente fictício excluído pela tela, nenhum cadastro real apagado.
+- [x] Testar cálculos, permissões e telas: 575 testes gerais e 39 focados aprovados; transações temporárias revertidas, acerto desktop/celular sem overflow, exclusão temporária confirmada na interface e no banco. Nenhuma venda real alterada.
 
 ## Desativar e excluir entregadores
 - [x] Permitir desativar/reativar entregadores e ocultá-los das novas designações sem apagar o histórico.

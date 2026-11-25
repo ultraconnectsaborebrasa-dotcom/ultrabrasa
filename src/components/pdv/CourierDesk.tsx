@@ -4,6 +4,7 @@ import { Brand } from './Brand';
 import { DeliveryBoard } from './DeliveryBoard';
 import { CourierClockPanel } from './CourierClockPanel';
 import { CourierSettlementPanel } from './CourierSettlementPanel';
+import { CourierLocationSharing } from './CourierLocationSharing';
 
 export function CourierDesk({ name, signOut }: { name: string; signOut: () => Promise<void> }) {
   return <div className="min-h-dvh bg-muted/20">
@@ -19,6 +20,7 @@ export function CourierDesk({ name, signOut }: { name: string; signOut: () => Pr
     </header>
     <main className="mx-auto max-w-2xl space-y-4 p-3 pb-10 sm:p-5">
       <CourierClockPanel />
+      <CourierLocationSharing />
       <DeliveryBoard courier />
       <CourierSettlementPanel courier />
     </main>

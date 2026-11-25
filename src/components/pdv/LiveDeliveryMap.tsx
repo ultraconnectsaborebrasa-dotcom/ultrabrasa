@@ -39,7 +39,7 @@ function markerIcon(api: GoogleApi, kind: 'base' | 'courier', color: string, sel
     : `<g fill="none" stroke="${foreground}" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 29l17-13 17 13v21H15z"/><path d="M24 50V35h16v15M11 29h42"/></g>`;
   const size = selected ? 58 : 50;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="${tokenColor(color)}" stroke="${tokenColor(selected ? 'warning' : 'background')}" stroke-width="${selected ? 5 : 3}"/>${drawing}</svg>`;
-  return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, scaledSize: new api.maps.Size(size, size), anchor: new api.maps.Point(size / 2, size / 2) };
+  return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, scaledSize: new api.maps.Size(size, size), anchor: new api.maps.Point(size / 2, size / 2), labelOrigin: new api.maps.Point(32, 72) };
 }
 
 export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, focus, selectedDeliveryId, selectedDeliveryIds, editingLocation = null, savingLocation = false, onSelectCourier, onSelectDelivery, onDeliveryPositionChange, onSaveDeliveryPosition, onCancelDeliveryPosition }: {
@@ -106,7 +106,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
     const info = new api.maps.InfoWindow();
     const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void, selected = false, kind: 'circle' | 'base' | 'courier' = 'circle', onDragEnd?: (position: { latitude: number; longitude: number }) => void) => {
       const marker = new api.maps.Marker({
-        map: map.current, position, title, label: kind === 'circle' ? label : null, zIndex: selected ? 20 : kind === 'courier' ? 10 : 1,
+        map: map.current, position, title, label: kind === 'circle' ? label : kind === 'courier' ? { text: label, color: tokenColor('foreground'), fontWeight: '700', fontSize: '13px' } : null, zIndex: selected ? 20 : kind === 'courier' ? 10 : 1,
         animation: selected ? api.maps.Animation.DROP : undefined,
         draggable: Boolean(onDragEnd),
         icon: kind === 'circle'
@@ -138,7 +138,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       addMarker(
         { lat: location.latitude, lng: location.longitude },
         `${location.name} · ${isCourierLocationStale(location.located_at) ? 'GPS DESATUALIZADO' : 'GPS AO VIVO'} · ${stock} · ${marmitas} marmita(s) nas entregas abertas · atualizado ${new Date(location.located_at).toLocaleTimeString('pt-BR')}`,
-        location.name.trim().slice(0, 1).toUpperCase() || 'M',
+        location.name.trim() || 'Entregador',
         isCourierLocationStale(location.located_at) ? 'muted-foreground' : 'primary', 10,
         () => onSelectCourier?.(location.courier_id),
         focus?.type === 'courier' && focus.courierId === location.courier_id,

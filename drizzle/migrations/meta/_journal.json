@@ -813,6 +813,20 @@
       "when": 1795572302535,
       "tag": "0115_cashier_adjustments_and_courier_settlement",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1795573693847,
+      "tag": "0116_admin_person_history_purge",
+      "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1795573770960,
+      "tag": "0117_complete_person_purge_links",
+      "breakpoints": true
     }
   ]
 }

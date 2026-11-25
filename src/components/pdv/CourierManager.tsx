@@ -5,11 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { directoryCouriers, type Courier } from '@/lib/delivery';
+import { DeletePersonDialog } from './DeletePersonDialog';
 
 type CourierForm = { id: string | null; name: string; phone: string; user: string };
 type PendingAction = { courier: Courier; action: 'deactivate' | 'delete' };
 
-export function CourierManager({ couriers, onChanged }: { couriers: Courier[]; onChanged: () => Promise<unknown> }) {
+export function CourierManager({ couriers, onChanged, admin=false }: { couriers: Courier[]; onChanged: () => Promise<unknown>; admin?: boolean }) {
+  const [deleting,setDeleting]=useState<Courier|null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [form, setForm] = useState<CourierForm | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -72,10 +74,12 @@ export function CourierManager({ couriers, onChanged }: { couriers: Courier[]; o
           ? <Button variant="outline" size="sm" disabled={busy} aria-label={`Desativar entregador ${courier.name}`} onClick={() => setPending({ courier, action: 'deactivate' })}><UserX size={14} />Desativar</Button>
           : <Button variant="outline" size="sm" disabled={busy} aria-label={`Reativar entregador ${courier.name}`} onClick={() => void changeState(courier, 'activate')}><UserCheck size={14} />Reativar</Button>}
         <Button variant="destructive" size="sm" disabled={busy} aria-label={`Excluir entregador ${courier.name}`} onClick={() => setPending({ courier, action: 'delete' })}><Trash2 size={14} />Excluir</Button>
+        {admin&&<Button variant="outline" size="sm" className="text-destructive" disabled={busy} onClick={()=>setDeleting(courier)}><Trash2 size={14}/>Excluir com histórico</Button>}
       </div>
     </article>)}</div>
     {!visible.length && <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">Nenhum entregador ativo no momento.</p>}
 
+    {deleting&&<DeletePersonDialog kind="courier" id={deleting.id} name={deleting.name} onClose={()=>setDeleting(null)} onDeleted={()=>void onChanged()}/>}
     {form && <div role="dialog" aria-modal="true" aria-label="Cadastro de entregador" className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4">
       <div className="w-full max-w-md space-y-4 rounded-xl border bg-card p-5 shadow-lg"><h2 className="text-xl font-bold">Entregador</h2>
         <label className="block text-sm">Nome<input aria-label="Nome do entregador" className="field mt-1" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
