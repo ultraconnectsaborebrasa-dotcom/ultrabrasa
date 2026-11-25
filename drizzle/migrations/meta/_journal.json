@@ -862,6 +862,13 @@
       "when": 1795633994132,
       "tag": "0122_delivery_receivables_manual_review",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1795635206505,
+      "tag": "0123_cancelled_delivery_releases_courier",
+      "breakpoints": true
     }
   ]
 }
