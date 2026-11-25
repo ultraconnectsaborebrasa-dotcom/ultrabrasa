@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { confirmAction } from "@/lib/confirm-action";
 import { brl } from "@/lib/pdv-store";
+import { clockOutSummary, type CourierSettlementRow } from "@/lib/courier-settlement";
 import {
   COURIER_SHIFTS,
   currentCourierShift,
@@ -54,10 +55,15 @@ export function CourierClockPanel() {
   const isClosed = Boolean(entry?.exit_at);
 
   async function clock(action: "entry" | "exit", shiftCode: CourierShiftCode) {
+    let summary = "";
+    if (action === "exit") {
+      const { data } = await supabase.rpc("read_courier_settlement", { p_day: saoPauloDay() });
+      summary = `Seus repasses de hoje:\n${clockOutSummary((data as unknown as CourierSettlementRow[]) ?? [])}\n\n`;
+    }
     if (
       action === "exit" &&
       !(await confirmAction(
-        `Registrar a saída do ${COURIER_SHIFTS[shiftCode].label.toLowerCase()}? A localização deixará de ser compartilhada.`,
+        `${summary}Registrar a saída do ${COURIER_SHIFTS[shiftCode].label.toLowerCase()}? A localização deixará de ser compartilhada.`,
       ))
     )
       return;

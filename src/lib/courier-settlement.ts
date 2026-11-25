@@ -13,3 +13,19 @@ export const SETTLEMENT_LABELS = {
   cash: 'Dinheiro a repassar', card: 'Recebido na maquininha', prepaid: 'Pago antes da saída',
   store: 'Pago na loja / origem não identificada', pending: 'Ainda a receber', unverified: 'Comprovante não confirmado',
 };
+
+const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** Resumo do repasse exibido ao entregador ao registrar a saída do turno. */
+export function clockOutSummary(rows: CourierSettlementRow[]) {
+  const totals = settlementTotals(rows);
+  const count = (...categories: CourierSettlementRow['category'][]) => rows.filter(row => categories.includes(row.category)).length;
+  const cardRows = rows.filter(row => row.category === 'card');
+  const lines = [
+    `💵 Dinheiro a repassar: ${money(totals.cash)} (${count('cash')} pedido(s))`,
+    `💳 Notas da maquininha/Pix: ${cardRows.length} nota(s) somando ${money(totals.card)}${cardRows.length ? ` — ${cardRows.map(row => `#${row.number} ${money(Number(row.amount))}`).join(', ')}` : ''}`,
+    `✅ Já pagos pela loja: ${money(Math.round((totals.prepaid + totals.store) * 100) / 100)} (${count('prepaid', 'store')} pedido(s))`,
+  ];
+  if (totals.pending > 0) lines.push(`⏳ Ainda a receber: ${money(totals.pending)} (${count('pending')} pedido(s))`);
+  return lines.join('\n');
+}

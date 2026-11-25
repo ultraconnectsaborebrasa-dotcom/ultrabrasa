@@ -13,7 +13,7 @@ export function confirmAction(message: string, confirmLabel = 'Confirmar'): Prom
       <Dialog open onOpenChange={o => { if (!o) done(false); }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Confirmar ação</DialogTitle></DialogHeader>
-          <p className="text-sm">{message}</p>
+          <p className="whitespace-pre-line text-sm">{message}</p>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => done(false)}>Voltar</Button>
             <Button onClick={() => done(true)}>{confirmLabel}</Button>

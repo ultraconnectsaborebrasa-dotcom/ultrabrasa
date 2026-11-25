@@ -827,6 +827,13 @@
       "when": 1795573770960,
       "tag": "0117_complete_person_purge_links",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1795626352739,
+      "tag": "0118_settlement_attribute_payments_after_departure",
+      "breakpoints": true
     }
   ]
 }
