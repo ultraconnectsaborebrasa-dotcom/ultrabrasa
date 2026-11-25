@@ -3,7 +3,7 @@
 ## Ajustes de valores e acerto dos entregadores
 - [ ] Desconto e acréscimo no Caixa, com total validado e preservação dos pagamentos.
 - [ ] Resumo por entregador separando dinheiro a repassar, maquininha e pedidos já pagos, visível à equipe e ao próprio entregador.
-- [ ] Exclusão definitiva de pessoas e histórico: aguarda definição dos cadastros pelo usuário; não apagar registros reais.
+- [ ] Exclusão definitiva de clientes, entregadores e atendentes, com prévia, confirmação explícita e proteção de administradores; não apagar registros reais em testes.
 - [ ] Testar cálculos, permissões e telas sem movimentar vendas reais.
 
 ## Desativar e excluir entregadores
