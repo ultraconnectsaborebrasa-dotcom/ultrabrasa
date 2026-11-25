@@ -11,7 +11,8 @@
 ## Aplicativo e localização dos entregadores
 - [ ] Retornar ao aplicativo depois do login Google: pendente de integração nativa segura e nova instalação; nenhuma alteração insegura ao login existente foi feita.
 - [x] Tornar posição e situação de GPS mais claras; solicitar permissão fora do mapa e retomar compartilhamento autorizado durante turno aberto, respeitando desativação.
-- [ ] Notificar o entregador fora do aplicativo: configuração Firebase Android recebida; preparar recepção nativa e permissão com som. Envio e vínculo seguro do aparelho à conta dependem da conexão Firebase; requer nova versão nativa e teste no celular.
+- [x] Configurar Firebase: conexão de envio autorizada e verificação sem entrega aprovada; arquivo Android conferido com o pacote correto e integrado ao Gradle com Firebase Messaging.
+- [ ] Notificar o entregador fora do aplicativo: configuração Firebase pronta; integração nativa de permissão/som, vínculo autenticado do aparelho e disparos por evento precisam integrar a próxima versão Android. Instalação e teste exigem aparelho real; APKs atuais não foram atualizados.
 - [x] Verificar comportamento suportado: testes de permissão e desativação aprovados; mapa Google e GPS em aparelho real não verificáveis neste ambiente. Login e notificação dependem da atualização nativa.
 
 ## Ajustes de valores e acerto dos entregadores

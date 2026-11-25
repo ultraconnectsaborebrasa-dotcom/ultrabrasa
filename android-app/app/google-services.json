@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "895892527784",
+    "project_id": "ultraconnect-entregas",
+    "storage_bucket": "ultraconnect-entregas.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:895892527784:android:0fe4658e391fa69702c09d",
+        "android_client_info": {
+          "package_name": "br.com.ultraconnect.entregas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzQo6lwBR6F1sEBBiajbSvU6s4k0qTF_8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

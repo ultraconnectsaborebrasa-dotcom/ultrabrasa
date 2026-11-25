@@ -13,6 +13,15 @@ Aplicativo nativo para os entregadores acessarem ponto, GPS e rotas do sistema U
 - O pacote é separado do APK geral anterior, portanto pode ser instalado sem desinstalar o Ultraconnect antigo.
 
 ## Gerar APK no Android Studio
+O projeto inclui `app/google-services.json` do Firebase cadastrado para o pacote Android e o SDK Firebase Messaging. Esse arquivo contém configuração pública do aplicativo, não a chave privada usada para autorizar envios.
+
+### Situação das notificações Firebase
+- Conexão de envio autorizada na Lovable e verificação `validate_only` aprovada, sem enviar avisos reais.
+- Configuração Android conferida e incluída na pasta do aplicativo; Gradle prepara a inicialização do Firebase na próxima compilação.
+- **Ainda não há notificações de novas rotas com o aplicativo fechado.** Faltam a permissão e o canal de som nativos, o vínculo autenticado do aparelho ao entregador e o envio automático por evento autorizado. Não inscrever todos os aparelhos em um tópico compartilhado de pedidos.
+- Não adicionar ponte JavaScript nem expor tokens de sessão para integrar o WebView. O registro do aparelho precisa preservar as contas e permissões existentes.
+- Será necessário compilar, assinar e instalar uma versão nativa atualizada e verificar o recebimento em um aparelho real; esta configuração não altera APKs já instalados.
+
 1. Instale Android Studio estável: https://developer.android.com/studio.
 2. Abra esta pasta no Android Studio e aguarde o Gradle Sync.
 3. Em Settings > Build, Execution, Deployment > Build Tools > Gradle, selecione Gradle JDK 17.
