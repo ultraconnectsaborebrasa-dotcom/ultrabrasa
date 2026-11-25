@@ -6,9 +6,9 @@ export type OrderAlert={id:string;phone:string;name:string|null;code:string|null
 export type ReceiptAlert={id:string;phone:string;name:string|null;receivedAt:string;recognized:boolean};
 type RequestRow={id:string;phone:string;created_at:string;quoted_total:number;public_code:string|null;order_number:number|null;request:unknown};
 let conversations:AlertConversation[]=[];let listeners=new Set<()=>void>();let timer:ReturnType<typeof setInterval>|undefined;let refs=0;let baseline=false;let loading=false;let pendingOrders=0;
-let orderAlerts:OrderAlert[]=[];let receiptAlerts:ReceiptAlert[]=[];let acked=new Set<string>();let seenReceipts=new Set<string>();let lastRepeatAt=0;
+let orderAlerts:OrderAlert[]=[];let receiptAlerts:ReceiptAlert[]=[];let acked=new Set<string>();let seenReceipts=new Set<string>();let seenOrders=new Set<string>();
 let audio:AudioContext|undefined;let enabled=false;let volume=0.5;const lastSound=new Map<string,number>();const reminded=new Set<string>();let reminderMinutes=5;
-const ACK_KEY='ultrabrasa-wa-acked';const REPEAT_KEY='ultrabrasa-wa-repeat';
+const ACK_KEY='ultrabrasa-wa-acked';
 const empty:AlertConversation[]=[];const emptyAlerts:OrderAlert[]=[];const emptyReceipts:ReceiptAlert[]=[];
 const emit=()=>listeners.forEach(l=>l());
 const subscribe=(l:()=>void)=>{listeners.add(l);return()=>{listeners.delete(l);};};
@@ -18,8 +18,6 @@ export function useWhatsAppOrderAlerts(){return useSyncExternalStore(subscribe,(
 export function useWhatsAppReceiptAlerts(){return useSyncExternalStore(subscribe,()=>receiptAlerts,()=>emptyReceipts);}
 function loadAcked(){try{acked=new Set(JSON.parse(localStorage.getItem(ACK_KEY)??'[]'));}catch{acked=new Set();}}
 function saveAcked(){try{localStorage.setItem(ACK_KEY,JSON.stringify([...acked].slice(-1000)));}catch{}}
-export function getRepeatSeconds(){try{const v=Number(localStorage.getItem(REPEAT_KEY));return [15,30,60].includes(v)?v:30;}catch{return 30;}}
-export function setRepeatSeconds(s:number){try{localStorage.setItem(REPEAT_KEY,String(s));}catch{}}
 export function acknowledgeOrderAlert(id:string){acked.add(id);saveAcked();orderAlerts=orderAlerts.filter(a=>a.id!==id);emit();}
 export function acknowledgeAllOrderAlerts(){for(const a of orderAlerts)acked.add(a.id);saveAcked();orderAlerts=[];emit();}
 export function pruneAcked(ackedIds:Set<string>,pendingIds:Set<string>){const next=new Set([...ackedIds].filter(id=>pendingIds.has(id)));return next;}
@@ -27,7 +25,7 @@ export function orderAlertFromRequest(r:RequestRow,name:string|null):OrderAlert{
  const req=(r.request??{}) as {type?:string|null;items?:{productId?:string;qty?:number;note?:string}[];delivery?:{paymentMethod?:string|null};payment?:string|null};
  return {id:r.id,phone:r.phone,name,code:r.public_code??(r.order_number?`#${r.order_number}`:null),total:r.quoted_total,type:req.type??null,payment:req.delivery?.paymentMethod??req.payment??null,createdAt:r.created_at,items:(req.items??[]).map(i=>({qty:i.qty??1,productId:i.productId??'',note:i.note}))};
 }
-export function shouldRepeatOrderSound(now:number,lastAt:number,repeatSec:number,unacked:number){return unacked>0&&now-lastAt>=repeatSec*1000;}
+export function newOrderRequests<T extends {id:string}>(seen:Set<string>,rows:T[]):T[]{return rows.filter(r=>!seen.has(r.id));}
 export function newReceipts<T extends {id:string}>(seen:Set<string>,rows:T[]):T[]{return rows.filter(r=>!seen.has(r.id));}
 export function playWhatsAppSound(kind:'new'|'message'|'order'|'receipt'='new'){
  if(!enabled||!audio||volume<=0)return;
@@ -55,11 +53,12 @@ export async function refreshWhatsAppConversations(){
   if(!pending.error){
    const rows=pending.data as RequestRow[];
    const alerts=rows.map(x=>orderAlertFromRequest(x,nameOf(x.phone))).filter(a=>!acked.has(a.id)).sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
-   const grew=baseline&&alerts.length>orderAlerts.length;
+   const newAlerts=baseline?newOrderRequests(seenOrders,alerts):[];
+   rows.forEach(row=>seenOrders.add(row.id));
    orderAlerts=alerts;pendingOrders=rows.length;
-   if(grew){const first=alerts[alerts.length-1]!;playWhatsAppSound('order');lastRepeatAt=Date.now();window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:first.phone,name:first.name,kind:'order',last_message:'Pedido fechado pelo robô — aguardando aceite'}}));notify('🔔 Novo pedido confirmado: '+(first.name||`+${first.phone}`),`Total ${first.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} · aguardando aceite da loja`,`wa-order-${first.id}`,first.phone);}
-   if(shouldRepeatOrderSound(Date.now(),lastRepeatAt,getRepeatSeconds(),alerts.length)){playWhatsAppSound('order');lastRepeatAt=Date.now();}
-   for(const p of rows){const key='request:'+p.id;if(Date.now()-Date.parse(p.created_at)>reminderMinutes*60000&&!reminded.has(key)){reminded.add(key);playReminderSound('order');window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:p.phone,name:nameOf(p.phone),kind:'order',last_message:'Pedido aguardando aceite da loja'}}));}}}
+   const first=newAlerts.at(-1);
+   if(first){playWhatsAppSound('order');window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{phone:first.phone,name:first.name,kind:'order',last_message:'Pedido fechado pelo robô — aguardando aceite'}}));notify('🔔 Novo pedido confirmado: '+(first.name||`+${first.phone}`),`Total ${first.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} · aguardando aceite da loja`,`wa-order-${first.id}`,first.phone);}
+  }
   const receipts=await supabase.from('payment_receipts').select('id,phone,received_at,evidence').is('reviewed_at',null).order('received_at',{ascending:false}).limit(20);
 
   if(!receipts.error){
@@ -77,4 +76,4 @@ export async function refreshWhatsAppConversations(){
   for(const c of fresh){if(c.attendance_status!=='waiting_customer'&&c.attendance_status!=='finished'&&c.awaiting_since&&Date.now()-Date.parse(c.awaiting_since)>reminderMinutes*60000){const key=c.phone+':'+c.awaiting_since;if(!reminded.has(key)){reminded.add(key);playReminderSound('message');window.dispatchEvent(new CustomEvent('whatsapp-arrival',{detail:{...c,last_message:'Cliente aguardando resposta'}}));}}}
  }catch(e){console.error('WhatsApp inbox refresh failed');}finally{loading=false;}
 }
-export function mountWhatsAppInbox(){refs++;if(refs===1){baseline=false;loadAcked();seenReceipts=new Set();lastRepeatAt=0;void supabase.from('whatsapp_settings').select('business').eq('id',1).single().then(r=>{if(!r.error&&r.data.business&&typeof r.data.business==='object'&&!Array.isArray(r.data.business)&&typeof r.data.business['reminderMinutes']==='number')reminderMinutes=r.data.business['reminderMinutes'];});void refreshWhatsAppConversations();timer=setInterval(()=>void refreshWhatsAppConversations(),4000);}return()=>{refs--;if(refs===0){clearInterval(timer);timer=undefined;conversations=[];orderAlerts=[];receiptAlerts=[];baseline=false;emit();}};}
+export function mountWhatsAppInbox(){refs++;if(refs===1){baseline=false;loadAcked();seenReceipts=new Set();seenOrders=new Set();void supabase.from('whatsapp_settings').select('business').eq('id',1).single().then(r=>{if(!r.error&&r.data.business&&typeof r.data.business==='object'&&!Array.isArray(r.data.business)&&typeof r.data.business['reminderMinutes']==='number')reminderMinutes=r.data.business['reminderMinutes'];});void refreshWhatsAppConversations();timer=setInterval(()=>void refreshWhatsAppConversations(),4000);}return()=>{refs--;if(refs===0){clearInterval(timer);timer=undefined;conversations=[];orderAlerts=[];receiptAlerts=[];baseline=false;emit();}};}

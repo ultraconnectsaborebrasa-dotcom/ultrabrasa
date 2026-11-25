@@ -7,6 +7,7 @@ import { loadOrderAlerts, newKitchenOrders, playOrderSound, requestOrderNotifica
 export function NewOrderAlerts({ orders, ready = true, onOpen }: { orders: AlertOrder[]; ready?: boolean; onOpen: () => void }) {
   const enabled = useOrderAlerts();
   const previous = useRef<AlertOrder[] | null>(null);
+  const sounded = useRef(new Set<string>());
   const [incoming, setIncoming] = useState<AlertOrder[]>([]);
   const [soundReady, setSoundReady] = useState(false);
   useEffect(() => {
@@ -32,9 +33,9 @@ export function NewOrderAlerts({ orders, ready = true, onOpen }: { orders: Alert
   const incomingKey = incoming.map(order => order.id).join(',');
   useEffect(() => {
     if (!enabled || !soundReady || !incomingKey) return;
-    playOrderSound();
-    const repeat = window.setInterval(() => { playOrderSound(); }, 12_000);
-    return () => window.clearInterval(repeat);
+    const freshIds = incomingKey.split(',').filter(id => !sounded.current.has(id));
+    if (!freshIds.length) return;
+    if (playOrderSound()) freshIds.forEach(id => sounded.current.add(id));
   }, [enabled, soundReady, incomingKey]);
   return <div className="shrink-0 border-b bg-card px-3 py-2 sm:px-5">
     <div className="flex flex-wrap items-center gap-2">
