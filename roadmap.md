@@ -4,7 +4,7 @@
 - [x] Regra: entrar pelo Google deve devolver a conta conectada ao aplicativo, sem prender o entregador no navegador. Entrada `/auth`, compatibilidade `/login`, AccountGate, integração gerenciada, MainActivity, manifesto, LoginHandoff e cifragem lidos: usam os caminhos e limites esperados; não houve mudanças em permissões, dados ou funções do banco.
 - [x] `/android-login` agora espera a restauração, verifica a conta e observa sessão tardia; tenta abrir automaticamente o aplicativo e mantém botão de retorno quando o navegador exige toque, preservando a limpeza imediata do fragmento nativo.
 - [x] Seis testes aprovados; conta real reconhecida no navegador e restaurada no contexto Android simulado, com fragmento limpo. Usuário confirmou v4 instalada. Abertura física e passagem real pelo Google dependem de teste no celular.
-- [ ] Publicar a correção autorizada pelo usuário.
+- [x] Publicação autorizada solicitada para o endereço oficial; agendamento confirmado, conclusão ainda não verificada.
 
 ## Acertos sob busca
 - [x] Ocultar acertos da equipe até buscar e selecionar um entregador; limpar, ocultar e trocar o dia recolhem o resumo, sem mudar pagamentos ou permissões.
