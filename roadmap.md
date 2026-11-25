@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Acertos sob busca
+- [x] Ocultar acertos da equipe até buscar e selecionar um entregador; limpar, ocultar e trocar o dia recolhem o resumo, sem mudar pagamentos ou permissões.
+- [x] Organizar dinheiro, maquininha/Pix, pagos pela loja e pendências, com pedidos recolhidos por categoria; manter o resumo próprio do entregador.
+- [x] Seis testes aprovados e consulta real autenticada verificada em 890×674 e 390×844: busca de Daniel, seleção, ocultação e limpeza; sem erros, rolagem lateral ou alteração de pagamentos.
+
 ## Disponibilidade e prestação de contas do motoboy
 - [x] Ocultar entregadores indisponíveis e quem está voltando à base das listas operacionais e do cadastro, com botão explícito para revelá-los e alterar a disponibilidade; novas designações já eram protegidas.
 - [x] Destacar o dinheiro a repassar e organizar maquininha, pagos antes da saída, pagos na loja, pendências e comprovantes em seções com totais e quantidades.
