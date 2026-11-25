@@ -1,7 +1,7 @@
 import { GatewayError } from '@lovable.dev/ai-gateway';
 // Delivery or lunch questions start the scripted lunch flow instead of a human handoff.
 const LUNCH_INTEREST=/marmit|quentinh|almo[cç]o|comida|quero|pedido|pedir|card[aá]pio|hoje|entreg|delivery|frete|tele/i;
-import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,AFTERNOON_REMINDER_MESSAGE,AFTERNOON_REMINDER_DELAY_MS,isAfternoonMenuJob,isAfternoonReminderJob,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,prefersManualOrder,isCatalogOrderMessage,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob,isStoreLocationQuestion,isStoreLocationJob,STORE_LOCATION_MESSAGE,STORE_LOCATION,STORE_LOCATION_MAPS_MESSAGE } from './whatsapp-rulebot';
+import { botWindow,windowStart,ruleParse,recentInboundChunks,GREETING_MESSAGE,nightOpeningMessage,AFTERNOON_MESSAGES,AFTERNOON_REMINDER_MESSAGE,AFTERNOON_REMINDER_DELAY_MS,isAfternoonMenuJob,isAfternoonReminderJob,CLOSING_MESSAGE,LUNCH_CLOSED_MESSAGE,HANDOFF_MESSAGE,CONFIRM_HINT,earlyLunchMessage,earlyLunchMessages,regularLunchMessages,lunchMenuOpen,faqReply,prefersManualOrder,isCatalogOrderMessage,FIRST_CONTACT_MESSAGE,FIRST_CONTACT_REMINDER_MESSAGE,FIRST_CONTACT_REMINDER_DELAY_MS,isFirstContactJob,isFirstContactReminderJob,ORDER_CONFIRMATION_REMINDER_DELAY_MS,isOrderConfirmationReminderJob,isStoreLocationQuestion,isStoreLocationJob,STORE_LOCATION_MESSAGE,STORE_LOCATION,STORE_LOCATION_MAPS_MESSAGE,isDeliveryTimeQuestion,DELIVERY_TIME_MESSAGE } from './whatsapp-rulebot';
 import { z } from 'zod';
 import { businessSchema,conversationDraftSchema,missingOrderFields,followUpMessage,lunchQtyAck,summaryReady,paymentLabel,addressAck,titleAddr,deliveryAddressComplete,customerNameWithProfile } from './whatsapp-business';
 import { gateway,sendText,sendLocation,sendTyping,digits } from './whatsapp.server';
@@ -62,6 +62,10 @@ async function interpret(db:Admin,j:Job){
       await queueJob(db,`store-location:${inbound}`,j.phone,'text',{text:STORE_LOCATION_MESSAGE,automatic:true,inboundId:payload.inboundId});
       await queueJob(db,`store-location-pin:${inbound}`,j.phone,'text',{text:STORE_LOCATION_MAPS_MESSAGE,location:STORE_LOCATION,automatic:true,inboundId:payload.inboundId},{delayMs:1000});
     }
+    return;
+  }
+  if(isDeliveryTimeQuestion(text)){
+    if(!already(DELIVERY_TIME_MESSAGE))await queueJob(db,`delivery-time:${payload.inboundId??j.id}`,j.phone,'text',{text:DELIVERY_TIME_MESSAGE,automatic:true,inboundId:payload.inboundId});
     return;
   }
   if(b.stockExhausted){

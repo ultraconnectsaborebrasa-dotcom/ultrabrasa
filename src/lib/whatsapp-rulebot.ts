@@ -33,13 +33,28 @@ export const STORE_LOCATION_MESSAGE = 'Claro! Estamos na Rua Lateral do IFBA de 
 export const STORE_LOCATION = { latitude: -16.350000, longitude: -39.574600, name: 'Ultrabrasa', address: 'Rua Alcides Lacerda, 359, Eunápolis - BA' } as const;
 export const STORE_LOCATION_MAPS_URL = 'https://www.google.com/maps?q=-16.350000,-39.574600';
 export const STORE_LOCATION_MAPS_MESSAGE = `📍 Nossa localização no Google Maps:\n${STORE_LOCATION_MAPS_URL}`;
+export const DELIVERY_TIME_MESSAGE = 'Nosso prazo estimado de entrega é de 30 a 45 minutos após o pedido sair para entrega. 🛵';
+/** Perguntas sobre prazo/tempo de entrega. */
+export function isDeliveryTimeQuestion(text: string): boolean {
+  const n = norm(text);
+  return /\bprazo\b/.test(n)
+    || /\b(?:quanto|qnt|qto)\s+tempo\b/.test(n)
+    || /\btempo\s+(?:de|pra|para)\s+(?:entrega|entregar|chegar)\b/.test(n)
+    || /\bdemora(?:m|r)?\b.*\b(?:entrega|entregar|chegar|pedido|marmita)?/.test(n) && /\bdemora/.test(n)
+    || /\b(?:que\s+horas|qual\s+horario)\b.*\b(?:chega|entrega|entregam)\b/.test(n)
+    || /\b(?:vai\s+)?(?:chega|chegar)\s+(?:que\s+horas|em\s+quanto)\b/.test(n)
+    || /\bem\s+quanto\s+tempo\b/.test(n);
+}
 export const isStoreLocationJob = (key: string) => key.startsWith('store-location:') || key.startsWith('store-location-pin:');
 /** Perguntas sobre a loja não devem ser interpretadas como endereço de entrega ou início de pedido. */
 export function isStoreLocationQuestion(text: string): boolean {
   const n = norm(text);
   if (/\bposso\s+retirar(?:\s+(?:o\s+|meu\s+)?pedido)?\b/.test(n)) return true;
   if (/\b(?:meu|minha)\s+(?:endereco|localizacao)\b|\bendereco\s+(?:da|de)\s+entrega\b/.test(n)) return false;
+  if (/^(?:e\s+|mas\s+)?a?onde\s+(?:e|fica|ficam|voces\s+ficam|vcs\s+ficam)(?:\s+(?:ai|ae|isso|a\s+loja|o\s+restaurante|voces|vcs|o\s+lugar|o\s+endereco))?\s*\??$/.test(n.trim())) return true;
+  if (/\b(?:sua|tua|a|da)\s+localizacao\b|^localizacao\b|\blocalizacao\s+(?:da\s+loja|de\s+voces|de\s+vcs|ai)\b/.test(n)) return true;
   return /\bqual\s+(?:e\s+)?(?:o\s+)?endereco\b/.test(n)
+    || /\ba?onde\s+(?:e|fica)\s+(?:ai|ae|a\s+loja|o\s+restaurante|o\s+ultrabrasa|voces|vcs)\b/.test(n)
     || /\bonde\s+(?:voces|vcs)\s+(?:ficam|estao|sao)\b/.test(n)
     || /\bonde\s+fica(?:m)?(?:\s+(?:a\s+loja|o\s+ultrabrasa|voces|vcs))?\b/.test(n)
     || /\b(?:manda|envia|passa|compartilha)(?:r)?\b.*\b(?:localizacao|endereco|mapa)\b/.test(n)
@@ -126,7 +141,7 @@ export function windowStart(now = new Date()): string {
 export function faqReply(text: string, b: Business, price: number, now = new Date()): string | null {
   const n = norm(text);
   const win = botWindow(now);
-  if (/prazo|tempo de entrega|demora para entregar|demora pra entregar/.test(n)) return 'Nosso prazo estimado é de 30 a 45 minutos após o pedido sair para entrega.';
+  if (isDeliveryTimeQuestion(text)) return DELIVERY_TIME_MESSAGE;
   if (/horario de saida|que horas.*(saem|sai)|comecam a sair|pedidos saem/.test(n)) return 'Nossos pedidos começam a sair a partir das 11:00.';
   if (/frete gratis|entrega gratis|entrega e gratis|taxa de entrega|valor da entrega/.test(n)) return b.freeDelivery ? 'Sim! A entrega é grátis para qualquer lugar de Eunápolis.' : null;
   if (/horario noturno|horario da noite|que horas.*(preparo|noite)|preparos comecam/.test(n)) return nightHoursReply(now);
