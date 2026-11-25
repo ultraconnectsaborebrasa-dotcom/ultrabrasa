@@ -21,13 +21,14 @@ export const Route = createFileRoute('/android-login')({
 });
 
 const STORAGE = 'ultraconnect-android-login';
-function AndroidLogin() {
+export function AndroidLogin() {
   const navigate = useNavigate();
   const initialized = useRef(false);
   const [request, setRequest] = useState<{ state: string; key: string } | null>(null);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const returning = useRef(false);
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -49,20 +50,47 @@ function AndroidLogin() {
         const incoming = androidLoginRequest.safeParse({ state: params.get('state'), key: params.get('key') });
         if (incoming.success) {
           sessionStorage.setItem(STORAGE, JSON.stringify({ ...incoming.data, expires: Date.now() + 300000, started: false }));
-          window.history.replaceState(null, '', '/android-login');
+          window.history.replaceState(null, '', `/android-login${window.location.hash}`);
         }
         const stored = JSON.parse(sessionStorage.getItem(STORAGE) ?? 'null') as { state: string; key: string; expires: number; started: boolean } | null;
         if (!stored || stored.expires < Date.now()) throw new Error('Abra o aplicativo e toque em Continuar com Google para iniciar.');
         const valid = androidLoginRequest.parse(stored);
         setRequest(valid);
         if (stored.started) {
-          const { data } = await supabase.auth.getUser();
-          setReady(Boolean(data.user));
+          // getSession waits for callback restoration; getUser then verifies it remotely.
+          const { data: session } = await supabase.auth.getSession();
+          if (session.session) {
+            const { data, error } = await supabase.auth.getUser();
+            if (error) throw error;
+            setReady(Boolean(data.user));
+          }
         }
       } catch (error) { setMessage(error instanceof Error ? error.message : 'Não foi possível continuar. Inicie novamente pelo aplicativo.'); }
       finally { setBusy(false); }
     })();
   }, [navigate]);
+
+  useEffect(() => {
+    if (!request) return;
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== 'SIGNED_IN' || !session) return;
+      const stored = JSON.parse(sessionStorage.getItem(STORAGE) ?? 'null');
+      if (!stored?.started || stored.expires < Date.now()) return;
+      // Do not invoke auth methods inside its callback: they share the auth lock.
+      window.setTimeout(() => {
+        void supabase.auth.getUser().then(({ data: user, error }) => {
+          if (!error && user.user) setReady(true);
+        });
+      }, 0);
+    });
+    return () => data.subscription.unsubscribe();
+  }, [request]);
+
+  useEffect(() => {
+    if (!ready || !request || returning.current) return;
+    returning.current = true;
+    void returnToApp();
+  }, [ready, request]);
 
   async function login() {
     if (!request) return;
@@ -73,7 +101,11 @@ function AndroidLogin() {
       sessionStorage.setItem(STORAGE, JSON.stringify({ ...stored, started: true }));
       const result = await lovable.auth.signInWithOAuth('google', { redirect_uri: `${window.location.origin}/android-login`, extraParams: { prompt: 'select_account' } });
       if (result.error) throw result.error;
-      if (!result.redirected) setReady(true);
+      if (!result.redirected) {
+        const { data, error } = await supabase.auth.getUser();
+        if (error || !data.user) throw new Error('Não foi possível confirmar sua conta. Tente entrar novamente.');
+        setReady(true);
+      }
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Não foi possível entrar com Google.'); }
     finally { setBusy(false); }
   }
