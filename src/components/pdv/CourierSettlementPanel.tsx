@@ -36,7 +36,7 @@ export function CourierSettlementPanel({ admin = false, courier = false, onPaid 
   const rows = query.data ?? [];
   const groups = [...new Map(rows.map(row => [row.courier_id, row.courier_name])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
   const normalizedSearch = search.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
-  const matches = normalizedSearch ? groups.filter(([, name]) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(normalizedSearch)) : [];
+  const matches = normalizedSearch ? groups.filter(([, name]) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(normalizedSearch)) : groups;
   const visibleGroups = courier ? groups : matches.filter(([id]) => id === selectedCourier);
   const refreshPDV = admin ? openCloud : onPaid;
   return <section className="space-y-4">
@@ -57,8 +57,8 @@ export function CourierSettlementPanel({ admin = false, courier = false, onPaid 
         <input id="settlement-courier-search" type="search" placeholder="Buscar pelo nome do entregador" value={search} onChange={event => { setSearch(event.target.value); setSelectedCourier(null); }} className="h-12 w-full min-w-0 bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         {search && <Button variant="ghost" size="icon" aria-label="Limpar busca e ocultar acerto" title="Limpar busca e ocultar acerto" onClick={() => { setSearch(''); setSelectedCourier(null); }}><X size={18} /></Button>}
       </div>
-      {!normalizedSearch && <div className="flex items-center justify-center gap-2 border-b py-10 text-sm text-muted-foreground"><EyeOff size={20} />Nenhum acerto selecionado</div>}
-      {normalizedSearch && !query.isPending && !query.error && !matches.length && <p role="status" className="py-6 text-center text-sm text-muted-foreground">Nenhum entregador com acerto encontrado neste dia.</p>}
+      {!query.isPending && !query.error && !groups.length && <div className="flex items-center justify-center gap-2 border-b py-10 text-sm text-muted-foreground"><EyeOff size={20} />Nenhum entregador com acerto neste dia.</div>}
+      {normalizedSearch && groups.length > 0 && !query.isPending && !query.error && !matches.length && <p role="status" className="py-6 text-center text-sm text-muted-foreground">Nenhum entregador com acerto encontrado neste dia.</p>}
       {matches.length > 0 && !selectedCourier && <div className="divide-y border-y">{matches.map(([id, name]) => <Button key={id} variant="ghost" className="h-auto min-h-12 w-full justify-between gap-3 rounded-none px-3 py-3 text-left" onClick={() => setSelectedCourier(id)}><span className="min-w-0 break-words whitespace-normal">{name}</span><ArrowRight size={18} className="shrink-0" /></Button>)}</div>}
       {visibleGroups.length > 0 && <Button variant="outline" size="sm" onClick={() => setSelectedCourier(null)}><EyeOff size={16} />Ocultar acerto</Button>}
     </div>}
