@@ -15,6 +15,7 @@ import { Route as CardapioRouteImport } from './routes/cardapio'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MarmitaDoDiaRouteImport } from './routes/marmita-do-dia'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ApiPublicAndroidDeviceRouteImport } from './routes/api/public/android/device'
 import { Route as ApiPublicCatalogPhotoNameRouteImport } from './routes/api/public/catalog-photo.$name'
 import { Route as ApiPublicEntregasProcessRouteImport } from './routes/api/public/entregas/process'
 import { Route as ApiPublicEntregasRetornoRouteImport } from './routes/api/public/entregas/retorno'
@@ -49,6 +50,11 @@ const MarmitaDoDiaRoute = MarmitaDoDiaRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAndroidDeviceRoute = ApiPublicAndroidDeviceRouteImport.update({
+  id: '/api/public/android/device',
+  path: '/api/public/android/device',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicCatalogPhotoNameRoute =
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/public/android/device': typeof ApiPublicAndroidDeviceRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/entregas/process': typeof ApiPublicEntregasProcessRoute
   '/api/public/entregas/retorno': typeof ApiPublicEntregasRetornoRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/public/android/device': typeof ApiPublicAndroidDeviceRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/entregas/process': typeof ApiPublicEntregasProcessRoute
   '/api/public/entregas/retorno': typeof ApiPublicEntregasRetornoRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/marmita-do-dia': typeof MarmitaDoDiaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/api/public/android/device': typeof ApiPublicAndroidDeviceRoute
   '/api/public/catalog-photo/$name': typeof ApiPublicCatalogPhotoNameRoute
   '/api/public/entregas/process': typeof ApiPublicEntregasProcessRoute
   '/api/public/entregas/retorno': typeof ApiPublicEntregasRetornoRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/marmita-do-dia'
     | '/reset-password'
+    | '/api/public/android/device'
     | '/api/public/catalog-photo/$name'
     | '/api/public/entregas/process'
     | '/api/public/entregas/retorno'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/marmita-do-dia'
     | '/reset-password'
+    | '/api/public/android/device'
     | '/api/public/catalog-photo/$name'
     | '/api/public/entregas/process'
     | '/api/public/entregas/retorno'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/marmita-do-dia'
     | '/reset-password'
+    | '/api/public/android/device'
     | '/api/public/catalog-photo/$name'
     | '/api/public/entregas/process'
     | '/api/public/entregas/retorno'
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MarmitaDoDiaRoute: typeof MarmitaDoDiaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicAndroidDeviceRoute: typeof ApiPublicAndroidDeviceRoute
   ApiPublicCatalogPhotoNameRoute: typeof ApiPublicCatalogPhotoNameRoute
   ApiPublicEntregasProcessRoute: typeof ApiPublicEntregasProcessRoute
   ApiPublicEntregasRetornoRoute: typeof ApiPublicEntregasRetornoRoute
@@ -222,6 +235,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/android/device': {
+      id: '/api/public/android/device'
+      path: '/api/public/android/device'
+      fullPath: '/api/public/android/device'
+      preLoaderRoute: typeof ApiPublicAndroidDeviceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/catalog-photo/$name': {
       id: '/api/public/catalog-photo/$name'
       path: '/api/public/catalog-photo/$name'
@@ -267,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MarmitaDoDiaRoute: MarmitaDoDiaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicAndroidDeviceRoute: ApiPublicAndroidDeviceRoute,
   ApiPublicCatalogPhotoNameRoute: ApiPublicCatalogPhotoNameRoute,
   ApiPublicEntregasProcessRoute: ApiPublicEntregasProcessRoute,
   ApiPublicEntregasRetornoRoute: ApiPublicEntregasRetornoRoute,

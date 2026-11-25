@@ -21,6 +21,8 @@ Subdirectories may have their own AGENTS.md (desktop rules: electron/AGENTS.md);
 - Ordinary team removal preserves history; explicit administrator-only permanent deletion previews linked records, blocks live work and protected accounts, deletes linked history transactionally, and cleans private files/Auth accounts through a retriable private cleanup job.
 - Android is a HTTPS-only native WebView of the published site, no JavaScript bridge or separate data store, keeping releases, login and role-enforced data consistent.
 - Android Firebase uses app/google-services.json as public build configuration and the Firebase Messaging SDK; private sending credentials stay in the connector, and device targeting must be authenticated per courier, never a shared order topic.
+- Native GPS pairs through a five-minute one-use code and an encrypted, GPS-only device credential, without exposing web sessions; its visible foreground service rechecks open shift and opt-out before collecting, and the database rechecks both before every write.
+- Native release signing material is preserved only in private artifact metadata, never source, public app assets or chat.
 - Operator submissions derive prices, stock and seller identity in a locked database function; client amounts are never accepted, and idempotency prevents duplicate sends.
 - Table selection is structured and validated against the fixed table list; kitchen and floor views share table labels to keep destinations unambiguous.
 - Sales history and admin summaries (daily sales, payment/day, bestsellers) share the same helpers: payment timestamps, local inclusive dates, product-ID aggregation and stored service amounts, with legacy timestamp fallbacks.

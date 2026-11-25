@@ -65,6 +65,82 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_android_devices: {
+        Row: {
+          courier_id: string
+          created_at: string
+          enabled: boolean
+          expires_at: string
+          fcm_token: string | null
+          id: string
+          last_seen_at: string | null
+          revoked: boolean
+          secret_hash: string
+          user_id: string
+        }
+        Insert: {
+          courier_id: string
+          created_at?: string
+          enabled?: boolean
+          expires_at?: string
+          fcm_token?: string | null
+          id?: string
+          last_seen_at?: string | null
+          revoked?: boolean
+          secret_hash: string
+          user_id: string
+        }
+        Update: {
+          courier_id?: string
+          created_at?: string
+          enabled?: boolean
+          expires_at?: string
+          fcm_token?: string | null
+          id?: string
+          last_seen_at?: string | null
+          revoked?: boolean
+          secret_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_android_devices_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_device_pairs: {
+        Row: {
+          code_hash: string
+          courier_id: string
+          expires_at: string
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          courier_id: string
+          expires_at?: string
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          courier_id?: string
+          expires_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_device_pairs_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_locations: {
         Row: {
           accuracy_meters: number
@@ -1433,6 +1509,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      bind_courier_android_device: {
+        Args: {
+          p_code_hash: string
+          p_fcm_token?: string
+          p_secret_hash: string
+        }
+        Returns: Json
+      }
       bulk_advance_pdv_cashier_orders: {
         Args: { action: string }
         Returns: number
@@ -1479,6 +1563,21 @@ export type Database = {
       confirm_receipt_without_order: {
         Args: { _id: string; _method?: string }
         Returns: Json
+      }
+      courier_android_exchange: {
+        Args: {
+          p_accuracy?: number
+          p_action: string
+          p_latitude?: number
+          p_longitude?: number
+          p_observed_at?: string
+          p_secret_hash: string
+        }
+        Returns: Json
+      }
+      create_courier_device_pair: {
+        Args: { p_code_hash: string }
+        Returns: undefined
       }
       delivery_marmita_quantity: {
         Args: { p_order_id: string }

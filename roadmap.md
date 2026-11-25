@@ -9,6 +9,10 @@
 - [x] Encerrar o turno aberto às 23:53 com autorização explícita e excluir definitivamente Mateus, 4 pedidos, 4 entregas e 4 mensagens vinculadas pela tela; cadastro, entregas e turnos confirmados ausentes no banco, com 4 proteções contra restauração por terminais antigos.
 
 ## Aplicativo e localização dos entregadores
+- [x] GPS Android em segundo plano durante turno aberto: serviço visível, autorização e vínculo criptografado por código de uso único; entrada, leitura da posição, desativação e saída verificadas com conta temporária, sem pedidos reais.
+- [x] Gerar APK v3 assinado (1.2.0), verificar assinatura v2/v3, alinhamento, pacote/permissões, testes Android e entregar APK e instruções em Files. Nova assinatura exige reinstalação; assinatura preservada somente em metadados privados.
+- [ ] Publicação autorizada solicitada; conferir a disponibilidade do novo vínculo GPS no endereço oficial, que ainda retornou a versão antiga na primeira conferência.
+- [ ] Validar instalação, GPS físico com tela bloqueada e comportamento da bateria: depende de aparelho Android real, indisponível neste ambiente.
 - [ ] Retornar ao aplicativo depois do login Google: pendente de integração nativa segura e nova instalação; nenhuma alteração insegura ao login existente foi feita.
 - [x] Tornar posição e situação de GPS mais claras; solicitar permissão fora do mapa e retomar compartilhamento autorizado durante turno aberto, respeitando desativação.
 - [x] Configurar Firebase: conexão de envio autorizada e verificação sem entrega aprovada; arquivo Android conferido com o pacote correto e integrado ao Gradle com Firebase Messaging.

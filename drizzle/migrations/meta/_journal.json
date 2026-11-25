@@ -834,6 +834,20 @@
       "when": 1795626352739,
       "tag": "0118_settlement_attribute_payments_after_departure",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1795630645064,
+      "tag": "0119_android_courier_background_gps",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1795631394094,
+      "tag": "0120_android_device_private_grants",
+      "breakpoints": true
     }
   ]
 }

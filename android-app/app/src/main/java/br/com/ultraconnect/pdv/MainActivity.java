@@ -22,10 +22,18 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ImageButton;
+import android.widget.TextView;
+import android.widget.EditText;
+import android.app.NotificationManager;
+import org.json.JSONObject;
+import java.security.SecureRandom;
 
 public class MainActivity extends Activity {
     private static final String HOME = "https://ultraconnectbrasa.com.br/";
     private static final int LOCATION_PERMISSION_REQUEST = 4102;
+    private static final int NATIVE_LOCATION_REQUEST = 4104;
+    private static final int NOTIFICATION_REQUEST = 4105;
     private WebView web;
     private ProgressBar progress;
     private boolean showingError;
@@ -59,6 +67,15 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout toolbar = new LinearLayout(this);
+        TextView label = new TextView(this); label.setText("Ultraconnect · GPS do turno");
+        label.setPadding(16, 8, 8, 8);
+        toolbar.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
+        ImageButton gps = new ImageButton(this); gps.setImageResource(android.R.drawable.ic_menu_mylocation);
+        gps.setContentDescription("GPS em segundo plano"); gps.setOnClickListener(view -> showGps());
+        int targetSize = Math.round(48 * getResources().getDisplayMetrics().density);
+        toolbar.addView(gps, new LinearLayout.LayoutParams(targetSize, targetSize));
+        layout.addView(toolbar);
         // Handle system bars and keyboard on Android 15 edge-to-edge.
         if (android.os.Build.VERSION.SDK_INT >= 30) {
             layout.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -83,6 +100,7 @@ public class MainActivity extends Activity {
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setSafeBrowsingEnabled(true);
         settings.setGeolocationEnabled(true);
+        settings.setUserAgentString(settings.getUserAgentString() + " UltraconnectEntregas/1.2");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
@@ -141,9 +159,75 @@ public class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NATIVE_LOCATION_REQUEST) {
+            if (hasLocationPermission()) activateGps();
+            else showError("O GPS precisa da sua autorização. Você pode continuar usando os pedidos sem ativá-lo.");
+            return;
+        }
+        if (requestCode == NOTIFICATION_REQUEST) {
+            if (getSystemService(NotificationManager.class).areNotificationsEnabled()) activateGps();
+            else showError("Autorize os avisos nas configurações do aplicativo para manter o aviso permanente do GPS.");
+            return;
+        }
         if (requestCode != LOCATION_PERMISSION_REQUEST) return;
         boolean granted = hasLocationPermission();
         clearPendingLocation(granted);
+    }
+
+    private void showGps() {
+        if (DeviceStore.secret(this) == null) { showPair(); return; }
+        new AlertDialog.Builder(this).setTitle("GPS em segundo plano")
+            .setMessage("Ative somente na sua conta. A localização é enviada durante o turno aberto, inclusive com a tela bloqueada. O aviso permanente permite pausar; registrar a saída interrompe o GPS.")
+            .setPositiveButton("Ativar GPS", (dialog, which) -> activateGps())
+            .setNeutralButton("Pausar GPS", (dialog, which) -> pauseGps())
+            .setNegativeButton("Vincular outra conta", (dialog, which) -> showPair()).show();
+    }
+    private void showPair() {
+        EditText code = new EditText(this); code.setSingleLine(true); code.setHint("Código de vínculo");
+        code.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        new AlertDialog.Builder(this).setTitle("Vincular meu aparelho")
+            .setMessage("Entre na sua conta de entregador e gere o código em Minha localização. Cole o código aqui; ele vale por 5 minutos.")
+            .setView(code).setPositiveButton("Vincular", (dialog, which) -> {
+                String value = code.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);
+                if (!value.matches("[a-f0-9]{32}")) { showError("Copie o código completo da sua conta de entregador."); return; }
+                pauseGps();
+                new Thread(() -> {
+                    try {
+                        byte[] random = new byte[32]; new SecureRandom().nextBytes(random);
+                        StringBuilder secret = new StringBuilder(); for (byte b : random) secret.append(String.format(java.util.Locale.ROOT, "%02x", b & 255));
+                        NativeApi.post(new JSONObject().put("action", "pair").put("code", value).put("secret", secret.toString()), null);
+                        DeviceStore.save(this, secret.toString());
+                        runOnUiThread(() -> { if (!isFinishing()) activateGps(); });
+                    } catch (Exception error) { runOnUiThread(() -> showError(error instanceof NativeApi.Unauthorized ? error.getMessage() : "Não foi possível vincular. Confira a internet e gere um novo código.")); }
+                }, "gps-pair").start();
+            }).setNegativeButton("Cancelar", null).show();
+    }
+    private void activateGps() {
+        if (DeviceStore.secret(this) == null) { showPair(); return; }
+        if (pendingLocationCallback != null) { showError("Conclua primeiro a autorização de localização da página e depois ative o GPS do turno."); return; }
+        if (!hasLocationPermission()) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, NATIVE_LOCATION_REQUEST); return;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_REQUEST); return;
+        }
+        if (!getSystemService(NotificationManager.class).areNotificationsEnabled()) { showError("Ative as notificações nas configurações do Android para manter o aviso permanente do GPS."); return; }
+        new Thread(() -> {
+            try {
+                NativeApi.post(new JSONObject().put("action", "resume"), DeviceStore.secret(this));
+                runOnUiThread(() -> { if (!isFinishing()) { DeviceStore.consent(this, true); startGpsService(); } });
+            } catch (Exception error) { runOnUiThread(() -> showError(error instanceof NativeApi.Unauthorized ? error.getMessage() : "Não foi possível ativar o GPS. Confira sua internet e se o sistema já foi publicado.")); }
+        }, "gps-activate").start();
+    }
+    private void pauseGps() {
+        DeviceStore.consent(this, false); stopService(new Intent(this, CourierTrackingService.class));
+        String secret = DeviceStore.secret(this);
+        if (secret != null) new Thread(() -> { try { NativeApi.post(new JSONObject().put("action", "pause"), secret); } catch (Exception ignored) {} }, "gps-pause").start();
+    }
+    private void startGpsService() {
+        if (!DeviceStore.consent(this) || !hasLocationPermission() || !getSystemService(NotificationManager.class).areNotificationsEnabled()) return;
+        try { startForegroundService(new Intent(this, CourierTrackingService.class)); }
+        catch (RuntimeException error) { DeviceStore.consent(this, false); showError("Não foi possível manter o GPS ativo. Abra o aplicativo e confira as permissões de localização e avisos."); }
     }
 
     private void showError(String message) {
@@ -156,7 +240,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
     @Override protected void onPause() { CookieManager.getInstance().flush(); web.onPause(); super.onPause(); }
-    @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
+    @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); startGpsService(); }
     @Override public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
     @Override protected void onDestroy() {
         clearPendingLocation(false);
