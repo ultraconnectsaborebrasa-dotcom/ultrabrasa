@@ -56,7 +56,8 @@ async function interpret(db:Admin,j:Job){
   const firstContactRows=checkEmpty(await db.from('whatsapp_messages').select('body').eq('phone',j.phone).eq('direction','out').eq('body',FIRST_CONTACT_MESSAGE).gte('created_at',attendanceStartedAt).limit(1)) ?? [];
   const firstContactSeen=firstContactRows.length>0||(!c.attendance_started_at&&sentSince.some(m=>m.body===FIRST_CONTACT_MESSAGE));
   const already=(t:string)=>sentSince.some(m=>(m.body??'').startsWith(t.slice(0,40)));
-  if(isStoreLocationQuestion(text)){
+  // Loja fechada: perguntas de prazo/localização ficam sem resposta automática.
+  if(win!=='closed'&&isStoreLocationQuestion(text)){
     if(!already(STORE_LOCATION_MESSAGE)){
       const inbound=payload.inboundId??j.id;
       await queueJob(db,`store-location:${inbound}`,j.phone,'text',{text:STORE_LOCATION_MESSAGE,automatic:true,inboundId:payload.inboundId});
@@ -64,7 +65,7 @@ async function interpret(db:Admin,j:Job){
     }
     return;
   }
-  if(isDeliveryTimeQuestion(text)){
+  if(win!=='closed'&&isDeliveryTimeQuestion(text)){
     if(!already(DELIVERY_TIME_MESSAGE))await queueJob(db,`delivery-time:${payload.inboundId??j.id}`,j.phone,'text',{text:DELIVERY_TIME_MESSAGE,automatic:true,inboundId:payload.inboundId});
     return;
   }
