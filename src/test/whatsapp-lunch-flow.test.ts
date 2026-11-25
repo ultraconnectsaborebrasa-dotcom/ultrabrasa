@@ -297,7 +297,13 @@ describe('marmitas: atendimento por regras', () => {
     expect(humanAtNight.queued.some(j => j.payload.text === HANDOFF_MESSAGE)).toBe(false);
     expect(humanAtNight.queued[0]?.payload.text).not.toBe(NIGHT_MESSAGE);
   });
-  it.each(['08:30', '15:30', '18:00', '22:10'])('responde endereço com texto e pino nativo às %s, sem iniciar pedido', async time => {
+  it('não responde localização com a loja fechada (22:10)', async () => {
+    vi.useFakeTimers();
+    const flow = attendance();
+    await flow.receive('Onde vocês ficam?', '22:10', 'store-location-closed');
+    expect(flow.queued.some(q => q.payload.text === STORE_LOCATION_MESSAGE)).toBe(false);
+  });
+  it.each(['08:30', '15:30', '18:00'])('responde endereço com texto e pino nativo às %s, sem iniciar pedido', async time => {
     vi.useFakeTimers();
     const flow = attendance();
     await flow.receive('Onde vocês ficam?', time, `store-location-${time}`);
