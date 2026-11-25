@@ -10,6 +10,8 @@ export type Delivery = { id:string; order_id:string; number:number; customer:str
 export type CourierOperationalStatus = 'available'|'unavailable'|'returning';
 export type Courier = {id:string;name:string;phone:string;user_id:string|null;active:boolean;deleted_at?:string|null;deleted_by?:string|null;initial_quantity?:number|null;remaining_quantity?:number|null;reserved_quantity?:number|null;available_quantity?:number|null;stock_updated_at?:string|null;operational_status?:CourierOperationalStatus;status_updated_at?:string|null;product_id?:string|null;product_name?:string|null;journey_id?:string|null;journey_status?:'on_route'|'empty'|'returned'|null};
 export const canReceiveCourierAssignments = (courier:Pick<Courier,'active'|'deleted_at'>) => courier.active && !courier.deleted_at;
+export const isCourierAvailable = (courier:Pick<Courier,'operational_status'>) => (courier.operational_status??'available')==='available';
+export const filterCouriersByAvailability = (couriers:Courier[],showUnavailable=false) => couriers.filter(courier=>showUnavailable||isCourierAvailable(courier));
 export const directoryCouriers = (couriers:Courier[],showInactive=false) => couriers.filter(courier=>!courier.deleted_at&&(showInactive||courier.active));
 export type MarmitaProduct = {id:string;name:string};
 export type DeliveryRoute = {id:string;name:string;courier_id:string|null;created_at:string;origin:string;distance_meters:number|null;duration_seconds:number|null};

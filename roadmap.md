@@ -1,5 +1,13 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Disponibilidade e prestação de contas do motoboy
+- [x] Ocultar entregadores indisponíveis e quem está voltando à base das listas operacionais e do cadastro, com botão explícito para revelá-los e alterar a disponibilidade; novas designações já eram protegidas.
+- [x] Destacar o dinheiro a repassar e organizar maquininha, pagos antes da saída, pagos na loja, pendências e comprovantes em seções com totais e quantidades.
+- [x] Verificar as regras e a interface no computador e no celular sem alterar pagamentos ou entregas reais; 579 testes e typecheck aprovados, sem erros ou rolagem lateral.
+
+## Exclusão solicitada do entregador Mateus
+- [x] Encerrar o turno aberto às 23:53 com autorização explícita e excluir definitivamente Mateus, 4 pedidos, 4 entregas e 4 mensagens vinculadas pela tela; cadastro, entregas e turnos confirmados ausentes no banco, com 4 proteções contra restauração por terminais antigos.
+
 ## Aplicativo e localização dos entregadores
 - [ ] Retornar ao aplicativo depois do login Google: pendente de integração nativa segura e nova instalação; nenhuma alteração insegura ao login existente foi feita.
 - [x] Tornar posição e situação de GPS mais claras; solicitar permissão fora do mapa e retomar compartilhamento autorizado durante turno aberto, respeitando desativação.

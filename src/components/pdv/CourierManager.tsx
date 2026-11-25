@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { directoryCouriers, type Courier } from '@/lib/delivery';
+import { directoryCouriers, filterCouriersByAvailability, isCourierAvailable, type Courier } from '@/lib/delivery';
 import { DeletePersonDialog } from './DeletePersonDialog';
 
 type CourierForm = { id: string | null; name: string; phone: string; user: string };
@@ -13,12 +13,14 @@ type PendingAction = { courier: Courier; action: 'deactivate' | 'delete' };
 export function CourierManager({ couriers, onChanged, admin=false }: { couriers: Courier[]; onChanged: () => Promise<unknown>; admin?: boolean }) {
   const [deleting,setDeleting]=useState<Courier|null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [showUnavailable, setShowUnavailable] = useState(false);
   const [form, setForm] = useState<CourierForm | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
   const [busy, setBusy] = useState(false);
-  const visible = directoryCouriers(couriers, showInactive);
+  const visible = filterCouriersByAvailability(directoryCouriers(couriers, showInactive), showUnavailable);
   const inactiveCount = couriers.filter(courier => !courier.deleted_at && !courier.active).length;
+  const unavailableCount = couriers.filter(courier => !courier.deleted_at && courier.active && !isCourierAvailable(courier)).length;
 
   useEffect(() => {
     void supabase.rpc('list_delivery_courier_accounts').then(({ data, error }) => {
@@ -60,13 +62,16 @@ export function CourierManager({ couriers, onChanged, admin=false }: { couriers:
   }
 
   return <section className="space-y-4" aria-label="Cadastro de entregadores">
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button disabled={busy} onClick={() => setForm({ id: null, name: '', phone: '', user: '' })}><Truck size={16} />Novo entregador</Button>
-      {inactiveCount > 0 && <Button variant="outline" size="sm" aria-pressed={showInactive} onClick={() => setShowInactive(current => !current)}>{showInactive ? <EyeOff size={15} /> : <Eye size={15} />}{showInactive ? 'Ocultar desativados' : `Mostrar desativados · ${inactiveCount}`}</Button>}
+      <div className="ml-auto flex flex-wrap gap-2">
+        {unavailableCount > 0 && <Button variant="outline" size="sm" aria-pressed={showUnavailable} onClick={() => setShowUnavailable(current => !current)}>{showUnavailable ? <EyeOff size={15} /> : <Eye size={15} />}{showUnavailable ? 'Ocultar indisponíveis' : `Mostrar indisponíveis · ${unavailableCount}`}</Button>}
+        {inactiveCount > 0 && <Button variant="outline" size="sm" aria-pressed={showInactive} onClick={() => setShowInactive(current => !current)}>{showInactive ? <EyeOff size={15} /> : <Eye size={15} />}{showInactive ? 'Ocultar desativados' : `Mostrar desativados · ${inactiveCount}`}</Button>}
+      </div>
     </div>
 
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{visible.map(courier => <article className="rounded-lg border bg-card p-4" key={courier.id}>
-      <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{courier.name}</h3><span className={`rounded-full px-2 py-0.5 text-xs ${courier.active ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{courier.active ? 'Ativo' : 'Desativado'}</span></div>
+      <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold">{courier.name}</h3><span className={`rounded-full px-2 py-0.5 text-xs ${courier.active ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{courier.active ? 'Ativo' : 'Desativado'}</span>{courier.active && !isCourierAvailable(courier) && <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{courier.operational_status === 'returning' ? 'Voltando à base' : 'Indisponível'}</span>}</div>
       <p className="mt-1 text-sm text-muted-foreground">{courier.phone || 'Sem telefone'} · {courier.user_id ? 'Conta vinculada' : 'Sem conta vinculada'}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button variant="outline" size="sm" disabled={busy} aria-label={`Editar entregador ${courier.name}`} onClick={() => setForm({ id: courier.id, name: courier.name, phone: courier.phone, user: courier.user_id ?? '' })}><Pencil size={14} />Editar</Button>
@@ -77,7 +82,7 @@ export function CourierManager({ couriers, onChanged, admin=false }: { couriers:
         {admin&&<Button variant="outline" size="sm" className="text-destructive" disabled={busy} onClick={()=>setDeleting(courier)}><Trash2 size={14}/>Excluir com histórico</Button>}
       </div>
     </article>)}</div>
-    {!visible.length && <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">Nenhum entregador ativo no momento.</p>}
+    {!visible.length && <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">Nenhum entregador disponível no momento.</p>}
 
     {deleting&&<DeletePersonDialog kind="courier" id={deleting.id} name={deleting.name} onClose={()=>setDeleting(null)} onDeleted={()=>void onChanged()}/>}
     {form && <div role="dialog" aria-modal="true" aria-label="Cadastro de entregador" className="fixed inset-0 z-50 grid place-items-center bg-background/95 p-4">
