@@ -1371,6 +1371,10 @@ export type Database = {
         Args: { items: Json; order_id: string }
         Returns: undefined
       }
+      adjust_pdv_order_values: {
+        Args: { p_discount: number; p_extra: number; p_order: string }
+        Returns: Json
+      }
       advance_pdv_cashier_order: {
         Args: { new_status: string; order_id: string }
         Returns: undefined
@@ -1500,6 +1504,16 @@ export type Database = {
       }
       normalize_phone: { Args: { _raw: string }; Returns: string }
       open_pdv_cash: { Args: { _initial?: number }; Returns: undefined }
+      pay_pdv_adjusted: {
+        Args: {
+          p_discount: number
+          p_extra: number
+          p_mark_ready?: boolean
+          p_method: string
+          p_order: string
+        }
+        Returns: undefined
+      }
       pay_pdv_cashier: {
         Args: { order_id: string; payment_method: string }
         Returns: undefined
@@ -1512,6 +1526,7 @@ export type Database = {
         Args: { p_from?: string; p_to?: string }
         Returns: Json
       }
+      read_courier_settlement: { Args: { p_day?: string }; Returns: Json }
       read_delivery_board: { Args: never; Returns: Json }
       read_delivery_operational_report: {
         Args: { p_from: string; p_to: string }
@@ -1649,6 +1664,10 @@ export type Database = {
         Returns: boolean
       }
       start_delivery_route: { Args: { route_id: string }; Returns: undefined }
+      submit_pdv_cashier_adjusted: {
+        Args: { p_direct?: boolean; p_payment_method?: string; request: Json }
+        Returns: Json
+      }
       submit_pdv_cashier_direct_paid: {
         Args: { payment_method: string; request: Json }
         Returns: Json

@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Ajustes de valores e acerto dos entregadores
+- [ ] Desconto e acréscimo no Caixa, com total validado e preservação dos pagamentos.
+- [ ] Resumo por entregador separando dinheiro a repassar, maquininha e pedidos já pagos, visível à equipe e ao próprio entregador.
+- [ ] Exclusão definitiva de pessoas e histórico: aguarda definição dos cadastros pelo usuário; não apagar registros reais.
+- [ ] Testar cálculos, permissões e telas sem movimentar vendas reais.
+
 ## Desativar e excluir entregadores
 - [x] Permitir desativar/reativar entregadores e ocultá-los das novas designações sem apagar o histórico.
 - [x] Oferecer exclusão com confirmação, mantendo nome, entregas, turnos e relatórios antigos; proteger entregas, turno e carga ainda em andamento.

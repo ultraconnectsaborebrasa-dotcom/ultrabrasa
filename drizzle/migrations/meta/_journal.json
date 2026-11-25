@@ -806,6 +806,13 @@
       "when": 1795440837871,
       "tag": "0114_courier_deactivation_and_soft_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1795572302535,
+      "tag": "0115_cashier_adjustments_and_courier_settlement",
+      "breakpoints": true
     }
   ]
 }

@@ -44,3 +44,5 @@ Subdirectories may have their own AGENTS.md (desktop rules: electron/AGENTS.md);
 - Delivery departure uses an authorized RPC and deduplicated job; only known failed sends allow explicit retry.
 - Locked closure RPCs and terminal guards close linked requests/jobs, preserving history without assuming refunds.
 - PDV order stage (`status`: aberta→cozinha→pronto→entrega→entregue/retirado) is separate from payment (`paymentStatus`/`payments`); `pay_pdv_cashier` never changes `status`, stage RPCs never touch payments.
+- Cashier value adjustments run through locked authorized RPCs; extra charges are stored separately and included in fee for compatibility, with audit entries and atomic adjustment/payment to avoid partially applied receipts.
+- Courier settlement is an allowlisted daily read, own-only for couriers and current-day-only for cashiers; cash/card collected by a courier requires payment-level courier attribution, never an inference from delivery completion or the requested payment method.

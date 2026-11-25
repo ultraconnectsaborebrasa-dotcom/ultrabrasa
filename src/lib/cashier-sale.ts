@@ -13,8 +13,10 @@ export async function submitCashierSale(
     ? 'submit_pdv_cashier_direct_paid'
     : paid ? 'submit_pdv_cashier_paid' : 'submit_pdv_operator_with_contact';
   const { data, error } = await supabase.rpc(
-    functionName as never,
-    (paid ? { request, payment_method: paymentMethod } : { request }) as never,
+    (request['discount'] !== undefined || request['extraFee'] !== undefined ? 'submit_pdv_cashier_adjusted' : functionName) as never,
+    (request['discount'] !== undefined || request['extraFee'] !== undefined
+      ? { request, p_payment_method: paymentMethod ?? null, p_direct: destination === 'direct' }
+      : paid ? { request, payment_method: paymentMethod } : { request }) as never,
   );
   if (error) throw error;
   return data as unknown as CashierSaleResult;
