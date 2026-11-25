@@ -855,6 +855,13 @@
       "when": 1795631740965,
       "tag": "0121_courier_availability_requires_open_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1795633994132,
+      "tag": "0122_delivery_receivables_manual_review",
+      "breakpoints": true
     }
   ]
 }

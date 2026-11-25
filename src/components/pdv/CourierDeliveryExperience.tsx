@@ -92,8 +92,8 @@ export function CourierDeliveryExperience({
   }
 
   async function receivePayment(delivery: Delivery) {
-    if (!onReceivePayment || !delivery.payment_method || !await confirmAction(`Confirmar recebimento de ${brl(delivery.due ?? 0)} em ${delivery.payment_method} do pedido #${delivery.number}? Isso não marca a entrega como concluída.`)) return;
-    onReceivePayment(delivery.order_id, delivery.payment_method);
+    if (!onReceivePayment) return;
+    onReceivePayment(delivery.order_id, delivery.payment_method ?? '');
   }
 
   async function saveProblem() {

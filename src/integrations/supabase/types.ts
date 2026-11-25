@@ -1677,6 +1677,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: Json
       }
+      read_delivery_receivables: { Args: { p_day?: string }; Returns: Json }
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }
       read_public_catalog: { Args: never; Returns: Json }

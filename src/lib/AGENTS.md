@@ -1,1 +1,2 @@
 - Digital-menu time restrictions live in the browser-safe catalog helper and are revalidated by catalog_place_order using the store timezone; PDV stock and WhatsApp schedules remain independent.
+- Delivery payment review uses one allowlisted receivables RPC and one shared dialog, reusing the locked payment RPC and invalidating delivery/settlement queries to prevent divergent balances without changing delivery stages.

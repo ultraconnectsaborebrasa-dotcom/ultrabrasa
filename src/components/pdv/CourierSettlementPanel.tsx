@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
 import { saoPauloDay } from '@/lib/courier-operations';
 import { settlementTotals, SETTLEMENT_LABELS, type CourierSettlementRow } from '@/lib/courier-settlement';
+import { DeliveryReceivablesPanel } from './DeliveryReceivablesPanel';
+import { DeliveryPaymentDialog } from './DeliveryPaymentDialog';
+import { openCloud } from '@/lib/pdv-cloud';
 
 const SECTIONS: { category: CourierSettlementRow['category']; title: string }[] = [
   { category: 'cash', title: 'Dinheiro a repassar' },
@@ -16,10 +19,12 @@ const SECTIONS: { category: CourierSettlementRow['category']; title: string }[] 
   { category: 'unverified', title: 'Comprovantes a confirmar' },
 ];
 
-export function CourierSettlementPanel({ admin = false, courier = false }: { admin?: boolean; courier?: boolean }) {
+export function CourierSettlementPanel({ admin = false, courier = false, onPaid }: { admin?: boolean; courier?: boolean; onPaid?: () => Promise<void> }) {
   const [date, setDate] = useState(saoPauloDay);
   const [search, setSearch] = useState('');
   const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
+  const [view, setView] = useState<'summary' | 'receivables'>('summary');
+  const [paymentOrder, setPaymentOrder] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ['courier-settlement', date, courier, admin], gcTime: 0,
     queryFn: async () => {
@@ -33,6 +38,7 @@ export function CourierSettlementPanel({ admin = false, courier = false }: { adm
   const normalizedSearch = search.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
   const matches = normalizedSearch ? groups.filter(([, name]) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(normalizedSearch)) : [];
   const visibleGroups = courier ? groups : matches.filter(([id]) => id === selectedCourier);
+  const refreshPDV = admin ? openCloud : onPaid;
   return <section className="space-y-4">
     <header className="flex flex-wrap items-center gap-3 border-b pb-3">
       <div className="min-w-0 flex-1"><h2 className="text-xl font-bold">{courier ? 'Meu acerto de hoje' : 'Acerto dos entregadores'}</h2><p className="text-sm text-muted-foreground">{new Date(`${admin ? date : saoPauloDay()}T12:00:00`).toLocaleDateString('pt-BR')}</p></div>
@@ -41,6 +47,9 @@ export function CourierSettlementPanel({ admin = false, courier = false }: { adm
     </header>
     {query.isPending && <p role="status">Carregando recebimentos…</p>}
     {query.error && <p role="alert" className="text-destructive">{query.error.message}</p>}
+    <nav aria-label="Conferência do acerto" className="flex flex-wrap gap-2"><Button size="sm" variant={view === 'summary' ? 'default' : 'outline'} onClick={() => setView('summary')}>Resumo do acerto</Button><Button size="sm" variant={view === 'receivables' ? 'default' : 'outline'} onClick={() => setView('receivables')}><Clock3 size={16} />Recebimentos pendentes</Button></nav>
+    {view === 'receivables' && <DeliveryReceivablesPanel key={`${date}-${courier}`} date={admin ? date : saoPauloDay()} courier={courier} {...(refreshPDV ? { onPaid: refreshPDV } : {})} />}
+    {view === 'summary' && <>
     {!courier && <div className="space-y-3">
       <label htmlFor="settlement-courier-search" className="block text-sm font-semibold">Entregador</label>
       <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
@@ -82,11 +91,13 @@ export function CourierSettlementPanel({ admin = false, courier = false }: { adm
               <div className="flex flex-wrap justify-between gap-2"><b className="break-words">#{row.number} · {row.customer || 'Cliente'}</b><strong>{brl(Number(row.amount))}</strong></div>
               <p className={row.category === 'cash' ? 'text-success' : row.category === 'pending' || row.category === 'unverified' ? 'text-warning' : 'text-muted-foreground'}>{SETTLEMENT_LABELS[row.category]} · {row.method || 'Forma não informada'}</p>
               <p className="text-xs text-muted-foreground">{row.status}{row.paid_at ? ` · Recebido às ${new Date(row.paid_at).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}` : ''}</p>
+              {row.category === 'pending' && (!courier || !['Entregue', 'Cancelado'].includes(row.status)) && <Button size="sm" variant="outline" onClick={() => setPaymentOrder(row.order_id)}><Banknote size={16} />Conferir pedido e receber</Button>}
             </li>)}</ul>
           </details>;
         })}</div>
       </article>;
-    })}</div>
+    })}</div></>}
+    {paymentOrder && <DeliveryPaymentDialog orderId={paymentOrder} date={admin ? date : saoPauloDay()} onClose={() => setPaymentOrder(null)} {...(refreshPDV ? { onPaid: refreshPDV } : {})} />}
   </section>;
 }
 

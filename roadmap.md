@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Recebimentos manuais no Acerto
+- [x] Conferência de itens, observações, saldo e forma efetivamente recebida antes da baixa; diálogo compartilhado pelo motoboy, pelo pedido em Rotas e pelo Acerto. Atualização imediata das consultas e do PDV da loja, sem concluir a entrega.
+- [x] Aba Recebimentos pendentes com busca por número, cliente ou entregador, incluindo pedidos sem designação; lista oculta até a busca para a loja, pendências próprias para o motoboy. Administrador escolhe o dia, Caixa hoje e motoboy apenas pedidos próprios ativos; acessos de baixa existentes preservados.
+- [x] Dezoito testes aprovados; pedido fictício de R$ 1,23 recebido em Dinheiro pela tela e confirmado pago no PDV, mantendo pronto para entrega. Conferência em 890×674 e 390×844 sem erros ou rolagem lateral; dados fictícios removidos e limpeza confirmada. Função instalada e acesso anônimo bloqueado; nenhum pagamento real alterado. Baixa física do motoboy no celular ainda não testada; publicação das telas necessária.
+
 ## Retorno Google que fica no navegador
 - [x] Regra: entrar pelo Google deve devolver a conta conectada ao aplicativo, sem prender o entregador no navegador. Entrada `/auth`, compatibilidade `/login`, AccountGate, integração gerenciada, MainActivity, manifesto, LoginHandoff e cifragem lidos: usam os caminhos e limites esperados; não houve mudanças em permissões, dados ou funções do banco.
 - [x] `/android-login` agora espera a restauração, verifica a conta e observa sessão tardia; tenta abrir automaticamente o aplicativo e mantém botão de retorno quando o navegador exige toque, preservando a limpeza imediata do fragmento nativo.
