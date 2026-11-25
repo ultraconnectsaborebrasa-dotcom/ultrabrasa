@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
-import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, showCourierMarmitaStock, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
+import { canReadCourierOperations, COURIER_SHIFTS, courierShiftPayments, courierTimeTotals, isCourierLocationStale, saoPauloDay, showCourierMarmitaStock, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 import { canCorrectDeliveryMapPin, courierMarmitaStock as stockFor, deliveryCoordinates, deliveryMarmitaQuantity, filterCouriersByAvailability, isCourierAvailable, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
 import { courierActiveDeliveries } from '@/lib/delivery-dispatch';
 import { deliveryZone } from '@/lib/eunapolis-delivery';
@@ -301,14 +301,14 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
       {canManage && operations.base && <DeliveryOperatingHours base={operations.base} admin={admin} />}
       {courier && <DeliveryOperationsReport courier />}
 
-      {canManage && <details className="rounded-xl border bg-background p-4"><summary className="cursor-pointer font-semibold">Ponto e valores da equipe</summary><section className="mt-5 space-y-4 border-t pt-5">
+      {canManage && <details open={admin} className="rounded-xl border bg-background p-4"><summary className="cursor-pointer font-semibold">Ponto, turnos e pagamentos dos entregadores</summary><section className="mt-5 space-y-4 border-t pt-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div><h3 className="flex items-center gap-2 text-lg font-semibold"><Clock3 size={18} /> Ponto da equipe</h3><p className="text-sm text-muted-foreground">Entradas, saídas e valores por turno</p></div>
           <label className="text-sm">Dia<input aria-label="Dia do ponto" className="field ml-2 w-auto" type="date" value={day} onChange={event => setDay(event.target.value)} /></label>
         </div>
-        <div className="flex flex-wrap gap-5 text-sm"><span>Turnos registrados: <b>{operations.time_entries.length}</b></span><span>Total registrado: <b>{brl(courierTimeTotals(operations.time_entries).registered)}</b></span><span>Turnos concluídos: <b>{brl(courierTimeTotals(operations.time_entries).completed)}</b></span></div>
-        <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="bg-muted text-left"><tr><th className="p-3">Entregador</th><th>Turno</th><th>Horário previsto</th><th>Entrada</th><th>Saída</th><th className="text-right">Valor</th></tr></thead><tbody>
-          {operations.time_entries.map(entry => <tr key={entry.id} className="border-b"><td className="p-3 font-medium">{entry.courier_name}</td><td>{COURIER_SHIFTS[entry.shift_code]?.label ?? entry.shift_code}</td><td>{COURIER_SHIFTS[entry.shift_code]?.start}–{COURIER_SHIFTS[entry.shift_code]?.end}</td><td>{new Date(entry.entry_at).toLocaleString('pt-BR')}</td><td>{entry.exit_at ? new Date(entry.exit_at).toLocaleString('pt-BR') : <span className="text-warning">Turno aberto</span>}</td><td className="text-right font-semibold">{brl(entry.amount)}</td></tr>)}
+        <ShiftSummary entries={operations.time_entries} />
+        <div className="overflow-x-auto"><table className="w-full min-w-[860px] text-sm"><thead className="bg-muted text-left"><tr><th className="p-3">Entregador</th><th>Turno</th><th>Entrada</th><th>Saída</th><th className="text-right">Valor</th><th className="text-right">Pago</th><th className="text-right">Pendente</th><th className="p-3 text-right">Pagamento</th></tr></thead><tbody>
+          {operations.time_entries.map(entry => <ShiftRow key={entry.id} entry={entry} admin={admin} onSaved={() => void client.invalidateQueries({ queryKey: ['courier-operations'] })} />)}
         </tbody></table>{!operations.time_entries.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum ponto registrado neste dia.</p>}</div>
       </section></details>}
     </>}
@@ -329,4 +329,41 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
 function CourierStockSummary({ driver, deliveries }: { driver: Courier; deliveries: Delivery[] }) {
   const stock = stockFor(driver, deliveries);
   return <div className="rounded-xl border bg-background p-4"><div className="flex items-center gap-2"><Boxes size={18} className="text-primary" /><h3 className="font-semibold">Minhas marmitas</h3></div>{stock.remaining === null ? <p className="mt-2 text-sm text-muted-foreground">A loja ainda não registrou sua carga.</p> : <div className="mt-3 grid grid-cols-3 gap-2 text-center"><div><span className="block text-xs text-muted-foreground">Comigo</span><b className="text-xl">{stock.remaining}</b></div><div><span className="block text-xs text-muted-foreground">Nas entregas</span><b className="text-xl">{stock.reserved}</b></div><div><span className="block text-xs text-muted-foreground">Livres</span><b className="text-xl text-primary">{stock.available}</b></div></div>}</div>;
+}
+
+function ShiftSummary({ entries }: { entries: CourierOperations['time_entries'] }) {
+  const totals = courierTimeTotals(entries);
+  const pay = courierShiftPayments(entries);
+  const open = entries.filter(entry => !entry.exit_at).length;
+  const cards: [string, string, string][] = [['Turnos batidos', String(entries.length), open ? `${open} em andamento` : 'Todos encerrados'], ['Valor dos turnos', brl(totals.completed), 'Somente turnos encerrados'], ['Já pago', brl(pay.paid), 'Registrado pelo administrador'], ['Falta pagar', brl(pay.pending), pay.pending ? 'Valor a repassar' : 'Nada pendente']];
+  return <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([label, value, hint], index) => <div key={label} className={`rounded-lg border p-3 ${index === 3 && pay.pending ? 'border-warning bg-warning/10' : ''}`}><p className="text-xs text-muted-foreground">{label}</p><p className="text-xl font-bold">{value}</p><p className="text-xs text-muted-foreground">{hint}</p></div>)}</div>;
+}
+
+function ShiftRow({ entry, admin, onSaved }: { entry: CourierOperations['time_entries'][number]; admin: boolean; onSaved: () => void }) {
+  const [value, setValue] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const paid = Number(entry.paid_amount ?? 0);
+  const pending = entry.exit_at ? Math.max(0, Number(entry.amount) - paid) : 0;
+  const save = async (amount: number) => {
+    setBusy(true);
+    const { error } = await supabase.rpc('set_courier_shift_payment', { p_entry_id: entry.id, p_paid_amount: amount });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(amount >= Number(entry.amount) ? 'Turno marcado como pago' : amount > 0 ? 'Pagamento parcial registrado' : 'Pagamento desfeito');
+    setValue(null); onSaved();
+  };
+  const status = !entry.exit_at ? <span className="text-warning">Turno aberto</span> : pending === 0 ? <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">Pago</span> : paid > 0 ? <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning">Parcial</span> : <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold">A pagar</span>;
+  return <tr className="border-b align-middle">
+    <td className="p-3 font-medium">{entry.courier_name}<div className="text-xs text-muted-foreground">{COURIER_SHIFTS[entry.shift_code]?.label ?? entry.shift_code} · {COURIER_SHIFTS[entry.shift_code]?.start}–{COURIER_SHIFTS[entry.shift_code]?.end}</div></td>
+    <td>{status}</td>
+    <td>{clockTime(entry.entry_at)}</td>
+    <td>{entry.exit_at ? clockTime(entry.exit_at) : '—'}</td>
+    <td className="text-right font-semibold">{brl(entry.amount)}</td>
+    <td className="text-right">{brl(paid)}{entry.paid_by_name && <div className="text-xs text-muted-foreground">{entry.paid_by_name}</div>}</td>
+    <td className={`text-right font-semibold ${pending ? 'text-warning' : ''}`}>{brl(pending)}</td>
+    <td className="p-3 text-right">{admin && entry.exit_at ? value === null
+      ? <div className="flex justify-end gap-1">{pending > 0 && <Button size="sm" disabled={busy} onClick={() => void save(Number(entry.amount))}>Marcar pago</Button>}<Button size="sm" variant="outline" disabled={busy} onClick={() => setValue(String(paid || ''))}>{pending > 0 ? 'Parcial' : 'Ajustar'}</Button></div>
+      : <form className="flex justify-end gap-1" onSubmit={event => { event.preventDefault(); const amount = Number(value.replace(',', '.')); if (Number.isFinite(amount)) void save(amount); }}><input aria-label={`Valor pago a ${entry.courier_name}`} className="field h-9 w-24" inputMode="decimal" placeholder="0,00" value={value} onChange={event => setValue(event.target.value)} /><Button size="sm" type="submit" disabled={busy}>Salvar</Button><Button size="sm" type="button" variant="ghost" onClick={() => setValue(null)}>Cancelar</Button></form>
+      : <span className="text-xs text-muted-foreground">{entry.exit_at ? '—' : 'Aguardando saída'}</span>}</td>
+  </tr>;
 }

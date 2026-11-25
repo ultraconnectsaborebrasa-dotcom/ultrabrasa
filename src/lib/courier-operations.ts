@@ -26,6 +26,9 @@ export type CourierTimeEntry = {
   entry_at: string;
   exit_at: string | null;
   amount: number;
+  paid_amount?: number;
+  paid_at?: string | null;
+  paid_by_name?: string | null;
 };
 export type CourierLiveLocation = {
   courier_id: string;
@@ -76,6 +79,14 @@ export function courierTimeTotals(entries: Pick<CourierTimeEntry, 'amount' | 'ex
     registered: entries.reduce((sum, entry) => sum + Number(entry.amount), 0),
     completed: entries.filter(entry => entry.exit_at !== null).reduce((sum, entry) => sum + Number(entry.amount), 0),
   };
+}
+
+/** Pago e pendente consideram somente turnos com saída registrada. */
+export function courierShiftPayments(entries: Pick<CourierTimeEntry, 'amount' | 'exit_at' | 'paid_amount'>[]) {
+  const closed = entries.filter(entry => entry.exit_at !== null);
+  const paid = closed.reduce((sum, entry) => sum + Number(entry.paid_amount ?? 0), 0);
+  const owed = closed.reduce((sum, entry) => sum + Number(entry.amount), 0);
+  return { paid, pending: Math.max(0, Math.round((owed - paid) * 100) / 100) };
 }
 
 export function isCourierLocationStale(locatedAt: string, now = Date.now(), maxAgeMs = 60_000): boolean {

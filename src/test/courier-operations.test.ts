@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, currentCourierShift, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, showCourierMarmitaStock, type CourierLiveLocation } from '@/lib/courier-operations';
+import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, courierShiftPayments, currentCourierShift, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, showCourierMarmitaStock, type CourierLiveLocation } from '@/lib/courier-operations';
 
 describe('ponto e localização dos entregadores', () => {
   it('libera a operação ao vivo ao administrador, ao caixa e ao próprio entregador', () => {
@@ -53,5 +53,11 @@ describe('ponto e localização dos entregadores', () => {
       { latitude: 40.7, longitude: -120.95 },
       { latitude: 43.252, longitude: -126.453 },
     ]);
+  });
+});
+
+describe('pagamento de turnos', () => {
+  it('pendente desconta o pago e ignora turno aberto', () => {
+    expect(courierShiftPayments([{ amount: 60, exit_at: 'x', paid_amount: 60 }, { amount: 60, exit_at: 'x', paid_amount: 20 }, { amount: 60, exit_at: null, paid_amount: 0 }])).toEqual({ paid: 80, pending: 40 });
   });
 });

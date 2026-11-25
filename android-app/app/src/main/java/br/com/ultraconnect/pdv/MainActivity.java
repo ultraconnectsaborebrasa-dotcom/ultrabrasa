@@ -280,6 +280,7 @@ public class MainActivity extends Activity {
     @Override public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
     @Override protected void onDestroy() {
         clearPendingLocation(false);
+        if (isFinishing()) stopService(new Intent(this, CourierTrackingService.class));
         if (web != null) web.destroy();
         super.onDestroy();
     }

@@ -353,6 +353,10 @@ export type Database = {
           entry_at: string
           exit_at: string | null
           id: string
+          paid_amount: number
+          paid_at: string | null
+          paid_by: string | null
+          paid_by_name: string | null
           scheduled_end: string
           scheduled_start: string
           shift_code: string
@@ -367,6 +371,10 @@ export type Database = {
           entry_at?: string
           exit_at?: string | null
           id?: string
+          paid_amount?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_by_name?: string | null
           scheduled_end: string
           scheduled_start: string
           shift_code: string
@@ -381,6 +389,10 @@ export type Database = {
           entry_at?: string
           exit_at?: string | null
           id?: string
+          paid_amount?: number
+          paid_at?: string | null
+          paid_by?: string | null
+          paid_by_name?: string | null
           scheduled_end?: string
           scheduled_start?: string
           shift_code?: string
@@ -1789,6 +1801,10 @@ export type Database = {
             }
             Returns: undefined
           }
+      set_courier_shift_payment: {
+        Args: { p_entry_id: string; p_paid_amount: number }
+        Returns: undefined
+      }
       set_delivery_courier_availability: {
         Args: { p_courier_id: string; p_status: string }
         Returns: undefined

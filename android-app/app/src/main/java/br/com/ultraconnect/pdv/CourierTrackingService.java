@@ -61,6 +61,8 @@ public class CourierTrackingService extends Service {
         }
         return START_NOT_STICKY;
     }
+    /** Ao fechar o aplicativo (remover da lista de recentes), o GPS para. Minimizado continua. */
+    @Override public void onTaskRemoved(Intent rootIntent) { stopListening(); stopSelf(); super.onTaskRemoved(rootIntent); }
     private void tick() {
         if (destroyed) return;
         String secret = DeviceStore.secret(this);

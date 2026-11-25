@@ -869,6 +869,13 @@
       "when": 1795635206505,
       "tag": "0123_cancelled_delivery_releases_courier",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1795635676742,
+      "tag": "0124_courier_shift_payments",
+      "breakpoints": true
     }
   ]
 }
