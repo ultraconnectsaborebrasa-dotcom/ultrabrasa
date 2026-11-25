@@ -29,6 +29,10 @@ export const Route = createFileRoute('/api/public/android/device')({
     // Device credentials grant GPS only, never the user's general session.
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const value = parsed.data;
+    if (value.action === 'push-token') {
+      const { error } = await supabaseAdmin.rpc('register_courier_push_token', { p_secret_hash: await sha256(secret), p_token: value.token });
+      return Response.json(error ? { error: 'Aparelho sem autorização' } : { registered: true }, { status: error ? 401 : 200, headers });
+    }
     const { data, error } = await supabaseAdmin.rpc('courier_android_exchange', {
       p_secret_hash: await sha256(secret), p_action: value.action,
       ...(value.action === 'location' ? { p_latitude: value.latitude, p_longitude: value.longitude, p_accuracy: value.accuracy, p_observed_at: value.observedAt } : {}),

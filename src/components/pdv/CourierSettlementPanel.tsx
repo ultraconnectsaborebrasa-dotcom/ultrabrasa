@@ -97,7 +97,7 @@ export function CourierSettlementPanel({ admin = false, courier = false, onPaid 
         })}</div>
       </article>;
     })}</div></>}
-    {paymentOrder && <DeliveryPaymentDialog orderId={paymentOrder} date={admin ? date : saoPauloDay()} onClose={() => setPaymentOrder(null)} {...(refreshPDV ? { onPaid: refreshPDV } : {})} />}
+    {paymentOrder && <DeliveryPaymentDialog courier={courier} orderId={paymentOrder} date={admin ? date : saoPauloDay()} onClose={() => setPaymentOrder(null)} {...(refreshPDV ? { onPaid: refreshPDV } : {})} />}
   </section>;
 }
 

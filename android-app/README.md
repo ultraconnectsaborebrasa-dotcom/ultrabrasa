@@ -15,10 +15,12 @@ Aplicativo nativo para os entregadores acessarem ponto, GPS e rotas do sistema U
 ## Gerar APK no Android Studio
 O projeto inclui `app/google-services.json` do Firebase cadastrado para o pacote Android e o SDK Firebase Messaging. Esse arquivo contém configuração pública do aplicativo, não a chave privada usada para autorizar envios.
 
-### Situação das notificações Firebase
+### Notificações Firebase (v6)
 - Conexão de envio autorizada na Lovable e verificação `validate_only` aprovada, sem enviar avisos reais.
 - Configuração Android conferida e incluída na pasta do aplicativo; Gradle prepara a inicialização do Firebase na próxima compilação.
-- **Ainda não há notificações automáticas de novas rotas com o aplicativo fechado.** O vínculo seguro e a permissão de notificações existem para o GPS, mas faltam registro/renovação do token FCM, canal de som de pedidos e disparos por evento. Não inscrever aparelhos em um tópico compartilhado de pedidos. O aviso permanente do GPS não é um alerta de pedido.
+- A v6 registra/renova o token FCM pelo vínculo privado do aparelho e recebe mensagens de novas entregas com canal de alta importância, som, vibração e abertura das entregas. Não usa tópico compartilhado nem depende do GPS estar ligado. Uma fila privada revalida entregador, turno e pedido antes do envio; o sistema publicado precisa conter as novas funções de envio.
+- No ícone de avisos da barra Android, autorize notificações, teste som/aviso e abra as configurações de Novas entregas. O usuário deve permitir som e exibição na tela; silencioso, Não perturbe, Forçar parada e restrições do fabricante podem impedir alertas. Não se força a abertura da tela nem se coleta GPS quando o app está fechado.
+- A v6 (1.5.0, versionCode 6) foi compilada com testes e lint aprovados. Recepção, som e abertura física ainda precisam ser verificados no aparelho. Publicação e instalação da nova versão são necessárias; publicar o site sozinho não atualiza o código Android.
 - Não adicionar ponte JavaScript nem expor tokens de sessão para integrar o WebView. O registro do aparelho precisa preservar as contas e permissões existentes.
 - A v3 precisa ser instalada; publicar o site não atualiza o código nativo dos APKs antigos.
 

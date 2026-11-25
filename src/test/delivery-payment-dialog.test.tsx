@@ -4,17 +4,49 @@ import { DeliveryPaymentDialog } from '@/components/pdv/DeliveryPaymentDialog';
 import { DeliveryReceivablesPanel } from '@/components/pdv/DeliveryReceivablesPanel';
 import type { DeliveryReceivables } from '@/lib/delivery-payment';
 
-const mocks = vi.hoisted(() => ({ pay: vi.fn(), refresh: vi.fn(), data: null as DeliveryReceivables | null }));
+const mocks = vi.hoisted(() => ({ pay: vi.fn(), rpc: vi.fn(), refresh: vi.fn(), data: null as DeliveryReceivables | null }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: mocks.data, isPending: false, error: null }), useQueryClient: () => ({ invalidateQueries: mocks.refresh }) }));
 vi.mock('@/lib/manual-payment', () => ({ submitManualPayment: mocks.pay }));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn() } }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: mocks.rpc } }));
 
 beforeEach(() => {
   vi.clearAllMocks(); mocks.pay.mockResolvedValue(undefined); mocks.refresh.mockResolvedValue(undefined);
+  mocks.rpc.mockResolvedValue({ error: null });
   mocks.data = { methods: ['Dinheiro', 'Pix'], orders: [{ id: 'unassigned', number: 42, customer: 'Teste pendente', total: 39.8, status: 'Pronto para entrega', courier_id: null, courier_name: null, method: 'Pix', note: '', items: [{ name: 'Produto de teste', qty: 2, note: '' }] }] };
 });
 afterEach(cleanup);
 describe('conferência manual de recebimento', () => {
+  it('a loja mantém pendente quando não localiza o pagamento', async () => {
+    const order = mocks.data?.orders[0];
+    if (!order) throw new Error('Pedido de teste ausente');
+    order.customer_paid_reported_at = '2026-11-25T22:45:00Z';
+    render(<DeliveryPaymentDialog orderId="unassigned" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Não localizei o pagamento · manter a receber' }));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith('reject_delivery_customer_paid', { p_order_id: 'unassigned' }));
+    expect(mocks.pay).not.toHaveBeenCalled();
+  });
+  it('o relato do cliente enviado pelo motoboy não cria pagamento', async () => {
+    render(<DeliveryPaymentDialog courier orderId="unassigned" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Cliente informou que já pagou/ }));
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith('report_delivery_customer_paid', { p_order_id: 'unassigned' }));
+    expect(mocks.pay).not.toHaveBeenCalled();
+  });
+  it('o motoboy não dá baixa enquanto a loja precisa conferir', () => {
+    const order = mocks.data?.orders[0];
+    if (!order) throw new Error('Pedido de teste ausente');
+    order.customer_paid_reported_at = '2026-11-25T22:45:00Z';
+    render(<DeliveryPaymentDialog courier orderId="unassigned" onClose={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Confirmar que recebi e dar baixa' })).toBeNull();
+    expect(mocks.pay).not.toHaveBeenCalled();
+  });
+  it('a loja pode conferir manualmente o relato e dar baixa', async () => {
+    const order = mocks.data?.orders[0];
+    if (!order) throw new Error('Pedido de teste ausente');
+    order.customer_paid_reported_at = '2026-11-25T22:45:00Z';
+    render(<DeliveryPaymentDialog orderId="unassigned" onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar que recebi e dar baixa' }));
+    await waitFor(() => expect(mocks.pay).toHaveBeenCalledWith('unassigned', 'Pix'));
+  });
   it('não dá baixa ao abrir e só registra após confirmação com a forma efetivamente recebida', async () => {
     const onClose = vi.fn(); render(<DeliveryPaymentDialog orderId="unassigned" onClose={onClose} />);
     expect(mocks.pay).not.toHaveBeenCalled();

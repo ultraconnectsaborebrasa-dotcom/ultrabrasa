@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, LoaderCircle, MapPinned, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { courierInitials } from '@/lib/courier-push';
 import { deliveryCoordinates, deliveryMarmitaQuantity, isCourierAvailable, type Courier, type Delivery } from '@/lib/delivery';
 import { decodeRoutePolyline, isCourierLocationStale, type CourierLiveLocation, type DeliveryBase, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 
@@ -35,11 +36,11 @@ const tokenColor = (name: string) => getComputedStyle(document.documentElement).
 function markerIcon(api: GoogleApi, kind: 'base' | 'courier', color: string, selected: boolean) {
   const foreground = tokenColor('primary-foreground');
   const drawing = kind === 'courier'
-    ? `<g fill="none" stroke="${foreground}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="17" cy="39" r="7"/><circle cx="46" cy="39" r="7"/><path d="M17 39l8-17h9l12 17M25 22l7 17h14M27 17h9M34 22l-4-8M40 17h7"/></g>`
+    ? ''
     : `<g fill="none" stroke="${foreground}" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 29l17-13 17 13v21H15z"/><path d="M24 50V35h16v15M11 29h42"/></g>`;
   const size = selected ? 58 : 50;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="${tokenColor(color)}" stroke="${tokenColor(selected ? 'warning' : 'background')}" stroke-width="${selected ? 5 : 3}"/>${drawing}</svg>`;
-  return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, scaledSize: new api.maps.Size(size, size), anchor: new api.maps.Point(size / 2, size / 2), labelOrigin: new api.maps.Point(32, 72) };
+  return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, scaledSize: new api.maps.Size(size, size), anchor: new api.maps.Point(size / 2, size / 2), labelOrigin: new api.maps.Point(size / 2, kind === 'courier' ? size / 2 : 72) };
 }
 
 export function LiveDeliveryMap({ base, locations, deliveries, couriers, showMarmitas = true, route, focus, selectedDeliveryId, selectedDeliveryIds, editingLocation = null, savingLocation = false, onSelectCourier, onSelectDelivery, onDeliveryPositionChange, onSaveDeliveryPosition, onCancelDeliveryPosition }: {
@@ -107,7 +108,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, showMar
     const info = new api.maps.InfoWindow();
     const addMarker = (position: { lat: number; lng: number }, title: string, label: string, color: string, scale: number, onClick?: () => void, selected = false, kind: 'circle' | 'base' | 'courier' = 'circle', onDragEnd?: (position: { latitude: number; longitude: number }) => void) => {
       const marker = new api.maps.Marker({
-        map: map.current, position, title, label: kind === 'circle' ? label : kind === 'courier' ? { text: label, color: tokenColor('foreground'), fontWeight: '700', fontSize: '13px' } : null, zIndex: selected ? 20 : kind === 'courier' ? 10 : 1,
+        map: map.current, position, title, label: kind === 'circle' ? label : kind === 'courier' ? { text: label, color: tokenColor('primary-foreground'), fontWeight: '700', fontSize: '16px' } : null, zIndex: selected ? 20 : kind === 'courier' ? 10 : 1,
         animation: selected ? api.maps.Animation.DROP : undefined,
         draggable: Boolean(onDragEnd),
         icon: kind === 'circle'
@@ -140,7 +141,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, showMar
       addMarker(
         { lat: location.latitude, lng: location.longitude },
         `${location.name} · ${isCourierLocationStale(location.located_at) ? 'GPS DESATUALIZADO' : 'GPS AO VIVO'} · ${assigned.length} entrega(s) aberta(s)${showMarmitas ? ` · ${stock} · ${marmitas} marmita(s)` : ''} · atualizado ${new Date(location.located_at).toLocaleTimeString('pt-BR')}`,
-        location.name.trim() || 'Entregador',
+        courierInitials(location.name),
         isCourierLocationStale(location.located_at) ? 'muted-foreground' : 'primary', 10,
         () => onSelectCourier?.(location.courier_id),
         focus?.type === 'courier' && focus.courierId === location.courier_id,

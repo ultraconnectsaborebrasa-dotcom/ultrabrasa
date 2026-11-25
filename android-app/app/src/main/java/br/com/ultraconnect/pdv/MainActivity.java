@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
     private static final int LOCATION_PERMISSION_REQUEST = 4102;
     private static final int NATIVE_LOCATION_REQUEST = 4104;
     private static final int NOTIFICATION_REQUEST = 4105;
+    private static final int DELIVERY_NOTIFICATION_REQUEST = 4106;
     private WebView web;
     private ProgressBar progress;
     private boolean showingError;
@@ -76,6 +77,10 @@ public class MainActivity extends Activity {
         gps.setContentDescription("GPS em segundo plano"); gps.setOnClickListener(view -> showGps());
         int targetSize = Math.round(48 * getResources().getDisplayMetrics().density);
         toolbar.addView(gps, new LinearLayout.LayoutParams(targetSize, targetSize));
+        ImageButton bell = new ImageButton(this); bell.setImageResource(android.R.drawable.ic_dialog_info);
+        bell.setContentDescription("Avisos de entregas"); bell.setOnClickListener(view -> showDeliveryNotifications());
+        toolbar.addView(bell, new LinearLayout.LayoutParams(targetSize, targetSize));
+        CourierMessagingService.channel(this);
         layout.addView(toolbar);
         // Handle system bars and keyboard on Android 15 edge-to-edge.
         if (android.os.Build.VERSION.SDK_INT >= 30) {
@@ -175,6 +180,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (CourierMessagingService.OPEN.equals(intent.getAction())) { web.loadUrl(HOME); return; }
         receiveLogin(intent);
     }
     private void receiveLogin(Intent intent) {
@@ -195,6 +201,7 @@ public class MainActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == DELIVERY_NOTIFICATION_REQUEST) { showDeliveryNotifications(); return; }
         if (requestCode == NATIVE_LOCATION_REQUEST) {
             if (hasLocationPermission()) activateGps();
             else showError("O GPS precisa da sua autorização. Você pode continuar usando os pedidos sem ativá-lo.");
@@ -233,6 +240,7 @@ public class MainActivity extends Activity {
                         StringBuilder secret = new StringBuilder(); for (byte b : random) secret.append(String.format(java.util.Locale.ROOT, "%02x", b & 255));
                         NativeApi.post(new JSONObject().put("action", "pair").put("code", value).put("secret", secret.toString()), null);
                         DeviceStore.save(this, secret.toString());
+                        CourierMessagingService.register(this);
                         runOnUiThread(() -> { if (!isFinishing()) activateGps(); });
                     } catch (Exception error) { runOnUiThread(() -> showError(error instanceof NativeApi.Unauthorized ? error.getMessage() : "Não foi possível vincular. Confira a internet e gere um novo código.")); }
                 }, "gps-pair").start();
@@ -255,6 +263,23 @@ public class MainActivity extends Activity {
             } catch (Exception error) { runOnUiThread(() -> showError(error instanceof NativeApi.Unauthorized ? error.getMessage() : "Não foi possível ativar o GPS. Confira sua internet e se o sistema já foi publicado.")); }
         }, "gps-activate").start();
     }
+    private void showDeliveryNotifications() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            new AlertDialog.Builder(this).setTitle("Avisos de entregas").setMessage("Autorize os avisos para receber novas entregas com som e notificação na tela.")
+                .setPositiveButton("Autorizar", (dialog, which) -> requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, DELIVERY_NOTIFICATION_REQUEST))
+                .setNeutralButton("Configurações", (dialog, which) -> openNotificationSettings()).setNegativeButton("Agora não", null).show(); return;
+        }
+        CourierMessagingService.register(this);
+        new AlertDialog.Builder(this).setTitle("Avisos de entregas")
+            .setMessage(DeviceStore.secret(this) == null ? "Vincule este aparelho à sua conta pelo botão GPS para receber somente suas entregas. Depois autorize som e avisos na tela." : "Aparelho vinculado. Ative som, vibração e exibição na tela em Novas entregas. O modo silencioso e Não perturbe do celular podem bloquear os alertas.")
+            .setPositiveButton("Testar som e aviso", (dialog, which) -> CourierMessagingService.show(this, "local-test", "Teste de aviso · Ultraconnect", "Os avisos das suas entregas aparecerão aqui."))
+            .setNeutralButton("Configurações", (dialog, which) -> openNotificationSettings()).setNegativeButton("Fechar", null).show();
+    }
+    private void openNotificationSettings() {
+        startActivity(new Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName())
+            .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, CourierMessagingService.CHANNEL));
+    }
     private void pauseGps() {
         DeviceStore.consent(this, false); stopService(new Intent(this, CourierTrackingService.class));
         String secret = DeviceStore.secret(this);
@@ -276,7 +301,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
     @Override protected void onPause() { CookieManager.getInstance().flush(); web.onPause(); super.onPause(); }
-    @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); startGpsService(); }
+    @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); CourierMessagingService.register(this); startGpsService(); }
     @Override public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
     @Override protected void onDestroy() {
         clearPendingLocation(false);

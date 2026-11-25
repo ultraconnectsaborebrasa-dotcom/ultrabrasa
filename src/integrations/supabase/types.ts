@@ -345,6 +345,51 @@ export type Database = {
           },
         ]
       }
+      courier_push_jobs: {
+        Row: {
+          courier_id: string
+          created_at: string
+          delivery_id: string
+          error: string | null
+          id: string
+          leased_at: string | null
+          state: string
+        }
+        Insert: {
+          courier_id: string
+          created_at?: string
+          delivery_id: string
+          error?: string | null
+          id?: string
+          leased_at?: string | null
+          state?: string
+        }
+        Update: {
+          courier_id?: string
+          created_at?: string
+          delivery_id?: string
+          error?: string | null
+          id?: string
+          leased_at?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_push_jobs_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_push_jobs_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_time_entries: {
         Row: {
           amount: number
@@ -632,6 +677,10 @@ export type Database = {
           created_at: string
           customer: string
           customer_id: string | null
+          customer_paid_rejected_at: string | null
+          customer_paid_rejected_by: string | null
+          customer_paid_reported_at: string | null
+          customer_paid_reported_by: string | null
           delivered_at: string | null
           departed_at: string | null
           id: string
@@ -651,6 +700,10 @@ export type Database = {
           created_at?: string
           customer?: string
           customer_id?: string | null
+          customer_paid_rejected_at?: string | null
+          customer_paid_rejected_by?: string | null
+          customer_paid_reported_at?: string | null
+          customer_paid_reported_by?: string | null
           delivered_at?: string | null
           departed_at?: string | null
           id?: string
@@ -670,6 +723,10 @@ export type Database = {
           created_at?: string
           customer?: string
           customer_id?: string | null
+          customer_paid_rejected_at?: string | null
+          customer_paid_rejected_by?: string | null
+          customer_paid_reported_at?: string | null
+          customer_paid_reported_by?: string | null
           delivered_at?: string | null
           departed_at?: string | null
           id?: string
@@ -1616,6 +1673,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      lease_courier_push_jobs: {
+        Args: never
+        Returns: {
+          device_id: string
+          job_id: string
+          token: string
+        }[]
+      }
       lease_external_delivery_outbox: {
         Args: { p_limit: number }
         Returns: {
@@ -1689,6 +1754,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: Json
       }
+      read_delivery_payment_review: { Args: { p_day?: string }; Returns: Json }
       read_delivery_receivables: { Args: { p_day?: string }; Returns: Json }
       read_pdv_cashier: { Args: never; Returns: Json }
       read_pdv_operator: { Args: never; Returns: Json }
@@ -1706,9 +1772,21 @@ export type Database = {
         Returns: string
       }
       record_payment_receipt_input: { Args: { _input: Json }; Returns: string }
+      register_courier_push_token: {
+        Args: { p_secret_hash: string; p_token: string }
+        Returns: undefined
+      }
       register_staff_receipt: {
         Args: { _message: string; _order: string; _path: string }
         Returns: string
+      }
+      reject_delivery_customer_paid: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
+      report_delivery_customer_paid: {
+        Args: { p_order_id: string }
+        Returns: undefined
       }
       reset_pdv_operation_maintenance: { Args: never; Returns: Json }
       review_payment_receipt: {

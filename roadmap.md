@@ -1,5 +1,11 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Alertas Android e conferência do cliente
+- [x] Notificação nativa com som, vibração e abertura das entregas, vinculada ao aparelho; fila autorizada e envio imediato após designação, com recuperação pelo agendamento existente. Firebase validou autorização/formato sem envio real; APK v6 compilado, testado, assinado e alinhado com a mesma chave anterior.
+- [x] Motoboy informa pagamento alegado pelo cliente sem dar baixa; Caixa/Admin conferem ou mantêm a receber. Fluxo real de teste executado na interface: relato manteve pendente e zero pagamentos; loja confirmou Pix, mantendo Pronto para entrega; dados fictícios removidos e limpeza confirmada.
+- [x] Iniciais contrastantes no mapa real e telas em 889×674 e 390×844 verificadas, sem erros nem rolagem lateral; 14 testes web e testes/lint Android aprovados.
+- [ ] Som, notificação na tela e abertura física dependem de instalar a v6, publicar as alterações e autorizar os avisos no aparelho Android; não há aparelho físico disponível para validar.
+
 ## Recebimentos manuais no Acerto
 - [x] Conferência de itens, observações, saldo e forma efetivamente recebida antes da baixa; diálogo compartilhado pelo motoboy, pelo pedido em Rotas e pelo Acerto. Atualização imediata das consultas e do PDV da loja, sem concluir a entrega.
 - [x] Aba Recebimentos pendentes com busca por número, cliente ou entregador, incluindo pedidos sem designação; lista oculta até a busca para a loja, pendências próprias para o motoboy. Administrador escolhe o dia, Caixa hoje e motoboy apenas pedidos próprios ativos; acessos de baixa existentes preservados.

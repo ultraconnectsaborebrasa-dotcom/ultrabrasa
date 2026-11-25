@@ -7,6 +7,7 @@ export const androidPairInput = z.object({
   fcmToken: z.string().max(4096).optional(),
 });
 export const androidExchangeInput = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('push-token'), token: z.string().min(10).max(4096) }),
   z.object({ action: z.enum(['status', 'resume', 'pause']) }),
   z.object({ action: z.literal('location'), latitude: z.number().finite().min(-90).max(90), longitude: z.number().finite().min(-180).max(180), accuracy: z.number().finite().min(0).max(100000), observedAt: z.string().datetime() }),
 ]);
