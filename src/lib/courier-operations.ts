@@ -69,6 +69,8 @@ export function currentCourierShift(date = new Date()): CourierShiftCode {
   return hour * 60 + minute >= 18 * 60 ? 'night' : 'morning';
 }
 
+export const showCourierMarmitaStock = (date = new Date()): boolean => currentCourierShift(date) !== 'night';
+
 export function courierTimeTotals(entries: Pick<CourierTimeEntry, 'amount' | 'exit_at'>[]) {
   return {
     registered: entries.reduce((sum, entry) => sum + Number(entry.amount), 0),

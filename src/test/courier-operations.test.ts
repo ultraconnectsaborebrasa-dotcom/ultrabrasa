@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, currentCourierShift, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, type CourierLiveLocation } from '@/lib/courier-operations';
+import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, currentCourierShift, decodeRoutePolyline, formatCourierDistance, isCourierLocationStale, rankCourierLocations, shouldSendCourierPosition, showCourierMarmitaStock, type CourierLiveLocation } from '@/lib/courier-operations';
 
 describe('ponto e localização dos entregadores', () => {
   it('libera a operação ao vivo ao administrador, ao caixa e ao próprio entregador', () => {
@@ -21,6 +21,11 @@ describe('ponto e localização dos entregadores', () => {
   });
   it('soma R$ 60 por turno registrado e separa os concluídos', () => {
     expect(courierTimeTotals([{ amount: 60, exit_at: null }, { amount: 60, exit_at: '2026-11-19T01:00:00Z' }])).toEqual({ registered: 120, completed: 60 });
+  });
+  it('não mostra estoque de marmitas durante a noite das 18h às 22h', () => {
+    expect(showCourierMarmitaStock(new Date('2026-11-25T20:59:00Z'))).toBe(true);
+    expect(showCourierMarmitaStock(new Date('2026-11-25T21:00:00Z'))).toBe(false);
+    expect(showCourierMarmitaStock(new Date('2026-11-26T00:59:00Z'))).toBe(false);
   });
   it('marca posição antiga como desatualizada', () => {
     const now = new Date('2026-11-19T03:01:00Z').getTime();

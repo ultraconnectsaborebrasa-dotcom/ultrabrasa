@@ -79,7 +79,10 @@ export function CourierClockPanel() {
           ? "Entrada registrada. Agora você pode ativar a localização."
           : "Saída registrada e localização desativada.",
       );
-      await client.invalidateQueries({ queryKey: ["courier-operations"] });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["courier-operations"] }),
+        client.invalidateQueries({ queryKey: ["delivery-board"] }),
+      ]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível registrar o ponto.");
     } finally {

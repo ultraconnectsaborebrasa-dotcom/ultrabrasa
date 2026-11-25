@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
-import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
-import { canCorrectDeliveryMapPin, courierMarmitaStock as stockFor, deliveryCoordinates, deliveryMarmitaQuantity, filterCouriersByAvailability, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
+import { canReadCourierOperations, COURIER_SHIFTS, courierTimeTotals, isCourierLocationStale, saoPauloDay, showCourierMarmitaStock, type CourierOperations, type DeliveryRouteCalculation } from '@/lib/courier-operations';
+import { canCorrectDeliveryMapPin, courierMarmitaStock as stockFor, deliveryCoordinates, deliveryMarmitaQuantity, filterCouriersByAvailability, isCourierAvailable, type Courier, type Delivery, type DeliveryRoute, type MarmitaProduct } from '@/lib/delivery';
 import { courierActiveDeliveries } from '@/lib/delivery-dispatch';
 import { deliveryZone } from '@/lib/eunapolis-delivery';
 import { calculateDeliveryRoute, saveDeliveryMapPin } from '@/lib/delivery-route.functions';
@@ -38,6 +38,13 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState<string[]>([]);
   const [showUnavailable, setShowUnavailable] = useState(false);
+  const [showMarmitas, setShowMarmitas] = useState(true);
+  useEffect(() => {
+    const update = () => setShowMarmitas(showCourierMarmitaStock());
+    update();
+    const interval = window.setInterval(update, 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
   const [locationDraft, setLocationDraft] = useState<DeliveryLocationDraft | null>(null);
   const [savingLocation, setSavingLocation] = useState(false);
   const [locatedPositions, setLocatedPositions] = useState<Record<string, { latitude: string; longitude: string }>>({});
@@ -63,9 +70,12 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
   const activeRoutes = routes.filter(item => activeDeliveries.some(delivery => delivery.route_id === item.id));
   const mapDeliveries = focus.type === 'courier' ? activeDeliveries.filter(delivery => delivery.courier_id === focus.courierId) : activeDeliveries;
   const ownCourier = couriers.find(driver => driver.id === operations.current_courier_id);
-  const liveLocations = operations.locations.filter(location => !isCourierLocationStale(location.located_at));
+  const availableCouriers = couriers.filter(driver => driver.active && !driver.deleted_at && isCourierAvailable(driver));
+  const availableIds = new Set(availableCouriers.map(driver => driver.id));
+  const mapLocations = operations.locations.filter(location => availableIds.has(location.courier_id));
+  const liveLocations = mapLocations.filter(location => !isCourierLocationStale(location.located_at));
   const returningCount = couriers.filter(driver => driver.active && driver.operational_status === 'returning').length;
-  const availableCourierCount = couriers.filter(driver => driver.active && (driver.operational_status ?? 'available') === 'available').length;
+  const availableCourierCount = availableCouriers.length;
   const emptyStockCount = couriers.filter(driver => driver.active && stockFor(driver, deliveries).remaining === 0).length;
   const activeCouriers = couriers.filter(driver => driver.active && !driver.deleted_at);
   const visibleCouriers = filterCouriersByAvailability(activeCouriers, showUnavailable);
@@ -196,9 +206,9 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
       <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Aguardando</span><b className="block text-xl">{availableDeliveries.filter(delivery => delivery.status === 'Pronto para entrega').length}</b></div>
       <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Em andamento</span><b className="block text-xl">{activeDeliveries.filter(delivery => delivery.status === 'Em rota').length}</b></div>
       <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Voltando à base</span><b className="block text-xl">{returningCount}</b></div>
-      <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Estoque zerado</span><b className={`block text-xl ${emptyStockCount ? 'text-warning' : ''}`}>{emptyStockCount}</b></div>
+      {showMarmitas && <div className="rounded-xl border bg-background p-3"><span className="text-[11px] text-muted-foreground">Estoque zerado</span><b className={`block text-xl ${emptyStockCount ? 'text-warning' : ''}`}>{emptyStockCount}</b></div>}
     </div>
-    {courier && ownCourier && <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background p-3"><span className="text-sm"><b>Minha disponibilidade</b><span className="block text-xs text-muted-foreground">Somente disponível recebe novas sugestões.</span></span><select aria-label="Minha disponibilidade" className="field w-auto" value={ownCourier.operational_status ?? 'available'} onChange={event => void saveAvailability(ownCourier.id, event.target.value as 'available' | 'unavailable' | 'returning')}><option value="available">Disponível</option><option value="unavailable">Indisponível</option><option value="returning">Voltando à base</option></select></div><CourierStockSummary driver={ownCourier} deliveries={deliveries} /></div>}
+    {courier && ownCourier && <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background p-3"><span className="text-sm"><b>Minha disponibilidade</b><span className="block text-xs text-muted-foreground">Somente disponível recebe novas sugestões.</span></span><select aria-label="Minha disponibilidade" className="field w-auto" value={ownCourier.operational_status ?? 'available'} disabled={ownCourier.open_shift === false} onChange={event => void saveAvailability(ownCourier.id, event.target.value as 'available' | 'unavailable' | 'returning')}><option value="available">Disponível</option><option value="unavailable">Indisponível</option><option value="returning">Voltando à base</option></select></div>{showMarmitas && <CourierStockSummary driver={ownCourier} deliveries={deliveries} />}</div>}
     {query.error && <p role="alert" className="text-sm text-destructive">{query.error.message}</p>}
     {query.isPending ? <p role="status" className="text-sm text-muted-foreground">Carregando operação…</p> : <>
       <div className="flex flex-wrap gap-2">
@@ -213,11 +223,11 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
         <span className="inline-flex items-center gap-1.5"><PackageCheck size={14} className="text-warning" />Entrega atual</span>
         <span className="ml-auto inline-flex items-center gap-1.5"><Radio size={13} className={query.isFetching ? 'animate-pulse text-primary' : ''} />{query.isFetching ? 'Atualizando posições…' : `Atualizado às ${new Date(query.dataUpdatedAt).toLocaleTimeString('pt-BR')}`}</span>
       </div>
-      <LiveDeliveryMap base={operations.base} locations={operations.locations} deliveries={mapDeliveries} couriers={courier ? couriers : visibleCouriers} route={route} focus={focus} selectedDeliveryId={selectedDeliveryId} selectedDeliveryIds={selectedDeliveryIds} editingLocation={locationDraft} savingLocation={savingLocation} onSelectCourier={selectCourier} onSelectDelivery={selectDelivery} onDeliveryPositionChange={changeLocationDraft} onSaveDeliveryPosition={() => void saveLocation()} onCancelDeliveryPosition={() => setLocationDraft(null)} />
-      {canManage&&<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleCouriers.map(driver=>{const location=operations.locations.find(item=>item.courier_id===driver.id);const stale=!location||isCourierLocationStale(location.located_at);return <Button key={driver.id} variant="outline" className="h-auto min-h-16 justify-start whitespace-normal text-left" onClick={()=>selectCourier(driver.id)} disabled={!location}><Motorbike className={stale?'text-warning':'text-success'} size={22}/><span className="min-w-0"><b className="block break-words">{driver.name}</b><span className="block text-xs text-muted-foreground">{location?`${stale?'Última posição, não ao vivo':'GPS ao vivo'} · ${clockTime(location.located_at)} · precisão ${Math.round(location.accuracy_meters)} m`:'GPS não compartilhado'}</span></span></Button>;})}</div>}
+      <LiveDeliveryMap base={operations.base} locations={mapLocations} deliveries={mapDeliveries} couriers={availableCouriers} showMarmitas={showMarmitas} route={route} focus={focus} selectedDeliveryId={selectedDeliveryId} selectedDeliveryIds={selectedDeliveryIds} editingLocation={locationDraft} savingLocation={savingLocation} onSelectCourier={selectCourier} onSelectDelivery={selectDelivery} onDeliveryPositionChange={changeLocationDraft} onSaveDeliveryPosition={() => void saveLocation()} onCancelDeliveryPosition={() => setLocationDraft(null)} />
+      {canManage&&<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{availableCouriers.map(driver=>{const location=operations.locations.find(item=>item.courier_id===driver.id);const stale=!location||isCourierLocationStale(location.located_at);return <Button key={driver.id} variant="outline" className="h-auto min-h-16 justify-start whitespace-normal text-left" onClick={()=>selectCourier(driver.id)} disabled={!location}><Motorbike className={stale?'text-warning':'text-success'} size={22}/><span className="min-w-0"><b className="block break-words">{driver.name}</b><span className="block text-xs text-muted-foreground">{location?`${stale?'Última posição, não ao vivo':'GPS ao vivo'} · ${clockTime(location.located_at)} · precisão ${Math.round(location.accuracy_meters)} m`:'GPS não compartilhado'}</span></span></Button>;})}</div>}
       {!liveLocations.length && <p className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">Para ver uma moto se movendo, o entregador precisa bater a entrada, ativar a localização no celular e manter a página aberta. Posições antigas aparecem em cinza.</p>}
 
-      {canManage && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={couriers} locations={operations.locations} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} selectedDeliveryIds={selectedDeliveryIds} onFocusDelivery={focusDelivery} onSelectDeliveries={focusDeliveries} onLocated={deliveryLocated} onEditLocation={beginLocationEdit} onAssign={onAssign} />}
+      {canManage && <AvailableDeliveryPanel deliveries={availableDeliveries} couriers={availableCouriers} locations={mapLocations} showMarmitas={showMarmitas} baseAddress={operations.base?.base_address ?? ''} selectedDeliveryId={selectedDeliveryId} selectedDeliveryIds={selectedDeliveryIds} onFocusDelivery={focusDelivery} onSelectDeliveries={focusDeliveries} onLocated={deliveryLocated} onEditLocation={beginLocationEdit} onAssign={onAssign} />}
 
       {canManage && <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="flex items-center gap-2 font-semibold"><Users size={18} /> Motoboys disponíveis</h3><p className="text-xs text-muted-foreground">Somente quem está disponível aparece para localização, carga e novas designações.</p></div>{unavailableCourierCount > 0 && <Button size="sm" variant="outline" aria-pressed={showUnavailable} onClick={() => setShowUnavailable(current => !current)}>{showUnavailable ? <EyeOff size={15} /> : <Eye size={15} />}{showUnavailable ? 'Ocultar indisponíveis' : `Mostrar indisponíveis · ${unavailableCourierCount}`}</Button>}</div>
@@ -234,13 +244,13 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
                 <div className={`rounded-lg p-2 ${location && !stale ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}><Motorbike size={20} /></div>
                 <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b>{driver.name}</b><span className={`rounded-full px-2 py-0.5 text-[10px] ${driver.operational_status === 'returning' ? 'bg-warning/10 text-warning' : (driver.operational_status ?? 'available') === 'available' ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>{driver.operational_status === 'returning' ? 'Voltando à base' : (driver.operational_status ?? 'available') === 'available' ? 'Disponível' : 'Indisponível'}</span></div><p className={`mt-1 flex items-center gap-1 text-xs ${location && !stale ? 'text-success' : 'text-muted-foreground'}`}><span className={`size-2 rounded-full ${location && !stale ? 'bg-success' : 'bg-muted-foreground'}`} />{location ? `${stale ? 'Sem atualização recente' : 'Ao vivo'} · ${clockTime(location.located_at)} · ${Math.round(location.accuracy_meters)} m` : 'Localização não compartilhada'}</p></div>
               </div>
-              {stock.remaining === null ? <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Nenhuma carga registrada. Informe quantas marmitas ele levou.</div> : <div className="grid grid-cols-3 gap-2 text-center">
+              {showMarmitas && (stock.remaining === null ? <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Nenhuma carga registrada. Informe quantas marmitas ele levou.</div> : <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-muted p-2"><span className="block text-xs text-muted-foreground">Com ele</span><b className="text-lg">{stock.remaining}</b></div>
                 <div className="rounded-lg bg-muted p-2"><span className="block text-xs text-muted-foreground">Reservadas</span><b className="text-lg">{stock.reserved}</b></div>
                 <div className="rounded-lg bg-primary/10 p-2"><span className="block text-xs text-muted-foreground">Disponíveis</span><b className={`text-lg ${(stock.available ?? 0) < 0 ? 'text-destructive' : 'text-primary'}`}>{stock.available}</b></div>
-              </div>}
+              </div>)}
               <div className="rounded-lg border bg-card p-3">
-                <div className="flex items-center justify-between gap-2"><b className="text-sm">Entregas com {driver.name}</b><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{assigned.length} · {assignedMarmitas} marmita(s)</span></div>
+                <div className="flex items-center justify-between gap-2"><b className="text-sm">Entregas com {driver.name}</b><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{assigned.length} entrega(s){showMarmitas && assignedMarmitas > 0 ? ` · ${assignedMarmitas} marmita(s)` : ''}</span></div>
                 {assigned.length ? <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">{assigned.map(delivery => {
                   const zone = deliveryZone(delivery.address);
                   return <li key={delivery.id} className="space-y-2 rounded-lg border bg-background p-2.5">
@@ -255,21 +265,22 @@ export function CourierOperationsPanel({ admin = false, manager = false, courier
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button size="sm" variant="outline" disabled={!location} onClick={() => focusMap('courier', driver.id)}><LocateFixed size={14} />Localizar</Button>
-                <Button size="sm" disabled={!operations.base || !hasReadyToAssign} title={hasReadyToAssign ? 'Escolher entregas prontas para este motoboy' : 'Nenhuma entrega pronta para designar agora'} onClick={() => operations.base && onAssign(driver.id, operations.base.base_address, selectedDeliveryIds)}><RouteIcon size={14} />Designar</Button>
+                <Button size="sm" disabled={!operations.base || !hasReadyToAssign || !isCourierAvailable(driver)} title={hasReadyToAssign ? 'Escolher entregas prontas para este motoboy' : 'Nenhuma entrega pronta para designar agora'} onClick={() => operations.base && onAssign(driver.id, operations.base.base_address, selectedDeliveryIds)}><RouteIcon size={14} />Designar</Button>
               </div>
-              <label className="block text-xs">Disponibilidade<select aria-label={`Disponibilidade de ${driver.name}`} className="field mt-1" value={driver.operational_status ?? 'available'} onChange={event => void saveAvailability(driver.id, event.target.value as 'available' | 'unavailable' | 'returning')}><option value="available">Disponível</option><option value="unavailable">Indisponível</option><option value="returning">Voltando à base</option></select></label>
-              {driver.product_name && <p className="text-xs text-muted-foreground">Carga: {driver.product_name} · {driver.journey_status === 'returned' ? 'jornada devolvida' : driver.journey_status === 'empty' ? 'estoque zerado' : 'em operação'}</p>}
-              <div className="flex flex-wrap gap-2 border-t pt-3">
+              <label className="block text-xs">Disponibilidade<select aria-label={`Disponibilidade de ${driver.name}`} className="field mt-1" value={driver.operational_status ?? 'available'} disabled={driver.open_shift === false} onChange={event => void saveAvailability(driver.id, event.target.value as 'available' | 'unavailable' | 'returning')}><option value="available">Disponível</option><option value="unavailable">Indisponível</option><option value="returning">Voltando à base</option></select></label>
+              {showMarmitas && driver.product_name && <p className="text-xs text-muted-foreground">Carga: {driver.product_name} · {driver.journey_status === 'returned' ? 'jornada devolvida' : driver.journey_status === 'empty' ? 'estoque zerado' : 'em operação'}</p>}
+              {showMarmitas && <div className="flex flex-wrap gap-2 border-t pt-3">
                 <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'load', quantity: '', reason: '', productId: driver.product_id ?? marmitaProducts[0]?.id ?? 'product-marmita-completa' })}><PackagePlus size={14} />Nova carga</Button>
                 {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'replenish', quantity: '', reason: '', productId: driver.product_id ?? marmitaProducts[0]?.id ?? 'product-marmita-completa' })}><PackagePlus size={14} />Reposição</Button>}
                 {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'return', quantity: String(stock.remaining), reason: '', productId: driver.product_id ?? '' })}>Registrar retorno</Button>}
                 {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'loss', quantity: '', reason: '', productId: driver.product_id ?? '' })}>Perda/avaria</Button>}
                 {stock.remaining !== null && <Button size="sm" variant="ghost" onClick={() => setStockForm({ driver, mode: 'correct', quantity: String(stock.remaining), reason: '', productId: driver.product_id ?? '' })}><Boxes size={14} />Ajustar estoque</Button>}
-              </div>
+              </div>}
+              {driver.open_shift === false && <p className="text-xs text-muted-foreground">Sem ponto aberto</p>}
             </article>;
           })}
         </div>
-        {!visibleCouriers.length && <p className="rounded-lg border border-dashed py-6 text-center text-sm text-muted-foreground">Nenhum motoboy disponível agora. Use “Mostrar indisponíveis” para alterar a disponibilidade da equipe.</p>}
+        {!visibleCouriers.length && <p className="rounded-lg border border-dashed py-6 text-center text-sm text-muted-foreground">Nenhum motoboy disponível agora. O entregador fica disponível ao bater o ponto de entrada.</p>}
       </div>}
 
       <details className="rounded-xl border bg-background p-4">

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, LoaderCircle, MapPinned, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { deliveryCoordinates, deliveryMarmitaQuantity, type Courier, type Delivery } from '@/lib/delivery';
+import { deliveryCoordinates, deliveryMarmitaQuantity, isCourierAvailable, type Courier, type Delivery } from '@/lib/delivery';
 import { decodeRoutePolyline, isCourierLocationStale, type CourierLiveLocation, type DeliveryBase, type DeliveryRouteCalculation } from '@/lib/courier-operations';
 
 type GoogleApi = any;
@@ -42,11 +42,12 @@ function markerIcon(api: GoogleApi, kind: 'base' | 'courier', color: string, sel
   return { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, scaledSize: new api.maps.Size(size, size), anchor: new api.maps.Point(size / 2, size / 2), labelOrigin: new api.maps.Point(32, 72) };
 }
 
-export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, focus, selectedDeliveryId, selectedDeliveryIds, editingLocation = null, savingLocation = false, onSelectCourier, onSelectDelivery, onDeliveryPositionChange, onSaveDeliveryPosition, onCancelDeliveryPosition }: {
+export function LiveDeliveryMap({ base, locations, deliveries, couriers, showMarmitas = true, route, focus, selectedDeliveryId, selectedDeliveryIds, editingLocation = null, savingLocation = false, onSelectCourier, onSelectDelivery, onDeliveryPositionChange, onSaveDeliveryPosition, onCancelDeliveryPosition }: {
   base: DeliveryBase | null;
   locations: CourierLiveLocation[];
   deliveries: Delivery[];
   couriers: Courier[];
+  showMarmitas?: boolean;
   route: (DeliveryRouteCalculation & { routeId: string }) | null;
   focus?: DeliveryMapFocus | null;
   selectedDeliveryId?: string | null;
@@ -131,13 +132,14 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
     addMarker(basePosition, `BASE · ${base.base_address}`, 'B', 'success', 11, undefined, false, 'base');
     locations.forEach(location => {
       const driver = couriers.find(item => item.id === location.courier_id);
+      if (!driver || !driver.active || driver.deleted_at || !isCourierAvailable(driver)) return;
       const assigned = deliveries.filter(delivery => delivery.courier_id === location.courier_id);
       const marmitas = assigned.reduce((total, delivery) => total + deliveryMarmitaQuantity(delivery), 0);
       const available = driver?.available_quantity;
       const stock = available === null || available === undefined ? 'carga não registrada' : `${available} marmita(s) disponível(is) para novas entregas`;
       addMarker(
         { lat: location.latitude, lng: location.longitude },
-        `${location.name} · ${isCourierLocationStale(location.located_at) ? 'GPS DESATUALIZADO' : 'GPS AO VIVO'} · ${stock} · ${marmitas} marmita(s) nas entregas abertas · atualizado ${new Date(location.located_at).toLocaleTimeString('pt-BR')}`,
+        `${location.name} · ${isCourierLocationStale(location.located_at) ? 'GPS DESATUALIZADO' : 'GPS AO VIVO'} · ${assigned.length} entrega(s) aberta(s)${showMarmitas ? ` · ${stock} · ${marmitas} marmita(s)` : ''} · atualizado ${new Date(location.located_at).toLocaleTimeString('pt-BR')}`,
         location.name.trim() || 'Entregador',
         isCourierLocationStale(location.located_at) ? 'muted-foreground' : 'primary', 10,
         () => onSelectCourier?.(location.courier_id),
@@ -160,7 +162,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       const editing = delivery.id === editingLocation?.deliveryId;
       addMarker(
         { lat: point.latitude, lng: point.longitude },
-        `#${delivery.number} · ${delivery.customer} · ${editing ? 'PONTO EM CORREÇÃO · ' : available ? 'DISPONÍVEL · ' : ''}${deliveryMarmitaQuantity(delivery)} marmita(s) · ${delivery.status}`,
+        `#${delivery.number} · ${delivery.customer} · ${editing ? 'PONTO EM CORREÇÃO · ' : available ? 'DISPONÍVEL · ' : ''}${showMarmitas && deliveryMarmitaQuantity(delivery) > 0 ? `${deliveryMarmitaQuantity(delivery)} marmita(s) · ` : ''}${delivery.status}`,
         String(delivery.position || delivery.number), editing ? 'destructive' : selected ? 'destructive' : available ? 'ember' : 'warning', available ? 8 : 6,
         available && !editingLocation ? () => onSelectDelivery?.(delivery.id) : undefined, selected, 'circle',
         editing ? onDeliveryPositionChange : undefined,
@@ -203,7 +205,7 @@ export function LiveDeliveryMap({ base, locations, deliveries, couriers, route, 
       }
     }
     return () => { info.close(); };
-  }, [api, base, locations, deliveries, couriers, route, focus, selectedDeliveryId, selectedDeliveryIds, editingLocation, onSelectCourier, onSelectDelivery, onDeliveryPositionChange]);
+  }, [api, base, locations, deliveries, couriers, showMarmitas, route, focus, selectedDeliveryId, selectedDeliveryIds, editingLocation, onSelectCourier, onSelectDelivery, onDeliveryPositionChange]);
 
   if (!base) return <p className="rounded-lg border p-4 text-sm text-muted-foreground">A base ainda não foi configurada.</p>;
   return <div className="space-y-2">

@@ -31,6 +31,15 @@ describe('sugestão de entregadores', () => {
     const reserved: Delivery = { ...delivery, id: 'reserved', order_id: 'reserved', courier_id: 'ocupado', route_id: 'route-1', status: 'Em rota' };
     expect(rankDispatchCouriers([courier('ocupado', 1)], [reserved], delivery, new Map(), new Map())).toEqual([]);
   });
+  it('designa lanches sem carga de marmitas para quem tem ponto aberto', () => {
+    const snack = { ...delivery, items: [{ name: 'Hambúrguer', qty: 2 }] };
+    const working = { ...courier('Em turno', 0), remaining_quantity: null, open_shift: true };
+    expect(rankDispatchCouriers([working], [], snack, new Map(), new Map()).map(item => item.courier.id)).toEqual(['Em turno']);
+  });
+  it('não designa lanches para quem encerrou o ponto', () => {
+    const snack = { ...delivery, items: [{ name: 'Hambúrguer', qty: 2 }] };
+    expect(rankDispatchCouriers([{ ...courier('Fora do turno'), open_shift: false }], [], snack, new Map(), new Map())).toEqual([]);
+  });
 
   it('não inventa distância para GPS ausente e prioriza posição ao vivo', () => {
     const result = rankDispatchCouriers([courier('sem-gps'), courier('ao-vivo')], [], delivery, new Map([['ao-vivo', 500]]), new Map([['ao-vivo', 'live']]));

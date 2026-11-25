@@ -31,4 +31,9 @@ describe('gerenciamento de entregadores', () => {
     expect(filterCouriersByAvailability(couriers).map(item => item.id)).toEqual(['Disponível']);
     expect(filterCouriersByAvailability(couriers, true).map(item => item.id)).toEqual(['Disponível', 'Indisponível', 'Voltando']);
   });
+  it('oculta quem não bateu entrada ou já encerrou o ponto mesmo com disponibilidade antiga', () => {
+    const working = { ...courier('Em turno', true), operational_status: 'available' as const, open_shift: true };
+    const offDuty = { ...courier('Sem ponto aberto', true), operational_status: 'available' as const, open_shift: false };
+    expect(filterCouriersByAvailability([working, offDuty]).map(item => item.id)).toEqual(['Em turno']);
+  });
 });

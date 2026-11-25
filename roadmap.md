@@ -8,6 +8,11 @@
 ## Exclusão solicitada do entregador Mateus
 - [x] Encerrar o turno aberto às 23:53 com autorização explícita e excluir definitivamente Mateus, 4 pedidos, 4 entregas e 4 mensagens vinculadas pela tela; cadastro, entregas e turnos confirmados ausentes no banco, com 4 proteções contra restauração por terminais antigos.
 
+## Rotas noturnas e disponibilidade pelo ponto
+- [x] Ocultar cargas e contadores de marmitas à noite e designar lanches sem carga; preservar estoque compatível para pedidos que realmente contêm marmitas.
+- [x] Vincular disponibilidade à entrada/saída do ponto; projeções, mapa e designação protegidos contra disponibilidade antiga sem turno aberto.
+- [x] 603 testes aprovados; Rotas conferida com conta autorizada em computador/celular no horário noturno simulado. Entrada, saída, remoção de posição e bloqueio de nova designação validados no banco em transação revertida, sem pedidos reais. Publicação necessária para atualizar as telas; GPS físico não testado.
+
 ## Aplicativo e localização dos entregadores
 - [x] GPS Android em segundo plano durante turno aberto: serviço visível, autorização e vínculo criptografado por código de uso único; entrada, leitura da posição, desativação e saída verificadas com conta temporária, sem pedidos reais.
 - [x] Gerar APK v3 assinado (1.2.0), verificar assinatura v2/v3, alinhamento, pacote/permissões, testes Android e entregar APK e instruções em Files. Nova assinatura exige reinstalação; assinatura preservada somente em metadados privados.

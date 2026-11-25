@@ -1575,6 +1575,10 @@ export type Database = {
         }
         Returns: Json
       }
+      courier_has_open_shift: {
+        Args: { p_courier_id: string }
+        Returns: boolean
+      }
       create_courier_device_pair: {
         Args: { p_code_hash: string }
         Returns: undefined

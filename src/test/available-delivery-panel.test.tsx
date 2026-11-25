@@ -51,9 +51,18 @@ describe('designação da entrega pelo motoboy mais próximo', () => {
 
   it('não recomenda motoboy sem estoque compatível', () => {
     const emptyCouriers = couriers.map(courier => ({ ...courier, remaining_quantity: 0, available_quantity: 0 }));
-    renderPanel([location('near', -16.35, new Date().toISOString())], vi.fn(), delivery, emptyCouriers);
-    expect(screen.getByText('Nenhum motoboy disponível com estoque compatível para esta entrega.')).toBeTruthy();
+    const assign = renderPanel([location('near', -16.35, new Date().toISOString())], vi.fn(), delivery, emptyCouriers);
     expect(screen.queryByRole('button', { name: /Designar/ })).toBeNull();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('designa hambúrguer sem carga para o entregador com ponto aberto', () => {
+    const assign = vi.fn();
+    const snack = { ...delivery, items: [{ name: 'Hambúrguer', qty: 2 }] };
+    const driver = { ...couriers[0], id: 'near', name: 'Perto', phone: '', user_id: null, active: true, open_shift: true, remaining_quantity: null };
+    renderPanel([], assign, snack, [driver]);
+    fireEvent.click(screen.getByRole('button', { name: 'Designar Perto' }));
+    expect(assign).toHaveBeenCalledWith('near', 'Base Teste', ['delivery-1']);
   });
 
   it('permite localizar uma saída que já está na rua sem oferecer nova designação', () => {

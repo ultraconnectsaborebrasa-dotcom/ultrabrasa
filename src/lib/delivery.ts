@@ -8,9 +8,9 @@ export const DELIVERY_STATUSES = ['Aguardando preparo','Pronto para entrega','Em
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number];
 export type Delivery = { id:string; order_id:string; number:number; customer:string; phone:string; address:DeliveryAddress; created_at:string; delivered_at:string|null; departed_at?:string|null; arrived_at?:string|null; order_status?:string; payment_status?:string; status:DeliveryStatus; route_id:string|null; position:number; courier_id:string|null; total:number|null; due:number|null; payment_method:string|undefined; change:number|null; problem:string|null; items:{productId?:string;name:string;qty:number;note?:string}[] };
 export type CourierOperationalStatus = 'available'|'unavailable'|'returning';
-export type Courier = {id:string;name:string;phone:string;user_id:string|null;active:boolean;deleted_at?:string|null;deleted_by?:string|null;initial_quantity?:number|null;remaining_quantity?:number|null;reserved_quantity?:number|null;available_quantity?:number|null;stock_updated_at?:string|null;operational_status?:CourierOperationalStatus;status_updated_at?:string|null;product_id?:string|null;product_name?:string|null;journey_id?:string|null;journey_status?:'on_route'|'empty'|'returned'|null};
+export type Courier = {id:string;name:string;phone:string;user_id:string|null;active:boolean;open_shift?:boolean;deleted_at?:string|null;deleted_by?:string|null;initial_quantity?:number|null;remaining_quantity?:number|null;reserved_quantity?:number|null;available_quantity?:number|null;stock_updated_at?:string|null;operational_status?:CourierOperationalStatus;status_updated_at?:string|null;product_id?:string|null;product_name?:string|null;journey_id?:string|null;journey_status?:'on_route'|'empty'|'returned'|null};
 export const canReceiveCourierAssignments = (courier:Pick<Courier,'active'|'deleted_at'>) => courier.active && !courier.deleted_at;
-export const isCourierAvailable = (courier:Pick<Courier,'operational_status'>) => (courier.operational_status??'available')==='available';
+export const isCourierAvailable = (courier:Pick<Courier,'operational_status'|'open_shift'>) => courier.open_shift!==false && (courier.operational_status??'available')==='available';
 export const filterCouriersByAvailability = (couriers:Courier[],showUnavailable=false) => couriers.filter(courier=>showUnavailable||isCourierAvailable(courier));
 export const directoryCouriers = (couriers:Courier[],showInactive=false) => couriers.filter(courier=>!courier.deleted_at&&(showInactive||courier.active));
 export type MarmitaProduct = {id:string;name:string};
@@ -23,6 +23,7 @@ export function courierMarmitaStock(courier:Courier|null|undefined,deliveries:De
 }
 export function marmitaSelectionError(courier:Courier|null|undefined,deliveries:Delivery[],selected:Delivery[],excludeRouteId?:string|null):string|null {
   if(!courier)return null;
+  if(courier.open_shift===false)return 'Este entregador precisa bater o ponto de entrada antes de receber entregas.';
   const required=selected.reduce((total,delivery)=>total+deliveryMarmitaQuantity(delivery),0);
   if(courier.operational_status&&courier.operational_status!=='available')return 'Este entregador não está disponível para novas atribuições.';
   if(!required)return null;
