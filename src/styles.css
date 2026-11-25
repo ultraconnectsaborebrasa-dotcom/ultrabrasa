@@ -77,6 +77,9 @@
   --border: oklch(0.31 0.003 60);
   --input: oklch(0.34 0.003 60);
   --ring: oklch(0.72 0.18 50);
+  --google-background: #131314;
+  --google-border: #8E918F;
+  --google-foreground: #E3E3E3;
   --gradient-ember: linear-gradient(135deg, var(--accent), var(--primary) 45%, var(--ember));
   --shadow-glow: 0 4px 18px -8px color-mix(in oklab, var(--primary) 25%, transparent);
   --chart-1: oklch(0.72 0.18 50);
@@ -150,6 +153,7 @@
 button { transition: background-color 150ms, border-color 150ms, transform 150ms; }
 button:active:not(:disabled) { transform: translateY(1px); }
 .brand-logo { border-radius: 50%; }
+.google-sign-in { background: var(--google-background); border-color: var(--google-border); color: var(--google-foreground); font-family: "Google Sans", var(--font-sans); font-weight: 500; font-size: 14px; line-height: 20px; }
 .brand-header { background: var(--card); border-bottom-color: color-mix(in oklab, var(--ember) 45%, var(--border)); box-shadow: 0 3px 18px -12px var(--ember); }
 .table-tile, .product-choice { transition: border-color 180ms, transform 180ms, box-shadow 180ms; }
 .table-tile:hover, .product-choice:hover { transform: translateY(-2px); box-shadow: var(--shadow-glow); }

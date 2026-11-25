@@ -8,6 +8,12 @@
 ## Exclusão solicitada do entregador Mateus
 - [x] Encerrar o turno aberto às 23:53 com autorização explícita e excluir definitivamente Mateus, 4 pedidos, 4 entregas e 4 mensagens vinculadas pela tela; cadastro, entregas e turnos confirmados ausentes no banco, com 4 proteções contra restauração por terminais antigos.
 
+## Aplicativo profissional e login Google
+- [x] Retorno Google implementado com sessão cifrada para chave efêmera do aparelho, estado de uso único e validade de cinco minutos, sem ponte JavaScript; Google continua no navegador seguro e botão Voltar ao aplicativo retoma o APK.
+- [x] Organizar Entregas, Ponto e GPS e Meu acerto em navegação fixa, preservando estado; cartão de entrega simplificado e carga oculta à noite.
+- [x] APK v4 (1.3.0) assinado e alinhado, mesma assinatura v3 confirmada; compilação, testes Android e lint aprovados. 605 testes web aprovados; restauração de sessão temporária real, entrada, saída e navegação verificadas no navegador com identificação Android. Dados temporários removidos; publicação autorizada será solicitada nesta entrega.
+- [ ] Login Google e instalação físicos dependem de aparelho Android real.
+
 ## Rotas noturnas e disponibilidade pelo ponto
 - [x] Ocultar cargas e contadores de marmitas à noite e designar lanches sem carga; preservar estoque compatível para pedidos que realmente contêm marmitas.
 - [x] Vincular disponibilidade à entrada/saída do ponto; projeções, mapa e designação protegidos contra disponibilidade antiga sem turno aberto.
@@ -18,7 +24,7 @@
 - [x] Gerar APK v3 assinado (1.2.0), verificar assinatura v2/v3, alinhamento, pacote/permissões, testes Android e entregar APK e instruções em Files. Nova assinatura exige reinstalação; assinatura preservada somente em metadados privados.
 - [ ] Publicação autorizada solicitada; conferir a disponibilidade do novo vínculo GPS no endereço oficial, que ainda retornou a versão antiga na primeira conferência.
 - [ ] Validar instalação, GPS físico com tela bloqueada e comportamento da bateria: depende de aparelho Android real, indisponível neste ambiente.
-- [ ] Retornar ao aplicativo depois do login Google: pendente de integração nativa segura e nova instalação; nenhuma alteração insegura ao login existente foi feita.
+- [x] Retorno Google implementado na v4 com chave efêmera/cifra e sessão restaurada na tela; instalação e Google real em aparelho Android ainda pendentes.
 - [x] Tornar posição e situação de GPS mais claras; solicitar permissão fora do mapa e retomar compartilhamento autorizado durante turno aberto, respeitando desativação.
 - [x] Configurar Firebase: conexão de envio autorizada e verificação sem entrega aprovada; arquivo Android conferido com o pacote correto e integrado ao Gradle com Firebase Messaging.
 - [ ] Notificar o entregador fora do aplicativo: configuração Firebase pronta; integração nativa de permissão/som, vínculo autenticado do aparelho e disparos por evento precisam integrar a próxima versão Android. Instalação e teste exigem aparelho real; APKs atuais não foram atualizados.

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AndroidLoginRouteImport } from './routes/android-login'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CardapioRouteImport } from './routes/cardapio'
 import { Route as LoginRouteImport } from './routes/login'
@@ -25,6 +26,11 @@ import { Route as ApiPublicWhatsappWebhookRouteImport } from './routes/api/publi
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AndroidLoginRoute = AndroidLoginRouteImport.update({
+  id: '/android-login',
+  path: '/android-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -90,6 +96,7 @@ const ApiPublicWhatsappWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/android-login': typeof AndroidLoginRoute
   '/auth': typeof AuthRoute
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/android-login': typeof AndroidLoginRoute
   '/auth': typeof AuthRoute
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/android-login': typeof AndroidLoginRoute
   '/auth': typeof AuthRoute
   '/cardapio': typeof CardapioRoute
   '/login': typeof LoginRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/android-login'
     | '/auth'
     | '/cardapio'
     | '/login'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/android-login'
     | '/auth'
     | '/cardapio'
     | '/login'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/android-login'
     | '/auth'
     | '/cardapio'
     | '/login'
@@ -178,6 +190,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AndroidLoginRoute: typeof AndroidLoginRoute
   AuthRoute: typeof AuthRoute
   CardapioRoute: typeof CardapioRoute
   LoginRoute: typeof LoginRoute
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/android-login': {
+      id: '/android-login'
+      path: '/android-login'
+      fullPath: '/android-login'
+      preLoaderRoute: typeof AndroidLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -282,6 +302,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AndroidLoginRoute: AndroidLoginRoute,
   AuthRoute: AuthRoute,
   CardapioRoute: CardapioRoute,
   LoginRoute: LoginRoute,

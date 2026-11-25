@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
     private WebView web;
     private ProgressBar progress;
     private boolean showingError;
+    private final LoginHandoff login = new LoginHandoff();
     private String pendingLocationOrigin;
     private GeolocationPermissions.Callback pendingLocationCallback;
 
@@ -68,7 +69,7 @@ public class MainActivity extends Activity {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         LinearLayout toolbar = new LinearLayout(this);
-        TextView label = new TextView(this); label.setText("Ultraconnect · GPS do turno");
+        TextView label = new TextView(this); label.setText("Ultraconnect Entregas");
         label.setPadding(16, 8, 8, 8);
         toolbar.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
         ImageButton gps = new ImageButton(this); gps.setImageResource(android.R.drawable.ic_menu_mylocation);
@@ -100,7 +101,7 @@ public class MainActivity extends Activity {
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setSafeBrowsingEnabled(true);
         settings.setGeolocationEnabled(true);
-        settings.setUserAgentString(settings.getUserAgentString() + " UltraconnectEntregas/1.2");
+        settings.setUserAgentString(settings.getUserAgentString() + " UltraconnectEntregas/1.3");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
@@ -136,6 +137,9 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
+                if (request.isForMainFrame() && trusted(uri) && "/android-login".equals(uri.getPath()) && "1".equals(uri.getQueryParameter("native"))) {
+                    beginGoogleLogin(); return true;
+                }
                 if (trusted(uri)) return false;
                 if ("https".equalsIgnoreCase(uri.getScheme()) || "mailto".equalsIgnoreCase(uri.getScheme()) || "tel".equalsIgnoreCase(uri.getScheme())) {
                     try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); }
@@ -155,6 +159,38 @@ public class MainActivity extends Activity {
             }
         });
         if (state == null || web.restoreState(state) == null) web.loadUrl(HOME);
+        if (Intent.ACTION_VIEW.equals(getIntent().getAction())) receiveLogin(getIntent());
+    }
+
+    private void beginGoogleLogin() {
+        new Thread(() -> {
+            try {
+                String url = login.begin(System.currentTimeMillis());
+                runOnUiThread(() -> {
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)); }
+                    catch (android.content.ActivityNotFoundException error) { showError("Instale ou ative um navegador para entrar com Google."); }
+                });
+            } catch (Exception error) { runOnUiThread(() -> showError("Não foi possível iniciar o login seguro. Tente novamente.")); }
+        }, "google-login").start();
+    }
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        receiveLogin(intent);
+    }
+    private void receiveLogin(Intent intent) {
+        Uri uri = intent.getData();
+        if (uri == null || !"ultraconnect-entregas".equals(uri.getScheme()) || !"login".equals(uri.getHost())) return;
+        String envelope = intent.getStringExtra("envelope");
+        intent.removeExtra("envelope"); intent.setData(null);
+        new Thread(() -> {
+            try {
+                String session = login.consume(envelope, System.currentTimeMillis());
+                JSONObject tokens = new JSONObject(session);
+                if (tokens.optString("access_token").length() < 20 || tokens.optString("refresh_token").length() < 10) throw new SecurityException();
+                String fragment = LoginHandoff.encode(session.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                runOnUiThread(() -> { if (!isFinishing()) web.loadUrl(HOME + "android-login#session=" + fragment); });
+            } catch (Exception error) { runOnUiThread(() -> showError("O retorno do Google expirou ou não pertence a este aparelho. Toque em Continuar com Google e tente novamente.")); }
+        }, "google-return").start();
     }
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {

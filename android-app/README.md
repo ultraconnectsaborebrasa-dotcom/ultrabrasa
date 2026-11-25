@@ -1,6 +1,6 @@
 # Ultraconnect Entregas — Android
 
-Aplicativo nativo para os entregadores acessarem ponto, GPS e rotas do sistema Ultraconnect já existente. A versão 1.2.0 (APK v3) inclui GPS nativo durante o turno, inclusive em segundo plano. Compilação, testes Android, análise de permissões, alinhamento e assinatura foram verificados; instalação e GPS físico continuam pendentes.
+Aplicativo nativo para os entregadores acessarem ponto, GPS e rotas do sistema Ultraconnect já existente. A versão 1.3.0 (APK v4) acrescenta retorno do Google ao WebView com sessão cifrada e navegação fixa Entregas / Ponto e GPS / Meu acerto. Compilação e testes foram verificados; instalação, Google externo e GPS físico continuam pendentes em aparelho real.
 
 ## O que o app usa
 - Site oficial: https://ultraconnectbrasa.com.br. O endereço https://ultrabrasa.lovable.app continua autorizado como alternativa publicada.
@@ -9,7 +9,7 @@ Aplicativo nativo para os entregadores acessarem ponto, GPS e rotas do sistema U
 - Internet necessária. A sessão de email e senha fica no WebView do aparelho, separada da sessão do navegador.
 - GPS nativo autorizado e vinculado ao próprio entregador, limitado ao turno aberto. Um serviço com aviso permanente e ação Pausar GPS continua fora da tela do aplicativo, sem depender do WebView. Não coleta antes da entrada, após a saída, durante falta de autorização/conexão ou depois da desativação.
 - Sem ponte JavaScript, acesso a arquivos ou tráfego sem HTTPS. Links externos de navegação, telefone e WhatsApp abrem no aplicativo correspondente.
-- Nome: Ultraconnect Entregas. Pacote: br.com.ultraconnect.entregas. Android 8 (API 26) ou superior; versão 1.2.0 (versionCode 3).
+- Nome: Ultraconnect Entregas. Pacote: br.com.ultraconnect.entregas. Android 8 (API 26) ou superior; versão 1.3.0 (versionCode 4).
 - O pacote é separado do APK geral anterior, portanto pode ser instalado sem desinstalar o Ultraconnect antigo.
 
 ## Gerar APK no Android Studio
@@ -21,6 +21,14 @@ O projeto inclui `app/google-services.json` do Firebase cadastrado para o pacote
 - **Ainda não há notificações automáticas de novas rotas com o aplicativo fechado.** O vínculo seguro e a permissão de notificações existem para o GPS, mas faltam registro/renovação do token FCM, canal de som de pedidos e disparos por evento. Não inscrever aparelhos em um tópico compartilhado de pedidos. O aviso permanente do GPS não é um alerta de pedido.
 - Não adicionar ponte JavaScript nem expor tokens de sessão para integrar o WebView. O registro do aparelho precisa preservar as contas e permissões existentes.
 - A v3 precisa ser instalada; publicar o site não atualiza o código nativo dos APKs antigos.
+
+### Google e retorno ao aplicativo (v4)
+1. No aplicativo, escolha Entrar na conta e Continuar com Google; o Android abre o navegador seguro.
+2. Continue com Google e escolha a conta liberada pela loja.
+3. Toque em Voltar ao aplicativo e confirme a abertura no Android. O WebView restaura a sessão e verifica as permissões existentes.
+4. O início cria uma chave efêmera e um estado de uso único, válidos por cinco minutos. A sessão retorna cifrada (RSA-OAEP SHA-256 + AES-256-GCM) num intent explicitamente direcionado ao pacote, sem chave privada ou sessão em disco/ponte JavaScript. O fragmento interno é removido antes de restaurar a sessão.
+5. Se o Android encerrar o processo ou o login expirar, inicie novamente pelo aplicativo. Nenhum token OAuth deve ser colocado em logs ou anexos.
+6. O retorno Google exige v4 e publicação da página /android-login. A v4 usa a mesma assinatura da v3 e pode atualizá-la sem desinstalar; versões com outra assinatura exigem reinstalação.
 
 ### Ativar GPS em segundo plano
 1. Entre na sua conta de entregador e, em Minha localização, toque em Vincular aparelho.
@@ -53,4 +61,5 @@ Para distribuição própria, use uma chave de assinatura guardada fora do proje
 - `assembleRelease`, `testDebugUnitTest` e `lintRelease` concluídos com sucesso; testes de consentimento, turno e frescor de posição aprovados.
 - APK final sem modo de desenvolvimento, com assinatura v2/v3 e alinhamento verificados.
 - Vínculo único, bloqueio antes da entrada, posição fictícia lida pela interface, desativação e saída conferidos com entregador temporário. O domínio oficial está incorporado no APK.
-- GPS físico, bateria e instalação em aparelho real ainda não verificados. Login Google mantém o fluxo web existente; retorno nativo do Google não faz parte desta atualização.
+- Sessão real temporária restaurada em contexto nativo novo, com URL limpa e painel autorizado. Navegação, entrada, acerto e saída conferidos sem pedidos reais; conta/cadastro de teste removidos.
+- GPS físico, bateria, instalação e ida/volta ao Google em aparelho real ainda não verificados. O retorno nativo está implementado e requer publicação + instalação da v4; testes de cifra, uso único, outro aparelho e expiração passaram.

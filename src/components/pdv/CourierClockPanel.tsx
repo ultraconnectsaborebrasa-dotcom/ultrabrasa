@@ -81,6 +81,7 @@ export function CourierClockPanel() {
       );
       await Promise.all([
         client.invalidateQueries({ queryKey: ["courier-operations"] }),
+        client.invalidateQueries({ queryKey: ["courier-location-sharing"] }),
         client.invalidateQueries({ queryKey: ["delivery-board"] }),
       ]);
     } catch (error) {
