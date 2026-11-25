@@ -232,7 +232,8 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
     return 'in_service';
   };
   const matches = (c: Conv) => `${c.name ?? ''} ${c.phone} ${c.last_message ?? ''}`.toLowerCase().includes(search.trim().toLowerCase());
-  const columns = TABS.filter(t => period === 'today' || t.key === 'archived');
+  const [showArchived, setShowArchived] = useState(false);
+  const columns = TABS.filter(t => period === 'today' ? (t.key !== 'archived' || showArchived) : t.key === 'archived');
   const itemsFor = (key: Tab) => sortQueue(convs.filter(c => situation(c) === key && matches(c) && (!waitingOnly || needsStaffReply(c))), 'recent');
   const totalVisible = columns.reduce((n, column) => n + itemsFor(column.key).length, 0);
   const waiting = sortQueue(convs.filter(c => columns.some(column => column.key === situation(c)) && situation(c) !== 'archived' && matches(c) && needsStaffReply(c)), 'arrival');
@@ -331,6 +332,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
         {search && <Button variant="ghost" size="icon" aria-label="Limpar busca" className="absolute right-0.5 top-0.5 h-9 w-9" onClick={() => setSearch('')}><X /></Button>}
       </div>
       <span className="text-xs text-muted-foreground">{totalVisible} {totalVisible === 1 ? 'conversa' : 'conversas'}</span>
+      {period === 'today' && <Button size="sm" variant={showArchived ? 'secondary' : 'outline'} onClick={() => setShowArchived(v => !v)}><Archive /> {showArchived ? 'Ocultar arquivadas' : 'Ver arquivadas'}</Button>}
       {period === 'today' && <Button className="ml-auto" size="sm" variant="ghost" onClick={async () => { if (!await confirmAction('Esconder todas as mensagens de hoje da tela? Elas continuam no Histórico.')) return; const now = Date.now(); localStorage.setItem('ultrabrasa-wa-cleared-at', String(now)); setClearedAt(now); setActive(null); setConvs([]); setMsgs([]); }}>Limpar visualização</Button>}
     </div>
 
@@ -345,7 +347,9 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
         const items = itemsFor(column.key);
         const Icon = column.icon;
         const highlighted = dropTarget === column.key;
-        return <section key={column.key} aria-label={`${column.label}: ${items.length} conversas`} onDragOver={e => { if (dragPhone && canDrop(dragPhone, column.key)) { e.preventDefault(); setDropTarget(column.key); } }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null); }} onDrop={e => void dropConversation(e, column.key)} className={cn('flex w-[84vw] min-w-[280px] max-w-[350px] flex-1 snap-start flex-col rounded-2xl border border-t-4 bg-card/60 shadow-sm transition-colors xl:w-auto xl:max-w-none', column.tone, highlighted && 'border-primary bg-primary/5 ring-2 ring-primary/20')}>
+        const main = column.key === 'new' || column.key === 'in_service';
+        const compact = column.key === 'ordered' || column.key === 'paid';
+        return <section key={column.key} aria-label={`${column.label}: ${items.length} conversas`} onDragOver={e => { if (dragPhone && canDrop(dragPhone, column.key)) { e.preventDefault(); setDropTarget(column.key); } }} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null); }} onDrop={e => void dropConversation(e, column.key)} className={cn('flex snap-start flex-col rounded-2xl border border-t-4 bg-card/60 shadow-sm transition-colors', main ? 'w-[88vw] min-w-[300px] max-w-[460px] flex-[1.6] xl:w-auto xl:max-w-none' : 'w-[70vw] min-w-[220px] max-w-[260px] flex-[0.8] xl:w-auto', column.tone, highlighted && 'border-primary bg-primary/5 ring-2 ring-primary/20')}>
           <header className="border-b p-3.5">
             <div className="flex items-center gap-2"><Icon size={17} className="text-muted-foreground" /><h2 className="text-sm font-bold">{column.label}</h2><span className={cn('ml-auto grid h-6 min-w-6 place-items-center rounded-full px-2 text-xs font-bold', column.badge)}>{items.length}</span></div>
             <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{column.hint}</p>
@@ -359,15 +363,15 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
               return <Fragment key={c.phone}>
                 {index === 0 && !older && <div className="flex items-center justify-between rounded-lg bg-success/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-success"><span>Hoje · mais recentes primeiro</span><span>{items.filter(item => isStoreToday(item.last_message_at)).length}</span></div>}
                 {startsOlder && <div className="mt-3 flex items-center justify-between border-t border-border/70 px-2.5 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground"><span>Conversas anteriores</span><span>{items.length - index}</span></div>}
-              <article draggable={column.key !== 'archived'} onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.phone); setDragPhone(c.phone); }} onDragEnd={() => { setDragPhone(null); setDropTarget(null); }} className={cn('group rounded-xl border bg-card p-3 shadow-sm transition hover:border-primary/40 hover:shadow-md', cardBusy === c.phone && 'pointer-events-none opacity-60')}>
+              <article draggable={column.key !== 'archived'} onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.phone); setDragPhone(c.phone); }} onDragEnd={() => { setDragPhone(null); setDropTarget(null); }} className={cn('group rounded-xl border bg-card shadow-sm', compact ? 'p-2' : 'p-3.5', main && c.unread > 0 && 'border-success/60 bg-success/5', 'transition hover:border-primary/40 hover:shadow-md', cardBusy === c.phone && 'pointer-events-none opacity-60')}>
                 <button type="button" className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => openConversation(c.phone)} aria-label={`Abrir conversa com ${c.name || c.phone}`}>
                   <div className="flex items-start gap-2.5">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-bold text-secondary-foreground">{(c.name || c.phone).trim().slice(0, 1).toUpperCase()}</span>
-                    <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="truncate text-sm font-bold">{c.name || `+${c.phone}`}</span><time className="shrink-0 text-[10px] font-normal text-muted-foreground">{messageTime(c.last_message_at)}</time></span><span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground">+{c.phone}</span></span>
+                    <span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className={cn('truncate font-bold', main ? 'text-base' : 'text-sm')}>{c.name || `+${c.phone}`}</span><time className="shrink-0 text-[10px] font-normal text-muted-foreground">{messageTime(c.last_message_at)}</time></span><span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground">+{c.phone}</span></span>
                     {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-success px-1 text-[10px] font-bold text-background">{c.unread}</span>}
                   </div>
-                  <p className="mt-2.5 line-clamp-2 min-h-8 text-xs leading-4 text-muted-foreground">{c.last_message || 'Nenhuma mensagem'}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  {!compact && <p className={cn('mt-2.5 line-clamp-3 text-sm leading-5', c.unread > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground')}>{c.last_message || 'Nenhuma mensagem'}</p>}
+                  <div className={cn('mt-2 flex-wrap gap-1.5', compact ? 'hidden' : 'flex')}>
                     {needsStaffReply(c) && <span className="rounded-md bg-warning/10 px-1.5 py-1 text-[10px] font-semibold text-warning">Aguardando resposta</span>}
                     {c.assigned_name && <span className="rounded-md bg-secondary px-1.5 py-1 text-[10px] text-secondary-foreground">{c.assigned_name}</span>}
                     {c.automation_paused ? <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-1 text-[10px] text-muted-foreground"><Bot size={11} /> Robô pausado</span> : <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-1.5 py-1 text-[10px] text-success"><Bot size={11} /> Robô ativo</span>}
@@ -424,9 +428,9 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
             <div className="min-h-0 flex-1 overflow-y-auto bg-background/40 p-3 sm:p-5">
               <div className="mx-auto max-w-3xl space-y-2.5">
                 {!msgs.length && <p className="py-16 text-center text-sm text-muted-foreground">Nenhuma mensagem neste período.</p>}
-                {msgs.map(m => <div key={m.id} className={cn('max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm sm:max-w-[78%]', m.direction === 'in' ? 'rounded-tl-md border bg-card' : 'ml-auto rounded-tr-md border border-success/20 bg-success/10')}>
+                {msgs.map(m => <div key={m.id} className={cn('max-w-[88%] rounded-2xl px-4 py-3 text-base leading-relaxed shadow-sm sm:max-w-[78%]', m.direction === 'in' ? 'rounded-tl-md border bg-card' : 'ml-auto rounded-tr-md border border-success/20 bg-success/10')}>
                   <div className="whitespace-pre-wrap break-words">{m.body}</div>
-                  <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+                  <div className="mt-1 flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
                     {m.source === 'auto' && 'automática · '}{m.sent_by_name && `${m.sent_by_name} · `}{m.source === 'phone' && 'pelo celular · '}{m.source === 'history' && 'importada · '}{new Date(m.provider_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                     {m.direction === 'out' && (m.status === 'read' ? <CheckCheck size={12} className="text-success" /> : m.status === 'delivered' ? <CheckCheck size={12} /> : m.status === 'failed' ? <AlertTriangle size={12} className="text-destructive" /> : <Check size={12} />)}
                   </div>
@@ -440,7 +444,7 @@ export function WhatsAppView({ openPhone, isAdmin = true, externalOrders, onBuil
             </div>
             {cfg && cfg.quick_replies.length > 0 && <div className="flex shrink-0 gap-1.5 overflow-x-auto border-t bg-card p-2.5">{cfg.quick_replies.map((q, i) => <Button key={i} variant="outline" size="sm" className="shrink-0" onClick={() => write(q)}>{q.slice(0, 38)}</Button>)}</div>}
             <div className="flex shrink-0 items-end gap-2 border-t bg-card p-3">
-              <textarea aria-label="Mensagem" className="field max-h-32 min-h-11 flex-1 resize-y" rows={1} maxLength={4000} value={text} onChange={e => write(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} placeholder="Escreva uma mensagem" />
+              <textarea aria-label="Mensagem" className="field max-h-40 min-h-12 flex-1 resize-y text-base" rows={1} maxLength={4000} value={text} onChange={e => write(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} placeholder="Escreva uma mensagem" />
               <Button className="h-11" disabled={busy || !text.trim() || !status?.connected} onClick={() => void send()}><Send /> <span className="hidden sm:inline">Enviar</span></Button>
               <Button className="h-11 w-11" size="icon" variant="outline" title="Enviar cardápio PDF" aria-label="Enviar cardápio PDF" disabled={!cfg?.business.pdfPath || busy} onClick={() => { void pdfFn({ data: { phone: active } }).then(() => toast.message('PDF na fila de envio')).catch(e => toast.error(e.message)); }}><FileText /></Button>
             </div>
