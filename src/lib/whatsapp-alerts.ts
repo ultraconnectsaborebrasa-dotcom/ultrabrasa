@@ -38,8 +38,8 @@ function playReminderSound(kind:'message'|'order'){
  const now=Date.now();if(!shouldPlayReminderSound(now,lastSound.get('reminder')??0))return;
  lastSound.set('reminder',now);playWhatsAppSound(kind);
 }
-export async function activateWhatsAppSound(v=0.5):Promise<{sound:boolean;permission:string}>{volume=v;try{audio??=new AudioContext();await audio.resume();}catch{enabled=false;return {sound:false,permission:notifPermission()};}enabled=audio.state==='running';if(enabled)playWhatsAppSound('new');if('Notification' in window&&Notification.permission==='default'){try{await Notification.requestPermission();}catch{}}
- if(enabled&&'Notification' in window&&Notification.permission==='granted'){try{new Notification('Ultrabrasa · teste',{body:'Notificações do WhatsApp ativas',tag:'wa-test'});}catch{}}
+export async function activateWhatsAppSound(v=0.5,silent=false):Promise<{sound:boolean;permission:string}>{volume=v;try{audio??=new AudioContext();await audio.resume();}catch{enabled=false;return {sound:false,permission:notifPermission()};}enabled=audio.state==='running';if(enabled&&!silent)playWhatsAppSound('new');if('Notification' in window&&Notification.permission==='default'){try{await Notification.requestPermission();}catch{}}
+ if(!silent&&enabled&&'Notification' in window&&Notification.permission==='granted'){try{new Notification('Ultrabrasa · teste',{body:'Notificações do WhatsApp ativas',tag:'wa-test'});}catch{}}
  return {sound:enabled,permission:notifPermission()};}
 export function notifPermission(){return typeof window!=='undefined'&&'Notification' in window?Notification.permission:'unsupported';}
 export function setWhatsAppSound(on:boolean,v:number){enabled=on;volume=v;}

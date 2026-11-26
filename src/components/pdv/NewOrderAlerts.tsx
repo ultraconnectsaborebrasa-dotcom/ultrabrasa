@@ -13,6 +13,7 @@ export function NewOrderAlerts({ orders, ready = true, onOpen }: { orders: Alert
   useEffect(() => {
     loadOrderAlerts();
     const unlock = () => { void unlockOrderSound().then(setSoundReady); void requestOrderNotifications(); };
+    unlock();
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
     return () => { window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); };
