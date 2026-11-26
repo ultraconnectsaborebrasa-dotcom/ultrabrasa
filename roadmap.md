@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Novos em destaque no quadro do WhatsApp
+- [x] Coluna Novos ocupando o lugar de destaque: primeira, mais larga, com título, avatar, nome, mensagem, etiquetas e botões maiores; Em atendimento vem depois, mais estreita; Já pediram, Pagos e Arquivadas seguem compactas.
+- [x] Tarjas “Hoje” e “Conversas anteriores” com espaço fixo entre texto e contador para não grudarem nas colunas estreitas.
+- [x] 43 testes do WhatsApp aprovados, build OK e quadro conferido com a conta autorizada em 1280×1800 e 1440×900: Novos 645 px, Em atendimento 287 px, sem sobreposição nem rolagem lateral; nenhum atendimento real alterado. Publicação necessária para atualizar as telas.
+
 ## Acertos separados ao encerrar turno
 - [x] Vincular entregas ao ponto e separar manhã/noite; recebimentos já registrados permanecem no turno original mesmo após nova designação, e pendências seguem sem baixa automática.
 - [x] Resumir somente o turno na saída e liberar entregas não concluídas para a loja designar novamente, sem dar baixa de pagamento ou entrega; preparo ainda em andamento preservado.
