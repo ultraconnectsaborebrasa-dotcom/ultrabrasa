@@ -2,3 +2,4 @@
 - Delivery payment review uses one allowlisted receivables RPC and one shared dialog, reusing the locked payment RPC and invalidating delivery/settlement queries to prevent divergent balances without changing delivery stages.
 - Customer-paid claims never create payments; locked claim/rejection RPCs and a snapshot guard reserve claimed-payment confirmation for store staff.
 - Courier push uses a private leased assignment outbox and device-scoped FCM tokens; immediate authorized dispatch and existing scheduled recovery share one sender, and ambiguous sends are not replayed.
+- Shift closure releases unfinished deliveries without payment or delivery completion; pinned payment associations retain original-shift accounting after reassignment.

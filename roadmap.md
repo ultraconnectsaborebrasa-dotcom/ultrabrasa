@@ -1,5 +1,10 @@
 # Correções PDV UltraBrasa (horário de pico)
 
+## Acertos separados ao encerrar turno
+- [x] Vincular entregas ao ponto e separar manhã/noite; recebimentos já registrados permanecem no turno original mesmo após nova designação, e pendências seguem sem baixa automática.
+- [x] Resumir somente o turno na saída e liberar entregas não concluídas para a loja designar novamente, sem dar baixa de pagamento ou entrega; preparo ainda em andamento preservado.
+- [x] 21 testes web aprovados; teste transacional de saída/liberação/nova designação confirmou dinheiro da manhã separado e ausência de baixa automática, com todos os dados fictícios revertidos e limpeza conferida. Tela real de Jhonny e filtros de recebimentos verificados em 950×674 e 390×844, sem erros ou rolagem lateral. Publicação necessária para atualizar as telas.
+
 ## Alertas Android e conferência do cliente
 - [x] Notificação nativa com som, vibração e abertura das entregas, vinculada ao aparelho; fila autorizada e envio imediato após designação, com recuperação pelo agendamento existente. Firebase validou autorização/formato sem envio real; APK v6 compilado, testado, assinado e alinhado com a mesma chave anterior.
 - [x] Motoboy informa pagamento alegado pelo cliente sem dar baixa; Caixa/Admin conferem ou mantêm a receber. Fluxo real de teste executado na interface: relato manteve pendente e zero pagamentos; loja confirmou Pix, mantendo Pronto para entrega; dados fictícios removidos e limpeza confirmada.

@@ -890,6 +890,27 @@
       "when": 1795647389098,
       "tag": "0126_courier_payment_review_resolution_and_push_backoff",
       "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1795653801123,
+      "tag": "0127_settlements_by_courier_shift",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1795654010937,
+      "tag": "0128_release_unfinished_deliveries_at_shift_exit",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1795654139580,
+      "tag": "0129_preserve_preparation_when_releasing_shift_deliveries",
+      "breakpoints": true
     }
   ]
 }

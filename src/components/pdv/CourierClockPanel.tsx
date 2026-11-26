@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { confirmAction } from "@/lib/confirm-action";
 import { brl } from "@/lib/pdv-store";
-import { clockOutSummary, type CourierSettlementRow } from "@/lib/courier-settlement";
+import { clockOutSummary, settlementForShift, type CourierSettlementRow } from "@/lib/courier-settlement";
 import {
   COURIER_SHIFTS,
   currentCourierShift,
@@ -57,13 +57,15 @@ export function CourierClockPanel() {
   async function clock(action: "entry" | "exit", shiftCode: CourierShiftCode) {
     let summary = "";
     if (action === "exit") {
-      const { data } = await supabase.rpc("read_courier_settlement", { p_day: saoPauloDay() });
-      summary = `Seus repasses de hoje:\n${clockOutSummary((data as unknown as CourierSettlementRow[]) ?? [])}\n\n`;
+      const { data, error } = await supabase.rpc("read_courier_settlement", { p_day: saoPauloDay() });
+      if (error) { toast.error('Não foi possível conferir o acerto. Tente novamente.'); return; }
+      if (!openEntry) return;
+      summary = `Acerto deste turno:\n${clockOutSummary(settlementForShift((data as unknown as CourierSettlementRow[]) ?? [], openEntry.id))}\n\n`;
     }
     if (
       action === "exit" &&
       !(await confirmAction(
-        `${summary}Registrar a saída do ${COURIER_SHIFTS[shiftCode].label.toLowerCase()}? A localização deixará de ser compartilhada.`,
+        `${summary}Registrar a saída do ${COURIER_SHIFTS[shiftCode].label.toLowerCase()}? As entregas não concluídas voltarão para a loja designar novamente. Pagamentos não serão baixados automaticamente. A localização deixará de ser compartilhada.`,
       ))
     )
       return;
@@ -77,12 +79,13 @@ export function CourierClockPanel() {
       toast.success(
         action === "entry"
           ? "Entrada registrada. Agora você pode ativar a localização."
-          : "Saída registrada e localização desativada.",
+          : "Turno encerrado. Entregas pendentes liberadas para a loja e localização desativada.",
       );
       await Promise.all([
         client.invalidateQueries({ queryKey: ["courier-operations"] }),
         client.invalidateQueries({ queryKey: ["courier-location-sharing"] }),
         client.invalidateQueries({ queryKey: ["delivery-board"] }),
+        client.invalidateQueries({ queryKey: ["courier-settlement"] }),
       ]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível registrar o ponto.");

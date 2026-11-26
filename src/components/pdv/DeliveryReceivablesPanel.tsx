@@ -6,12 +6,12 @@ import { brl } from '@/lib/pdv-store';
 import { deliveryReceivablesQuery } from '@/lib/delivery-payment';
 import { DeliveryPaymentDialog } from './DeliveryPaymentDialog';
 
-export function DeliveryReceivablesPanel({ date, courier = false, onPaid }: { date: string; courier?: boolean; onPaid?: () => Promise<void> }) {
+export function DeliveryReceivablesPanel({ date, courier = false, onPaid, allowedOrderIds, excludedOrderIds }: { date: string; courier?: boolean; onPaid?: () => Promise<void>; allowedOrderIds?: string[]; excludedOrderIds?: string[] }) {
   const query = useQuery(deliveryReceivablesQuery(date));
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const normalized = search.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
-  const orders = (query.data?.orders ?? []).filter(order => (courier || normalized || order.customer_paid_reported_at) && `${order.number} ${order.customer} ${order.courier_name ?? ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(normalized));
+  const orders = (query.data?.orders ?? []).filter(order => (!allowedOrderIds || allowedOrderIds.includes(order.id)) && !excludedOrderIds?.includes(order.id) && (courier || normalized || order.customer_paid_reported_at) && `${order.number} ${order.customer} ${order.courier_name ?? ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(normalized));
   return <section className="space-y-3">
     <h3 className="font-semibold">{courier ? 'Meus pedidos com valor pendente' : 'Pedidos com valor pendente'}</h3>
     <label className="flex items-center gap-2 rounded-lg border px-3"><Search size={18} className="shrink-0 text-muted-foreground" /><input type="search" aria-label="Buscar recebimento pendente" placeholder="Pedido, cliente ou entregador" className="h-12 w-full min-w-0 bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" value={search} onChange={event => setSearch(event.target.value)} /></label>

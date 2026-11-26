@@ -2,7 +2,20 @@ export type CourierSettlementRow = {
   order_id: string; number: number; customer: string; courier_id: string; courier_name: string;
   status: string; category: 'cash' | 'card' | 'prepaid' | 'store' | 'pending' | 'unverified';
   amount: number; method: string; paid_at: number | null;
+  shift_id?: string | null; shift_code?: 'morning' | 'night' | null; shift_closed_at?: string | null;
 };
+
+export function settlementForShift(rows: CourierSettlementRow[], shiftId: string) {
+  return rows.filter(row => row.shift_id === shiftId);
+}
+
+export function settlementShiftGroups(rows: CourierSettlementRow[]) {
+  return [...new Map(rows.map(row => [row.shift_id ?? 'unassigned', {
+    id: row.shift_id ?? 'unassigned',
+    label: row.shift_code === 'morning' ? 'Manhã · Marmitas' : row.shift_code === 'night' ? 'Noite · Lanches' : 'Sem turno identificado',
+    closed: Boolean(row.shift_closed_at),
+  }])).values()];
+}
 
 export function settlementTotals(rows: CourierSettlementRow[]) {
   const sum = (category: CourierSettlementRow['category']) => Math.round(rows.filter(row => row.category === category).reduce((total, row) => total + Number(row.amount), 0) * 100) / 100;

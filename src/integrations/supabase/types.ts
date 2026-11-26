@@ -674,6 +674,8 @@ export type Database = {
           arrived_at: string | null
           assigned_courier_id: string | null
           cash_for: number
+          courier_settlement_links: Json
+          courier_shift_id: string | null
           created_at: string
           customer: string
           customer_id: string | null
@@ -697,6 +699,8 @@ export type Database = {
           arrived_at?: string | null
           assigned_courier_id?: string | null
           cash_for?: number
+          courier_settlement_links?: Json
+          courier_shift_id?: string | null
           created_at?: string
           customer?: string
           customer_id?: string | null
@@ -720,6 +724,8 @@ export type Database = {
           arrived_at?: string | null
           assigned_courier_id?: string | null
           cash_for?: number
+          courier_settlement_links?: Json
+          courier_shift_id?: string | null
           created_at?: string
           customer?: string
           customer_id?: string | null
@@ -744,6 +750,13 @@ export type Database = {
             columns: ["assigned_courier_id"]
             isOneToOne: false
             referencedRelation: "delivery_couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_orders_courier_shift_id_fkey"
+            columns: ["courier_shift_id"]
+            isOneToOne: false
+            referencedRelation: "courier_time_entries"
             referencedColumns: ["id"]
           },
           {

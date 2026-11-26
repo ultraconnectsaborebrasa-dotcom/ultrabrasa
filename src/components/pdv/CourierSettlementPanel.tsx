@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { brl } from '@/lib/pdv-store';
 import { saoPauloDay } from '@/lib/courier-operations';
-import { settlementTotals, SETTLEMENT_LABELS, type CourierSettlementRow } from '@/lib/courier-settlement';
+import { settlementTotals, settlementShiftGroups, SETTLEMENT_LABELS, type CourierSettlementRow } from '@/lib/courier-settlement';
 import { DeliveryReceivablesPanel } from './DeliveryReceivablesPanel';
 import { DeliveryPaymentDialog } from './DeliveryPaymentDialog';
 import { openCloud } from '@/lib/pdv-cloud';
@@ -25,6 +25,8 @@ export function CourierSettlementPanel({ admin = false, courier = false, onPaid 
   const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
   const [view, setView] = useState<'summary' | 'receivables'>('summary');
   const [paymentOrder, setPaymentOrder] = useState<string | null>(null);
+  const [selectedShift, setSelectedShift] = useState<string | null>(null);
+  const [receivableShift, setReceivableShift] = useState<'morning' | 'night' | 'unassigned' | null>(null);
   const query = useQuery({
     queryKey: ['courier-settlement', date, courier, admin], gcTime: 0,
     queryFn: async () => {
@@ -34,6 +36,8 @@ export function CourierSettlementPanel({ admin = false, courier = false, onPaid 
     }, refetchInterval: 5000,
   });
   const rows = query.data ?? [];
+  const currentReceivableShift = receivableShift ?? rows.find(row => row.shift_id && !row.shift_closed_at)?.shift_code ?? (rows.some(row => row.shift_code === 'night') ? 'night' : 'morning');
+  const receivableOrderIds = rows.filter(row => (row.shift_code ?? 'unassigned') === currentReceivableShift).map(row => row.order_id);
   const groups = [...new Map(rows.map(row => [row.courier_id, row.courier_name])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
   const normalizedSearch = search.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR');
   const matches = normalizedSearch ? groups.filter(([, name]) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(normalizedSearch)) : groups;
@@ -48,7 +52,7 @@ export function CourierSettlementPanel({ admin = false, courier = false, onPaid 
     {query.isPending && <p role="status">Carregando recebimentos…</p>}
     {query.error && <p role="alert" className="text-destructive">{query.error.message}</p>}
     <nav aria-label="Conferência do acerto" className="flex flex-wrap gap-2"><Button size="sm" variant={view === 'summary' ? 'default' : 'outline'} onClick={() => setView('summary')}>Resumo do acerto</Button><Button size="sm" variant={view === 'receivables' ? 'default' : 'outline'} onClick={() => setView('receivables')}><Clock3 size={16} />Recebimentos pendentes</Button></nav>
-    {view === 'receivables' && <DeliveryReceivablesPanel key={`${date}-${courier}`} date={admin ? date : saoPauloDay()} courier={courier} {...(refreshPDV ? { onPaid: refreshPDV } : {})} />}
+    {view === 'receivables' && <><nav aria-label="Turno dos recebimentos" className="flex flex-wrap gap-2">{(['morning', 'night', 'unassigned'] as const).map(code => <Button key={code} size="sm" variant={code === currentReceivableShift ? 'default' : 'outline'} onClick={() => setReceivableShift(code)}>{code === 'morning' ? 'Manhã · Marmitas' : code === 'night' ? 'Noite · Lanches' : 'Sem turno identificado'}</Button>)}</nav><DeliveryReceivablesPanel key={`${date}-${courier}-${currentReceivableShift}`} date={admin ? date : saoPauloDay()} courier={courier} {...(currentReceivableShift === 'unassigned' ? { excludedOrderIds: rows.filter(row => row.shift_id).map(row => row.order_id) } : { allowedOrderIds: receivableOrderIds })} {...(refreshPDV ? { onPaid: refreshPDV } : {})} /></>}
     {view === 'summary' && <>
     {!courier && <div className="space-y-3">
       <label htmlFor="settlement-courier-search" className="block text-sm font-semibold">Entregador</label>
@@ -64,14 +68,18 @@ export function CourierSettlementPanel({ admin = false, courier = false, onPaid 
     </div>}
     {courier && !query.isPending && !query.error && !groups.length && <p className="border-b py-6 text-center text-muted-foreground">Nenhum pedido designado ou recebimento neste dia.</p>}
     <div className="space-y-5">{visibleGroups.map(([id, name]) => {
-      const deliveries = rows.filter(row => row.courier_id === id);
+      const ownRows = rows.filter(row => row.courier_id === id);
+      const shifts = settlementShiftGroups(ownRows);
+      const activeShift = shifts.find(shift => shift.id === selectedShift) ?? shifts.find(shift => !shift.closed && shift.id !== 'unassigned') ?? shifts.at(-1);
+      const deliveries = ownRows.filter(row => (row.shift_id ?? 'unassigned') === activeShift?.id);
       const courierTotals = settlementTotals(deliveries);
       const cashCount = deliveries.filter(row => row.category === 'cash').length;
       const cardCount = deliveries.filter(row => row.category === 'card').length;
       const paidCount = deliveries.filter(row => row.category === 'prepaid' || row.category === 'store').length;
       const pendingCount = deliveries.filter(row => row.category === 'pending').length;
       return <article key={id} className="min-w-0 space-y-4 border-t pt-4">
-        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="break-words text-lg font-bold">{courier ? 'Resumo do seu dia' : name}</h3><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{new Set(deliveries.map(row => row.order_id)).size} pedido(s)</span></div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="break-words text-lg font-bold">{courier ? 'Acerto por turno' : name}</h3><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{new Set(deliveries.map(row => row.order_id)).size} pedido(s)</span></div>
+        <nav aria-label={`Turnos de ${name}`} className="flex flex-wrap gap-2">{shifts.map(shift => <Button key={shift.id} size="sm" variant={activeShift?.id === shift.id ? 'default' : 'outline'} onClick={() => setSelectedShift(shift.id)}>{shift.label}{shift.closed ? ' · Encerrado' : shift.id !== 'unassigned' ? ' · Aberto' : ''}</Button>)}</nav>
         <div className="flex flex-wrap items-center gap-3 rounded-lg border-l-4 border-success bg-success/10 p-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-full bg-success/15 text-success"><Banknote size={24} /></span>
           <div className="min-w-0 flex-1"><span className="text-sm font-medium">{courier ? 'Você precisa repassar em dinheiro' : `${name} precisa repassar em dinheiro`}</span><strong className="block text-3xl text-success">{brl(courierTotals.cash)}</strong><span className="text-xs text-muted-foreground">{cashCount} pedido(s) recebido(s) em espécie</span></div>
