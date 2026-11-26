@@ -245,13 +245,18 @@ export async function processJobs(db:Admin,limit=2){
       else if(j.kind==='interpret')await interpret(db,j);
       else{
         if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>=86400000){
-          if(confirmation&&p.orderId&&j.kind==='text'){
+          const pixKeyJob=j.dedup_key.endsWith(':pix-key');
+          if((confirmation||pixKeyJob)&&p.orderId&&j.kind==='text'){
             const req=checkEmpty(await db.from('whatsapp_order_requests').select('public_code,order_number,request').eq('order_id',p.orderId).maybeSingle());
-            const customer=String((req?.request as {customer?:unknown}|null)?.customer??'');
+            const payment=String((req?.request as {payment?:unknown}|null)?.payment??'');
             const code=req?.public_code??(req?.order_number?`#${req.order_number}`:'');
-            if(code){
-              const {sendOrderConfirmedTemplate}=await import('./whatsapp.server');
-              const waId=await sendOrderConfirmedTemplate(db,j.phone,customer,code,{orderId:p.orderId,replyTo:j.id});
+            // Fora da janela: só confirmação (com prazo) e, se o pagamento for Pix, a chave. Nada mais.
+            if(code&&(confirmation||/pix/i.test(payment))){
+              const {sendTemplateMessage}=await import('./whatsapp.server');
+              const night=botWindow()==='night';
+              const waId=confirmation
+                ?await sendTemplateMessage(db,j.phone,night?'pedido_confirmado_noite':'pedido_confirmado_almoco',[code],orderConfirmedMessage().replace('Seu pedido foi',`Seu pedido ${code} foi`),{orderId:p.orderId,replyTo:j.id})
+                :await sendTemplateMessage(db,j.phone,'pagamento_pix_pedido',[code,business.pixKey],pixPaymentMessage(business.pixKey),{orderId:p.orderId,replyTo:j.id});
               checkEmpty(await db.from('whatsapp_jobs').update({provider_id:waId,state:'completed',completed_at:new Date().toISOString(),lease_until:null}).eq('id',j.id));
               continue;
             }
