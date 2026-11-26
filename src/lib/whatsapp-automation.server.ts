@@ -245,6 +245,17 @@ export async function processJobs(db:Admin,limit=2){
       else if(j.kind==='interpret')await interpret(db,j);
       else{
         if(!c.last_inbound_at||Date.now()-Date.parse(c.last_inbound_at)>=86400000){
+          if(confirmation&&p.orderId&&j.kind==='text'){
+            const req=checkEmpty(await db.from('whatsapp_order_requests').select('public_code,order_number,request').eq('order_id',p.orderId).maybeSingle());
+            const customer=String((req?.request as {customer?:unknown}|null)?.customer??'');
+            const code=req?.public_code??(req?.order_number?`#${req.order_number}`:'');
+            if(code){
+              const {sendOrderConfirmedTemplate}=await import('./whatsapp.server');
+              const waId=await sendOrderConfirmedTemplate(db,j.phone,customer,code,{orderId:p.orderId,replyTo:j.id});
+              checkEmpty(await db.from('whatsapp_jobs').update({provider_id:waId,state:'completed',completed_at:new Date().toISOString(),lease_until:null}).eq('id',j.id));
+              continue;
+            }
+          }
           checkEmpty(await db.from('whatsapp_jobs').update({state:'cancelled',processing_error:'Janela de 24h encerrada; modelo aprovado necessário',lease_until:null,completed_at:new Date().toISOString()}).eq('id',j.id));
           continue;
         }

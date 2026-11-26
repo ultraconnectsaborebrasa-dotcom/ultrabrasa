@@ -257,3 +257,32 @@ export async function recoverPending(db: Admin, limit = 5) {
   if (p.error) return;
   for (const row of p.data) await runEvent(db, row);
 }
+
+export const ORDER_CONFIRMED_TEMPLATE = 'pedido_confirmado';
+
+/** Modelo aprovado pela Meta: usado quando o cliente não abriu conversa (ex.: pedido pelo cardápio). */
+export async function sendOrderConfirmedTemplate(db: Admin, phone: string, customer: string, code: string, extra: { orderId?: string | null; replyTo?: string | null } = {}) {
+  const to = digits(phone);
+  if (!/^[1-9]\d{9,14}$/.test(to)) throw new Error('Número inválido');
+  const name = (customer.trim().split(/\s+/)[0] || 'cliente').slice(0, 60);
+  const body = `Olá, ${name}! Seu pedido ${code} na Ultraconnect Sabor e Brasa foi confirmado e já está sendo preparado. Avisaremos por aqui quando ele sair para entrega. Obrigado pela preferência!`;
+  const reserved = await db.from('whatsapp_messages').insert({phone:to,direction:'out',source:'pdv',body,status:'sending',order_id:extra.orderId??null,reply_to:extra.replyTo??null}).select('id').single();
+  if (reserved.error) throw new Error(reserved.error.message);
+  let accepted = false;
+  try {
+    const r = await gateway('/messages', { method: 'POST', body: { messaging_product: 'whatsapp', to, type: 'template', template: { name: ORDER_CONFIRMED_TEMPLATE, language: { code: 'pt_BR' }, components: [{ type: 'body', parameters: [{ type: 'text', text: name }, { type: 'text', text: code }] }] } } });
+    const waId: string | undefined = r?.messages?.[0]?.id;
+    accepted = true;
+    if (!waId) throw new Error('WhatsApp não retornou o identificador; conferir envio antes de tentar novamente');
+    const up = await db.from('whatsapp_messages').update({wa_message_id:waId,status:'accepted'}).eq('id',reserved.data.id);
+    if (up.error) throw new Error(up.error.message);
+    const rec = await db.rpc('wa_reconcile', { _id: waId });
+    if (rec.error) throw new Error(rec.error.message);
+    await touchConversation(db, to, body, false);
+    return waId;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await db.from('whatsapp_messages').update({status:accepted||!msg.startsWith('WhatsApp [')?'unknown':'failed',error:msg,failed_at:new Date().toISOString()}).eq('id',reserved.data.id);
+    throw e;
+  }
+}
